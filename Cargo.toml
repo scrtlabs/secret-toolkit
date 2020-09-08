@@ -1,0 +1,5 @@
+[workspace]
+members = ["packages/*"]
+# Since `secret-toolkit` depends on all the other packages, this should make `cargo-check` a bit quicker
+# as it won't have to check all the other packages twice.
+default-members = ["packages/toolkit"]
