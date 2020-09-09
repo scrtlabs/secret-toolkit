@@ -5,3 +5,4 @@ edition = "2018"
 
 [dependencies]
 secret-toolkit-storage = { path = "../storage" }
+secret-toolkit-serialization = { path = "../serialization" }
