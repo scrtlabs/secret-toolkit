@@ -395,6 +395,13 @@ mod tests {
         assert_eq!(iter.next(), Some(Ok(4321)));
         assert_eq!(iter.next(), None);
 
+        let mut iter = append_store.iter();
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), None);
+
         Ok(())
     }
 
@@ -406,6 +413,13 @@ mod tests {
         append_store.push(&2143)?;
         append_store.push(&3412)?;
         append_store.push(&4321)?;
+
+        let mut iter = append_store.iter().rev();
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), None);
 
         let mut iter = append_store.iter().rev();
         assert_eq!(iter.next(), Some(Ok(4321)));
