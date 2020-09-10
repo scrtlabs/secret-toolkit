@@ -110,6 +110,18 @@ where
         })
     }
 
+    pub fn len(&self) -> u32 {
+        self.len
+    }
+
+    pub fn storage(&mut self) -> &mut S {
+        self.storage
+    }
+
+    pub fn readonly_storage(&self) -> &S {
+        self.storage
+    }
+
     /// Return an iterator over the items in the collection
     pub fn iter(&self) -> Iter<S, T, Ser> {
         self.as_readonly().iter()
@@ -219,13 +231,12 @@ where
     len: u32,
 }
 
-impl<'a, S, T, Ser> AppendStore<'a, S, T, Ser>
+impl<'a, S, T> AppendStore<'a, S, T, Bincode2>
 where
     S: ReadonlyStorage,
     T: Serialize + DeserializeOwned,
-    Ser: Serde,
 {
-    pub fn attach(storage: &'a mut S) -> StdResult<Self> {
+    pub fn attach(storage: &'a S) -> StdResult<Self> {
         let len_vec = storage
             .get(LEN_KEY)
             .ok_or_else(|| StdError::generic_err("Could not find length of AppendStore"))?;
@@ -241,6 +252,39 @@ where
             serialization_type: PhantomData,
             len,
         })
+    }
+}
+
+impl<'a, S, T, Ser> AppendStore<'a, S, T, Ser>
+where
+    S: ReadonlyStorage,
+    T: Serialize + DeserializeOwned,
+    Ser: Serde,
+{
+    pub fn attach_with_serialization(storage: &'a S, _ser: Ser) -> StdResult<Self> {
+        let len_vec = storage
+            .get(LEN_KEY)
+            .ok_or_else(|| StdError::generic_err("Could not find length of AppendStore"))?;
+        let len_array = len_vec
+            .as_slice()
+            .try_into()
+            .map_err(|err| StdError::parse_err("u32", err))?;
+        let len = u32::from_be_bytes(len_array);
+
+        Ok(Self {
+            storage,
+            item_type: PhantomData,
+            serialization_type: PhantomData,
+            len,
+        })
+    }
+
+    pub fn len(&self) -> u32 {
+        self.len
+    }
+
+    pub fn readonly_storage(&self) -> &S {
+        self.storage
     }
 
     /// Return an iterator over the items in the collection
@@ -359,6 +403,8 @@ where
 mod tests {
     use cosmwasm_std::testing::MockStorage;
 
+    use secret_toolkit_serialization::Json;
+
     use super::*;
 
     #[test]
@@ -427,6 +473,35 @@ mod tests {
         assert_eq!(iter.next(), Some(Ok(2143)));
         assert_eq!(iter.next(), Some(Ok(1234)));
         assert_eq!(iter.next(), None);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_attach_to_wrong_location() {
+        let mut storage = MockStorage::new();
+        assert!(AppendStore::<_, u8, _>::attach(&storage).is_err());
+        assert!(AppendStoreMut::<_, u8, _>::attach(&mut storage).is_err());
+    }
+
+    #[test]
+    fn test_serializations() -> StdResult<()> {
+        // Check the default behavior is Bincode2
+        let mut storage = MockStorage::new();
+
+        let mut append_store = AppendStoreMut::attach_or_create(&mut storage)?;
+        append_store.push(&1234)?;
+
+        let bytes = append_store.readonly_storage().get(&0_u32.to_be_bytes());
+        assert_eq!(bytes, Some(vec![210, 4, 0, 0]));
+
+        // Check that overriding the serializer with Json works
+        let mut storage = MockStorage::new();
+        let mut append_store =
+            AppendStoreMut::attach_or_create_with_serialization(&mut storage, Json)?;
+        append_store.push(&1234)?;
+        let bytes = append_store.readonly_storage().get(&0_u32.to_be_bytes());
+        assert_eq!(bytes, Some(b"1234".to_vec()));
 
         Ok(())
     }
