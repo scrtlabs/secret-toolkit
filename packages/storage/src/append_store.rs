@@ -1,9 +1,9 @@
+//! An "append store" is a storage wrapper that guarantees constant-cost appending to and popping
+//! from a list of items in storage.
+//!
+//! This is achieved by storing each item in a separate storage entry. A special key is reserved
+//! for storing the length of the collection so far.
 use std::convert::TryInto;
-/// An "append store" is a storage wrapper that guarantees constant-cost appending to and popping
-/// from a list of items in storage.
-///
-/// This is achieved by storing each item in a separate storage entry. A special key is reserved
-/// for storing the length of the collection so far.
 use std::marker::PhantomData;
 
 use serde::{de::DeserializeOwned, Serialize};
