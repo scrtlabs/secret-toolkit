@@ -18,10 +18,10 @@ const LEN_KEY: &[u8] = b"len";
 
 /// A type allowing both reads from and writes to the append store at a given storage location.
 #[derive(Debug)]
-pub struct AppendStoreMut<'a, S, T, Ser = Bincode2>
+pub struct AppendStoreMut<'a, T, S, Ser = Bincode2>
 where
-    S: Storage,
     T: Serialize + DeserializeOwned,
+    S: Storage,
     Ser: Serde,
 {
     storage: &'a mut S,
@@ -30,10 +30,10 @@ where
     len: u32,
 }
 
-impl<'a, S, T> AppendStoreMut<'a, S, T, Bincode2>
+impl<'a, T, S> AppendStoreMut<'a, T, S, Bincode2>
 where
-    S: Storage,
     T: Serialize + DeserializeOwned,
+    S: Storage,
 {
     /// Try to use the provided storage as an AppendStore. If it doesn't seem to be one, then
     /// initialize it as one.
@@ -47,10 +47,10 @@ where
     }
 }
 
-impl<'a, S, T, Ser> AppendStoreMut<'a, S, T, Ser>
+impl<'a, T, S, Ser> AppendStoreMut<'a, T, S, Ser>
 where
-    S: Storage,
     T: Serialize + DeserializeOwned,
+    S: Storage,
     Ser: Serde,
 {
     /// Try to use the provided storage as an AppendStore. If it doesn't seem to be one, then
@@ -101,7 +101,7 @@ where
     }
 
     /// Return an iterator over the items in the collection
-    pub fn iter(&self) -> Iter<S, T, Ser> {
+    pub fn iter(&self) -> Iter<T, S, Ser> {
         self.as_readonly().iter()
     }
 
@@ -161,7 +161,7 @@ where
     }
 
     /// Gain access to the implementation of the immutable methods
-    fn as_readonly(&self) -> AppendStore<S, T, Ser> {
+    fn as_readonly(&self) -> AppendStore<T, S, Ser> {
         AppendStore {
             storage: self.storage,
             item_type: self.item_type,
@@ -175,15 +175,15 @@ where
 // into a `&S`, preventing any further mutation of the entire storage.
 // In practice this just gave annoying lifetime errors either here or at `AppendStoreMut::as_readonly`.
 /*
-impl<'a, S, T> IntoIterator for AppendStoreMut<'a, S, T>
+impl<'a, T, S> IntoIterator for AppendStoreMut<'a, T, S>
 where
-    S: Storage,
     T: 'a + Serialize + DeserializeOwned,
+    S: Storage,
 {
     type Item = StdResult<T>;
-    type IntoIter = Iter<'a, S, T>;
+    type IntoIter = Iter<'a, T, S>;
 
-    fn into_iter(self) -> Iter<'a, S, T> {
+    fn into_iter(self) -> Iter<'a, T, S> {
         Iter {
             storage: self.as_readonly(),
             start: 0,
@@ -195,12 +195,12 @@ where
 
 // Readonly append-store
 
-/// A type allowing only reads from an append store. useful in the context of queries.
+/// A type allowing only reads from an append store. useful in the context_, u8 of queries.
 #[derive(Debug)]
-pub struct AppendStore<'a, S, T, Ser = Bincode2>
+pub struct AppendStore<'a, T, S, Ser = Bincode2>
 where
-    S: ReadonlyStorage,
     T: Serialize + DeserializeOwned,
+    S: ReadonlyStorage,
     Ser: Serde,
 {
     storage: &'a S,
@@ -209,20 +209,20 @@ where
     len: u32,
 }
 
-impl<'a, S, T> AppendStore<'a, S, T, Bincode2>
+impl<'a, T, S> AppendStore<'a, T, S, Bincode2>
 where
-    S: ReadonlyStorage,
     T: Serialize + DeserializeOwned,
+    S: ReadonlyStorage,
 {
     pub fn attach(storage: &'a S) -> StdResult<Self> {
         AppendStore::attach_with_serialization(storage, Bincode2)
     }
 }
 
-impl<'a, S, T, Ser> AppendStore<'a, S, T, Ser>
+impl<'a, T, S, Ser> AppendStore<'a, T, S, Ser>
 where
-    S: ReadonlyStorage,
     T: Serialize + DeserializeOwned,
+    S: ReadonlyStorage,
     Ser: Serde,
 {
     pub fn attach_with_serialization(storage: &'a S, _ser: Ser) -> StdResult<Self> {
@@ -252,7 +252,7 @@ where
     }
 
     /// Return an iterator over the items in the collection
-    pub fn iter(&self) -> Iter<'a, S, T, Ser> {
+    pub fn iter(&self) -> Iter<'a, T, S, Ser> {
         Iter {
             storage: AppendStore::clone(self),
             start: 0,
@@ -279,16 +279,16 @@ where
     }
 }
 
-impl<'a, S, T, Ser> IntoIterator for AppendStore<'a, S, T, Ser>
+impl<'a, T, S, Ser> IntoIterator for AppendStore<'a, T, S, Ser>
 where
-    S: ReadonlyStorage,
     T: Serialize + DeserializeOwned,
+    S: ReadonlyStorage,
     Ser: Serde,
 {
     type Item = StdResult<T>;
-    type IntoIter = Iter<'a, S, T, Ser>;
+    type IntoIter = Iter<'a, T, S, Ser>;
 
-    fn into_iter(self) -> Iter<'a, S, T, Ser> {
+    fn into_iter(self) -> Iter<'a, T, S, Ser> {
         let end = self.len;
         Iter {
             storage: self,
@@ -299,10 +299,10 @@ where
 }
 
 // Manual `Clone` implementation because the default one tries to clone the Storage??
-impl<'a, S, T, Ser> Clone for AppendStore<'a, S, T, Ser>
+impl<'a, T, S, Ser> Clone for AppendStore<'a, T, S, Ser>
 where
-    S: ReadonlyStorage,
     T: Serialize + DeserializeOwned,
+    S: ReadonlyStorage,
     Ser: Serde,
 {
     fn clone(&self) -> Self {
@@ -319,21 +319,21 @@ where
 
 /// An iterator over the contents of the append store.
 #[derive(Debug)]
-pub struct Iter<'a, S, T, Ser>
+pub struct Iter<'a, T, S, Ser>
 where
-    S: ReadonlyStorage,
     T: Serialize + DeserializeOwned,
+    S: ReadonlyStorage,
     Ser: Serde,
 {
-    storage: AppendStore<'a, S, T, Ser>,
+    storage: AppendStore<'a, T, S, Ser>,
     start: u32,
     end: u32,
 }
 
-impl<'a, S, T, Ser> Iterator for Iter<'a, S, T, Ser>
+impl<'a, T, S, Ser> Iterator for Iter<'a, T, S, Ser>
 where
-    S: ReadonlyStorage,
     T: Serialize + DeserializeOwned,
+    S: ReadonlyStorage,
     Ser: Serde,
 {
     type Item = StdResult<T>;
@@ -347,10 +347,10 @@ where
     }
 }
 
-impl<'a, S, T, Ser> DoubleEndedIterator for Iter<'a, S, T, Ser>
+impl<'a, T, S, Ser> DoubleEndedIterator for Iter<'a, T, S, Ser>
 where
-    S: ReadonlyStorage,
     T: Serialize + DeserializeOwned,
+    S: ReadonlyStorage,
     Ser: Serde,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -444,8 +444,8 @@ mod tests {
     #[test]
     fn test_attach_to_wrong_location() {
         let mut storage = MockStorage::new();
-        assert!(AppendStore::<_, u8, _>::attach(&storage).is_err());
-        assert!(AppendStoreMut::<_, u8, _>::attach(&mut storage).is_err());
+        assert!(AppendStore::<u8, _>::attach(&storage).is_err());
+        assert!(AppendStoreMut::<u8, _>::attach(&mut storage).is_err());
     }
 
     #[test]
