@@ -37,12 +37,17 @@ where
 {
     /// Try to use the provided storage as an AppendStore. If it doesn't seem to be one, then
     /// initialize it as one.
+    ///
+    /// Returns Err if the contents of the storage can not be parsed.
     pub fn attach_or_create(storage: &'a mut S) -> StdResult<Self> {
         AppendStoreMut::attach_or_create_with_serialization(storage, Bincode2)
     }
 
     /// Try to use the provided storage as an AppendStore.
-    pub fn attach(storage: &'a mut S) -> StdResult<Self> {
+    ///
+    /// Returns None if the provided storage doesn't seem like an AppendStore.
+    /// Returns Err if the contents of the storage can not be parsed.
+    pub fn attach(storage: &'a mut S) -> Option<StdResult<Self>> {
         AppendStoreMut::attach_with_serialization(storage, Bincode2)
     }
 }
@@ -55,26 +60,29 @@ where
 {
     /// Try to use the provided storage as an AppendStore. If it doesn't seem to be one, then
     /// initialize it as one. This method allows choosing the serialization format you want to use.
-    pub fn attach_or_create_with_serialization(storage: &'a mut S, ser: Ser) -> StdResult<Self> {
+    ///
+    /// Returns Err if the contents of the storage can not be parsed.
+    pub fn attach_or_create_with_serialization(storage: &'a mut S, _ser: Ser) -> StdResult<Self> {
         if let Some(len_vec) = storage.get(LEN_KEY) {
-            Self::new_with_serialization(storage, &len_vec, ser)
+            Self::new(storage, &len_vec)
         } else {
             let len_vec = 0_u32.to_be_bytes();
             storage.set(LEN_KEY, &len_vec);
-            Self::new_with_serialization(storage, &len_vec, ser)
+            Self::new(storage, &len_vec)
         }
     }
 
     /// Try to use the provided storage as an AppendStore.
     /// This method allows choosing the serialization format you want to use.
-    pub fn attach_with_serialization(storage: &'a mut S, ser: Ser) -> StdResult<Self> {
-        let len_vec = storage
-            .get(LEN_KEY)
-            .ok_or_else(|| StdError::generic_err("Could not find length of AppendStore"))?;
-        Self::new_with_serialization(storage, &len_vec, ser)
+    ///
+    /// Returns None if the provided storage doesn't seem like an AppendStore.
+    /// Returns Err if the contents of the storage can not be parsed.
+    pub fn attach_with_serialization(storage: &'a mut S, _ser: Ser) -> Option<StdResult<Self>> {
+        let len_vec = storage.get(LEN_KEY)?;
+        Some(Self::new(storage, &len_vec))
     }
 
-    fn new_with_serialization(storage: &'a mut S, len_vec: &[u8], _ser: Ser) -> StdResult<Self> {
+    fn new(storage: &'a mut S, len_vec: &[u8]) -> StdResult<Self> {
         let len_array = len_vec
             .try_into()
             .map_err(|err| StdError::parse_err("u32", err))?;
@@ -214,7 +222,11 @@ where
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
 {
-    pub fn attach(storage: &'a S) -> StdResult<Self> {
+    /// Try to use the provided storage as an AppendStore.
+    ///
+    /// Returns None if the provided storage doesn't seem like an AppendStore.
+    /// Returns Err if the contents of the storage can not be parsed.
+    pub fn attach(storage: &'a S) -> Option<StdResult<Self>> {
         AppendStore::attach_with_serialization(storage, Bincode2)
     }
 }
@@ -225,10 +237,17 @@ where
     S: ReadonlyStorage,
     Ser: Serde,
 {
-    pub fn attach_with_serialization(storage: &'a S, _ser: Ser) -> StdResult<Self> {
-        let len_vec = storage
-            .get(LEN_KEY)
-            .ok_or_else(|| StdError::generic_err("Could not find length of AppendStore"))?;
+    /// Try to use the provided storage as an AppendStore.
+    /// This method allows choosing the serialization format you want to use.
+    ///
+    /// Returns None if the provided storage doesn't seem like an AppendStore.
+    /// Returns Err if the contents of the storage can not be parsed.
+    pub fn attach_with_serialization(storage: &'a S, _ser: Ser) -> Option<StdResult<Self>> {
+        let len_vec = storage.get(LEN_KEY)?;
+        Some(AppendStore::new(storage, len_vec))
+    }
+
+    fn new(storage: &'a S, len_vec: Vec<u8>) -> StdResult<Self> {
         let len_array = len_vec
             .as_slice()
             .try_into()
