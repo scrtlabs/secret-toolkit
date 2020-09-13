@@ -463,8 +463,8 @@ mod tests {
     #[test]
     fn test_attach_to_wrong_location() {
         let mut storage = MockStorage::new();
-        assert!(AppendStore::<u8, _>::attach(&storage).is_err());
-        assert!(AppendStoreMut::<u8, _>::attach(&mut storage).is_err());
+        assert!(AppendStore::<u8, _>::attach(&storage).is_none());
+        assert!(AppendStoreMut::<u8, _>::attach(&mut storage).is_none());
     }
 
     #[test]
