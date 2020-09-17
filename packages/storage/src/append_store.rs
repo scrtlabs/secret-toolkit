@@ -25,8 +25,8 @@ where
     Ser: Serde,
 {
     storage: &'a mut S,
-    item_type: PhantomData<T>,
-    serialization_type: PhantomData<Ser>,
+    item_type: PhantomData<*const T>,
+    serialization_type: PhantomData<*const Ser>,
     len: u32,
 }
 
@@ -216,8 +216,8 @@ where
     Ser: Serde,
 {
     storage: &'a S,
-    item_type: PhantomData<T>,
-    serialization_type: PhantomData<Ser>,
+    item_type: PhantomData<*const T>,
+    serialization_type: PhantomData<*const Ser>,
     len: u32,
 }
 
