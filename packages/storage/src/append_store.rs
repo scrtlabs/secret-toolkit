@@ -100,6 +100,10 @@ where
         self.len
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     pub fn storage(&mut self) -> &mut S {
         self.storage
     }
@@ -266,6 +270,10 @@ where
         self.len
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     pub fn readonly_storage(&self) -> &S {
         self.storage
     }
@@ -356,6 +364,7 @@ where
     Ser: Serde,
 {
     type Item = StdResult<T>;
+
     fn next(&mut self) -> Option<Self::Item> {
         if self.start >= self.end {
             return None;
@@ -363,6 +372,23 @@ where
         let item = self.storage.get_at(self.start);
         self.start += 1;
         Some(item)
+    }
+
+    // I implement `nth` manually because it is used in the standard library whenever
+    // it wants to skip over elements, but the default implementation repeatedly calls next.
+    // because that is very expensive in this case, and the items are just discarded, we wan
+    // do better here.
+    // In practice, this enables cheap paging over the storage by calling:
+    // `append_store.iter().skip(start).take(length).collect()`
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.start = self.start.saturating_add(n as u32);
+        self.next()
+    }
+
+    // This needs to be implemented correctly for `ExactSizeIterator` to work.
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = (self.end - self.start) as usize;
+        (len, Some(len))
     }
 }
 
@@ -380,6 +406,26 @@ where
         let item = self.storage.get_at(self.end);
         Some(item)
     }
+
+    // I implement `nth_back` manually because it is used in the standard library whenever
+    // it wants to skip over elements, but the default implementation repeatedly calls next_back.
+    // because that is very expensive in this case, and the items are just discarded, we wan
+    // do better here.
+    // In practice, this enables cheap paging over the storage by calling:
+    // `append_store.iter().skip(start).take(length).collect()`
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.end = self.end.saturating_sub(n as u32);
+        self.next_back()
+    }
+}
+
+// This enables writing `append_store.iter().skip(n).rev()`
+impl<'a, T, S, Ser> ExactSizeIterator for Iter<'a, T, S, Ser>
+where
+    T: Serialize + DeserializeOwned,
+    S: ReadonlyStorage,
+    Ser: Serde,
+{
 }
 
 #[cfg(test)]
@@ -417,6 +463,7 @@ mod tests {
         append_store.push(&3412)?;
         append_store.push(&4321)?;
 
+        // iterate twice to make sure nothing changed
         let mut iter = append_store.iter();
         assert_eq!(iter.next(), Some(Ok(1234)));
         assert_eq!(iter.next(), Some(Ok(2143)));
@@ -427,6 +474,12 @@ mod tests {
         let mut iter = append_store.iter();
         assert_eq!(iter.next(), Some(Ok(1234)));
         assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), None);
+
+        // make sure our implementation of `nth` doesn't break anything
+        let mut iter = append_store.iter().skip(2);
         assert_eq!(iter.next(), Some(Ok(3412)));
         assert_eq!(iter.next(), Some(Ok(4321)));
         assert_eq!(iter.next(), None);
@@ -450,11 +503,24 @@ mod tests {
         assert_eq!(iter.next(), Some(Ok(1234)));
         assert_eq!(iter.next(), None);
 
+        // iterate twice to make sure nothing changed
         let mut iter = append_store.iter().rev();
         assert_eq!(iter.next(), Some(Ok(4321)));
         assert_eq!(iter.next(), Some(Ok(3412)));
         assert_eq!(iter.next(), Some(Ok(2143)));
         assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), None);
+
+        // make sure our implementation of `nth_back` doesn't break anything
+        let mut iter = append_store.iter().rev().skip(2);
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), None);
+
+        // make sure our implementation of `ExactSizeIterator` works well
+        let mut iter = append_store.iter().skip(2).rev();
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
         assert_eq!(iter.next(), None);
 
         Ok(())
