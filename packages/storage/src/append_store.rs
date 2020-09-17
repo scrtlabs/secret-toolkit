@@ -374,6 +374,12 @@ where
         Some(item)
     }
 
+    // This needs to be implemented correctly for `ExactSizeIterator` to work.
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = (self.end - self.start) as usize;
+        (len, Some(len))
+    }
+
     // I implement `nth` manually because it is used in the standard library whenever
     // it wants to skip over elements, but the default implementation repeatedly calls next.
     // because that is very expensive in this case, and the items are just discarded, we wan
@@ -383,12 +389,6 @@ where
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         self.start = self.start.saturating_add(n as u32);
         self.next()
-    }
-
-    // This needs to be implemented correctly for `ExactSizeIterator` to work.
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = (self.end - self.start) as usize;
-        (len, Some(len))
     }
 }
 
