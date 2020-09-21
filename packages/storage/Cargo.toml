@@ -10,4 +10,4 @@ cosmwasm-storage = { git = "https://github.com/enigmampc/SecretNetwork", tag = "
 secret-toolkit-serialization = { path = "../serialization" }
 
 [dev-dependencies]
-cosmwasm-vm = { package = "cosmwasm-sgx-vm", git = "https://github.com/enigmampc/SecretNetwork", tag = "1.0-rc1" }
+cosmwasm-vm = { package = "cosmwasm-sgx-vm", git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.0.0" }
