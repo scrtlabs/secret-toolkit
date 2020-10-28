@@ -47,9 +47,8 @@ where
         Ok(())
     }
 
-    pub fn remove(&mut self, key: &[u8]) -> StdResult<()> {
+    pub fn remove(&mut self, key: &[u8]) {
         self.storage.remove(key);
-        Ok(())
     }
 
     fn as_readonly(&self) -> TypedStore<T, S, Ser> {
@@ -161,7 +160,7 @@ mod tests {
         assert!(before_remove_foo1.is_some());
         assert_eq!(foo1, before_remove_foo1.unwrap());
         // and returns None after removal
-        typed_store_mut.remove(b"key1")?;
+        typed_store_mut.remove(b"key1");
         let removed_foo1 = typed_store_mut.may_load(b"key1")?;
         assert!(removed_foo1.is_none());
 
