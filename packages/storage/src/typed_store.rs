@@ -47,6 +47,10 @@ where
         Ok(())
     }
 
+    pub fn remove(&mut self, key: &[u8]) {
+        self.storage.remove(key);
+    }
+
     fn as_readonly(&self) -> TypedStore<T, S, Ser> {
         TypedStore {
             storage: self.storage,
@@ -150,6 +154,15 @@ mod tests {
 
         assert_eq!(foo1, read_foo1);
         assert_eq!(foo2, read_foo2);
+
+        // show that it loads foo1 before removal
+        let before_remove_foo1 = typed_store_mut.may_load(b"key1")?;
+        assert!(before_remove_foo1.is_some());
+        assert_eq!(foo1, before_remove_foo1.unwrap());
+        // and returns None after removal
+        typed_store_mut.remove(b"key1");
+        let removed_foo1 = typed_store_mut.may_load(b"key1")?;
+        assert!(removed_foo1.is_none());
 
         // show what happens when reading from keys that have not been set yet.
         assert!(typed_store_mut.load(b"key3").is_err());
