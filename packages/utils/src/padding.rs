@@ -30,6 +30,12 @@ where
             space_pad(&mut data.0, block_size);
             data
         });
+        for log in &mut response.log {
+            // Safety: These two are safe because we know the characters that
+            // `space_pad` appends are valid UTF-8
+            unsafe { space_pad(log.key.as_mut_vec(), block_size) };
+            unsafe { space_pad(log.value.as_mut_vec(), block_size) };
+        }
         response
     })
 }
