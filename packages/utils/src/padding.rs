@@ -14,7 +14,7 @@ pub fn space_pad(message: &mut Vec<u8>, block_size: usize) -> &mut Vec<u8> {
     message
 }
 
-/// Pad the data in a HandleResponse to the block size, with spaces.
+/// Pad the data and logs in a HandleResponse to the block size, with spaces.
 // The big `where` clause is based on the `where` clause of `HandleResponse`.
 // Users don't need to care about it as the type `T` has a default, and will
 // always be known in the context of the caller.
@@ -40,6 +40,7 @@ where
     })
 }
 
+/// Pad a query response with spaces
 pub fn pad_query_response(
     response: StdResult<QueryResponse>,
     block_size: usize,
