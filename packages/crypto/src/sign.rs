@@ -26,17 +26,36 @@ mod tests {
     use secp256k1_test::{rand::thread_rng, Secp256k1};
 
     #[test]
+    fn test_pubkey() {
+        let s = Secp256k1::new();
+        let (secp_privkey, secp_pubkey) = s.generate_keypair(&mut thread_rng());
+
+        let mut privkey = [0u8; 32];
+        for i in 0..32 {
+            privkey[i] = secp_privkey[i];
+        }
+
+        let new_pubkey = pubkey(&privkey);
+
+        // NOTE: These are two different type definition,
+        // the new_pubkey is libsecp256k1::PublicKey
+        // the secp_pubkey is secp256k1_test::PublicKey
+        assert_eq!(new_pubkey.serialize(), secp_pubkey.serialize_uncompressed());
+    }
+
+
+    #[test]
     fn test_sign() {
         let s = Secp256k1::new();
         let (secp_privkey, secp_pubkey) = s.generate_keypair(&mut thread_rng());
 
-        let mut privkey_a = [0u8; 32];
+        let mut privkey = [0u8; 32];
         for i in 0..32 {
-            privkey_a[i] = secp_privkey[i];
+            privkey[i] = secp_privkey[i];
         }
  
         let data = sha_256(b"test");
-        let signature = sign(&privkey_a, &data);
+        let signature = sign(&privkey, &data);
 
         assert_eq!(verify(&data, signature, &secp_pubkey.serialize_uncompressed()), true);
     }
