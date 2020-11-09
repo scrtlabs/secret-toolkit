@@ -41,7 +41,6 @@ mod tests {
         assert_eq!(new_pubkey.serialize(), secp_pubkey.serialize_uncompressed());
     }
 
-
     #[test]
     fn test_sign() {
         let s = Secp256k1::new();
@@ -51,10 +50,13 @@ mod tests {
         for i in 0..32 {
             privkey[i] = secp_privkey[i];
         }
- 
+
         let data = sha_256(b"test");
         let signature = sign(&privkey, &data);
 
-        assert_eq!(verify(&data, signature, &secp_pubkey.serialize_uncompressed()), true);
+        assert_eq!(
+            verify(&data, signature, &secp_pubkey.serialize_uncompressed()),
+            true
+        );
     }
 }
