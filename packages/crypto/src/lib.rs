@@ -1,7 +1,6 @@
-pub mod hash;
-pub mod rng;
-pub mod sign;
+mod hash;
+mod rng;
+pub mod secp256k1;
 
 pub use hash::sha_256;
 pub use rng::Prng;
-pub use sign::{pubkey, sign};

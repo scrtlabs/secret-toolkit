@@ -18,7 +18,7 @@ impl Prng {
         let mut hash_bytes = [0u8; 32];
         hash_bytes.copy_from_slice(hash.as_slice());
 
-        let rng: ChaChaRng = ChaChaRng::from_seed(hash_bytes);
+        let rng = ChaChaRng::from_seed(hash_bytes);
 
         Self { rng }
     }
