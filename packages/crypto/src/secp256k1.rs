@@ -21,7 +21,9 @@ impl PrivateKey {
     pub fn parse(raw: &[u8; PRIVATE_KEY_SIZE]) -> Result<Self, StdError> {
         secp256k1::SecretKey::parse(raw)
             .map(|key| PrivateKey { inner: key })
-            .map_err(|err| StdError::generic_err(err.to_string()))
+            .map_err(|err| {
+                StdError::generic_err(format!("Error parsing PrivateKey: {}", err.to_string()))
+            })
     }
 
     pub fn serialize(&self) -> [u8; PRIVATE_KEY_SIZE] {
@@ -46,7 +48,9 @@ impl PublicKey {
     pub fn parse(p: &[u8; PUBLIC_KEY_SIZE]) -> Result<PublicKey, StdError> {
         secp256k1::PublicKey::parse(p)
             .map(|key| PublicKey { inner: key })
-            .map_err(|err| StdError::generic_err(err.to_string()))
+            .map_err(|err| {
+                StdError::generic_err(format!("Error parsing PublicKey: {}", err.to_string()))
+            })
     }
 
     pub fn serialize(&self) -> [u8; PUBLIC_KEY_SIZE] {
