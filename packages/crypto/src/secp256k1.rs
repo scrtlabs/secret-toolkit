@@ -1,3 +1,10 @@
+pub use secp256k1::util::{MESSAGE_SIZE, SIGNATURE_SIZE};
+
+use cosmwasm_std::StdError;
+
+pub const PRIVATE_KEY_SIZE: usize = secp256k1::util::SECRET_KEY_SIZE;
+pub const PUBLIC_KEY_SIZE: usize = secp256k1::util::FULL_PUBLIC_KEY_SIZE;
+
 pub struct PrivateKey {
     inner: secp256k1::SecretKey,
 }
@@ -6,9 +13,19 @@ pub struct PublicKey {
     inner: secp256k1::PublicKey,
 }
 
+pub struct Signature {
+    inner: secp256k1::Signature,
+}
+
 impl PrivateKey {
-    pub fn parse(raw: &[u8; 32]) -> Result<Self, secp256k1::Error> {
-        secp256k1::SecretKey::parse(raw).map(|key| PrivateKey { inner: key })
+    pub fn parse(raw: &[u8; PRIVATE_KEY_SIZE]) -> Result<Self, StdError> {
+        secp256k1::SecretKey::parse(raw)
+            .map(|key| PrivateKey { inner: key })
+            .map_err(|err| StdError::generic_err(err.to_string()))
+    }
+
+    pub fn serialize(&self) -> [u8; PRIVATE_KEY_SIZE] {
+        self.inner.serialize()
     }
 
     pub fn pubkey(&self) -> PublicKey {
@@ -17,18 +34,40 @@ impl PrivateKey {
         }
     }
 
-    pub fn sign(&self, data: &[u8; 32]) -> secp256k1::Signature {
+    pub fn sign(&self, data: &[u8; MESSAGE_SIZE]) -> Signature {
         let msg = secp256k1::Message::parse(data);
         let sig = secp256k1::sign(&msg, &self.inner);
 
-        sig.0
+        Signature { inner: sig.0 }
     }
 }
 
 impl PublicKey {
-    pub fn verify(&self, data: &[u8; 32], signature: secp256k1::Signature) -> bool {
+    pub fn parse(p: &[u8; PUBLIC_KEY_SIZE]) -> Result<PublicKey, StdError> {
+        secp256k1::PublicKey::parse(p)
+            .map(|key| PublicKey { inner: key })
+            .map_err(|err| StdError::generic_err(err.to_string()))
+    }
+
+    pub fn serialize(&self) -> [u8; PUBLIC_KEY_SIZE] {
+        self.inner.serialize()
+    }
+
+    pub fn verify(&self, data: &[u8; MESSAGE_SIZE], signature: Signature) -> bool {
         let msg = secp256k1::Message::parse(data);
-        secp256k1::verify(&msg, &signature, &self.inner)
+        secp256k1::verify(&msg, &signature.inner, &self.inner)
+    }
+}
+
+impl Signature {
+    pub fn parse(p: &[u8; SIGNATURE_SIZE]) -> Signature {
+        Signature {
+            inner: secp256k1::Signature::parse(p),
+        }
+    }
+
+    pub fn serialize(&self) -> [u8; SIGNATURE_SIZE] {
+        self.inner.serialize()
     }
 }
 
@@ -43,7 +82,7 @@ mod tests {
         let s = Secp256k1::new();
         let (secp_privkey, secp_pubkey) = s.generate_keypair(&mut thread_rng());
 
-        let mut privkey = [0u8; 32];
+        let mut privkey = [0u8; PRIVATE_KEY_SIZE];
         privkey.copy_from_slice(&secp_privkey[..]);
 
         let new_pubkey = PrivateKey::parse(&privkey).unwrap().pubkey();
@@ -59,7 +98,7 @@ mod tests {
         let s = Secp256k1::new();
         let (secp_privkey, _) = s.generate_keypair(&mut thread_rng());
 
-        let mut privkey = [0u8; 32];
+        let mut privkey = [0u8; PRIVATE_KEY_SIZE];
         privkey.copy_from_slice(&secp_privkey[..]);
 
         let data = sha_256(b"test");
