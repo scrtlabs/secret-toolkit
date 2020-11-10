@@ -1,0 +1,16 @@
+[package]
+name = "secret-toolkit-crypto"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand_chacha = { version = "0.2.2", default-features = false }
+rand_core = { version =  "0.5.1", default-features = false }
+sha2 = { version = "0.9.1", default-features = false }
+libsecp256k1 = { version = "0.3.5", default-features = false, features = ["hmac"] }
+cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.0.0" }
+
+[dev-dependencies]
+secp256k1-test = { package = "secp256k1", version = "0.17", features = ["rand-std", "recovery"] }
