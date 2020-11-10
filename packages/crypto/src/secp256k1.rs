@@ -47,10 +47,7 @@ mod tests {
         let (secp_privkey, secp_pubkey) = s.generate_keypair(&mut thread_rng());
 
         let mut privkey = [0u8; 32];
-        // privkey.copy_from_slice(secp_privkey.index());
-        for i in 0..32 {
-            privkey[i] = secp_privkey[i];
-        }
+        privkey.copy_from_slice(&secp_privkey[..]);
 
         let new_pubkey = PrivateKey::parse(&privkey).unwrap().pubkey();
 
@@ -69,9 +66,7 @@ mod tests {
         let (secp_privkey, _) = s.generate_keypair(&mut thread_rng());
 
         let mut privkey = [0u8; 32];
-        for i in 0..32 {
-            privkey[i] = secp_privkey[i];
-        }
+        privkey.copy_from_slice(&secp_privkey[..]);
 
         let data = sha_256(b"test");
         let pk = PrivateKey::parse(&privkey).unwrap();
