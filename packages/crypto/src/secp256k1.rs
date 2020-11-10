@@ -8,10 +8,7 @@ pub struct PublicKey {
 
 impl PrivateKey {
     pub fn parse(raw: &[u8; 32]) -> Result<Self, secp256k1::Error> {
-        match secp256k1::SecretKey::parse(raw) {
-            Ok(key) => Ok(PrivateKey { inner: key }),
-            Err(err) => Err(err),
-        }
+        secp256k1::SecretKey::parse(raw).map(|key| PrivateKey { inner: key })
     }
 
     pub fn pubkey(&self) -> PublicKey {
@@ -51,9 +48,6 @@ mod tests {
 
         let new_pubkey = PrivateKey::parse(&privkey).unwrap().pubkey();
 
-        // NOTE: These are two different type definition,
-        // the new_pubkey is libsecp256k1::PublicKey
-        // the secp_pubkey is secp256k1_test::PublicKey
         assert_eq!(
             new_pubkey.inner.serialize(),
             secp_pubkey.serialize_uncompressed()
