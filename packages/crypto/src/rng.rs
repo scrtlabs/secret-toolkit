@@ -1,3 +1,5 @@
+use core::mem;
+
 use rand_chacha::ChaChaRng;
 use rand_core::{RngCore, SeedableRng};
 use sha2::{Digest, Sha256};
@@ -28,6 +30,17 @@ impl Prng {
         self.rng.fill_bytes(&mut bytes);
 
         bytes
+    }
+
+    pub fn something(&mut self, count: u32) -> [u8; 32] {
+        self.rng.set_word_pos(count.into());
+
+        let mut output = [0u32; 8];
+        for i in output.iter_mut() {
+            *i = self.rng.next_u32();
+        }
+
+        unsafe { mem::transmute::<[u32; 8], [u8; 32]>(output) }
     }
 }
 
@@ -60,5 +73,14 @@ mod tests {
         assert_eq!(r2, rng.rand_bytes());
         assert_eq!(r3, rng.rand_bytes());
         assert_eq!(r4, rng.rand_bytes());
+    }
+
+    #[test]
+    fn test_something() {
+        let mut rng = Prng::new(b"foo", b"bar");
+
+        let r = rng.something(8);
+
+        println!("{:?}", r);
     }
 }
