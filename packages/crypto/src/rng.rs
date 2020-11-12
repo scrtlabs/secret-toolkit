@@ -32,7 +32,7 @@ impl Prng {
         bytes
     }
 
-    pub fn something(&mut self, count: u32) -> [u8; 32] {
+    pub fn rand_bytes_counter(&mut self, count: u32) -> [u8; 32] {
         self.rng.set_word_pos(count.into());
 
         let mut output = [0u32; 8];
@@ -76,11 +76,16 @@ mod tests {
     }
 
     #[test]
-    fn test_something() {
+    fn test_rand_bytes_counter() {
         let mut rng = Prng::new(b"foo", b"bar");
 
-        let r = rng.something(8);
+        let r1: [u8; 32] = [
+            114, 227, 179, 76, 120, 34, 236, 42, 204, 27, 153, 74, 44, 29, 158, 162, 180, 202, 165,
+            46, 155, 90, 178, 252, 127, 80, 162, 79, 3, 146, 153, 88,
+        ];
 
-        println!("{:?}", r);
+        assert_eq!(r1, rng.rand_bytes_counter(8));
+        assert_eq!(r1, rng.rand_bytes_counter(8));
+        assert_ne!(r1, rng.rand_bytes_counter(9));
     }
 }
