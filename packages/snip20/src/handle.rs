@@ -11,7 +11,7 @@ pub enum Snip20HandleMsg<'a> {
     /// Native coin interactions
     Redeem {
         amount: Uint128,
-        // TO DO: remove skip_serializing once denom is added to reference impl
+        // TO DO: remove skip_serializing once denom is added to sSCRT stored on mainnet
         #[serde(skip_serializing_if = "Option::is_none")]
         denom: Option<String>,
         padding: Option<String>,
@@ -75,9 +75,8 @@ pub enum Snip20HandleMsg<'a> {
 
     /// Mint
     Mint {
+        recipient: &'a HumanAddr,
         amount: Uint128,
-        // TO DO change name to recipient when reference impl does
-        address: &'a HumanAddr,
         padding: Option<String>,
     },
     AddMinters {
@@ -148,7 +147,7 @@ impl<'a> Snip20HandleMsg<'a> {
 /// # Arguments
 ///
 /// * `amount` - Uint128 amount of token to redeem for SCRT
-/// * `denom` - Optional String to hold denomination of tokens to mint
+/// * `denom` - Optional String to hold denomination of tokens to redeem
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad message to blocks of this size
 /// * `callback_code_hash` - string slice holding the code hash of contract being called
@@ -469,24 +468,23 @@ pub fn burn_from_msg(
 ///
 /// # Arguments
 ///
-/// * `amount` - Uint128 amount of tokens to mint
 /// * `recipient` - reference to address that will receive the newly minted tokens
+/// * `amount` - Uint128 amount of tokens to mint
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad message to blocks of this size
 /// * `callback_code_hash` - string slice holding the code hash of contract being called
 /// * `contract_addr` - reference to address of contract being called
 pub fn mint_msg(
-    amount: Uint128,
     recipient: &HumanAddr,
+    amount: Uint128,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: &str,
     contract_addr: &HumanAddr,
 ) -> StdResult<CosmosMsg> {
     Snip20HandleMsg::Mint {
+        recipient,
         amount,
-        //TODO rename to recipient when reference impl does
-        address: recipient,
         padding,
     }
     .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
