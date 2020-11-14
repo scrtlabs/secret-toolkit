@@ -1,4 +1,5 @@
 use core::fmt;
+use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use cosmwasm_std::{
@@ -8,8 +9,8 @@ use cosmwasm_std::{
 
 use secret_toolkit_utils::space_pad;
 
-/// query response structs
-#[derive(Serialize, Deserialize)]
+/// TokenInfo response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TokenInfo {
     pub name: String,
     pub symbol: String,
@@ -17,12 +18,14 @@ pub struct TokenInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub total_supply: Option<Uint128>,
 }
-#[derive(Serialize, Deserialize)]
+/// ExchangeRate response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ExchangeRate {
     pub rate: Uint128,
     pub denom: String,
 }
-#[derive(Serialize, Deserialize)]
+/// Allowance response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Allowance {
     pub spender: HumanAddr,
     pub owner: HumanAddr,
@@ -30,11 +33,13 @@ pub struct Allowance {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expiration: Option<u64>,
 }
-#[derive(Serialize, Deserialize)]
+/// Balance response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Balance {
     pub amount: Uint128,
 }
-#[derive(Serialize, Deserialize)]
+/// Transaction data
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Tx {
     pub id: u64,
     pub from: HumanAddr,
@@ -42,16 +47,18 @@ pub struct Tx {
     pub receiver: HumanAddr,
     pub coins: Coin,
 }
-#[derive(Serialize, Deserialize)]
+/// TransferHistory response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TransferHistory {
     pub txs: Vec<Tx>,
 }
-#[derive(Serialize, Deserialize)]
+/// Minters response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Minters {
     pub minters: Vec<HumanAddr>,
 }
 
-/// enumerate all the SNIP20 queries
+/// SNIP20 queries
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Snip20QueryMsg<'a> {
@@ -125,27 +132,32 @@ impl<'a> Snip20QueryMsg<'a> {
     }
 }
 
-/// wrappers so that query responses deserialize correctly
+/// wrapper to deserialize TokenInfo response
 #[derive(Deserialize)]
 pub struct TokenInfoResponse {
     pub token_info: TokenInfo,
 }
+/// wrapper to deserialize ExchangeRate response
 #[derive(Deserialize)]
 pub struct ExchangeRateResponse {
     pub exchange_rate: ExchangeRate,
 }
+/// wrapper to deserialize Allowance response
 #[derive(Deserialize)]
 pub struct AllowanceResponse {
     pub allowance: Allowance,
 }
+/// wrapper to deserialize Balance response
 #[derive(Deserialize)]
 pub struct BalanceResponse {
     pub balance: Balance,
 }
+/// wrapper to deserialize TransferHistory response
 #[derive(Deserialize)]
 pub struct TransferHistoryResponse {
     pub transfer_history: TransferHistory,
 }
+/// wrapper to deserialize Minters response
 #[derive(Deserialize)]
 pub struct MintersResponse {
     pub minters: Minters,

@@ -4,11 +4,11 @@ use cosmwasm_std::{to_binary, Binary, Coin, CosmosMsg, HumanAddr, StdResult, Uin
 
 use secret_toolkit_utils::space_pad;
 
-/// enumerate all the handle messages of SNIP20 token
+/// SNIP20 token handle messages
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Snip20HandleMsg<'a> {
-    /// Native coin interactions
+    // Native coin interactions
     Redeem {
         amount: Uint128,
         // TO DO: remove skip_serializing once denom is added to sSCRT stored on mainnet
@@ -20,7 +20,7 @@ pub enum Snip20HandleMsg<'a> {
         padding: Option<String>,
     },
 
-    /// Basic SNIP20 functions
+    // Basic SNIP20 functions
     Transfer {
         recipient: &'a HumanAddr,
         amount: Uint128,
@@ -41,7 +41,7 @@ pub enum Snip20HandleMsg<'a> {
         padding: Option<String>,
     },
 
-    /// Allowance functions
+    // Allowance functions
     IncreaseAllowance {
         spender: &'a HumanAddr,
         amount: Uint128,
@@ -73,7 +73,7 @@ pub enum Snip20HandleMsg<'a> {
         padding: Option<String>,
     },
 
-    /// Mint
+    // Mint
     Mint {
         recipient: &'a HumanAddr,
         amount: Uint128,
@@ -92,7 +92,7 @@ pub enum Snip20HandleMsg<'a> {
         padding: Option<String>,
     },
 
-    /// Set up Send/Receive functionality
+    // Set up Send/Receive functionality
     RegisterReceive {
         code_hash: &'a str,
         padding: Option<String>,
