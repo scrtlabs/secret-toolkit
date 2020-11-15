@@ -29,6 +29,10 @@ impl Prng {
 
         bytes
     }
+
+    pub fn set_word_pos(&mut self, count: u32) {
+        self.rng.set_word_pos(count.into());
+    }
 }
 
 #[cfg(test)]
@@ -60,5 +64,22 @@ mod tests {
         assert_eq!(r2, rng.rand_bytes());
         assert_eq!(r3, rng.rand_bytes());
         assert_eq!(r4, rng.rand_bytes());
+    }
+
+    #[test]
+    fn test_rand_bytes_counter() {
+        let mut rng = Prng::new(b"foo", b"bar");
+
+        let r1: [u8; 32] = [
+            114, 227, 179, 76, 120, 34, 236, 42, 204, 27, 153, 74, 44, 29, 158, 162, 180, 202, 165,
+            46, 155, 90, 178, 252, 127, 80, 162, 79, 3, 146, 153, 88,
+        ];
+
+        rng.set_word_pos(8);
+        assert_eq!(r1, rng.rand_bytes());
+        rng.set_word_pos(8);
+        assert_eq!(r1, rng.rand_bytes());
+        rng.set_word_pos(9);
+        assert_ne!(r1, rng.rand_bytes());
     }
 }
