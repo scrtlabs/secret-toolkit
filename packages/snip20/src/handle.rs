@@ -5,13 +5,13 @@ use cosmwasm_std::{to_binary, Binary, Coin, CosmosMsg, HumanAddr, StdResult, Uin
 use secret_toolkit_utils::space_pad;
 
 /// SNIP20 token handle messages
-#[derive(Serialize)]
+#[derive(Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg<'a> {
     // Native coin interactions
     Redeem {
         amount: Uint128,
-        // TO DO: remove skip_serializing once denom is added to sSCRT stored on mainnet
+        // TODO: remove skip_serializing once denom is added to sSCRT stored on mainnet
         #[serde(skip_serializing_if = "Option::is_none")]
         denom: Option<String>,
         padding: Option<String>,

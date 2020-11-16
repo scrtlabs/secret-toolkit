@@ -3,8 +3,7 @@ use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use cosmwasm_std::{
-    to_binary, Api, Coin, Extern, HumanAddr, Querier, QueryRequest, StdError, StdResult, Storage,
-    Uint128, WasmQuery,
+    to_binary, Coin, HumanAddr, Querier, QueryRequest, StdError, StdResult, Uint128, WasmQuery,
 };
 
 use secret_toolkit_utils::space_pad;
@@ -65,7 +64,7 @@ pub struct Minters {
 }
 
 /// SNIP20 queries
-#[derive(Serialize)]
+#[derive(Serialize, Clone, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg<'a> {
     TokenInfo {},
@@ -106,13 +105,13 @@ impl<'a> QueryMsg<'a> {
     ///
     /// # Arguments
     ///
-    /// * `deps` - a reference to the Extern that holds all the external contract dependencies
+    /// * `querier` - a reference to the Querier dependency of the querying contract
     /// * `block_size` - pad the message to blocks of this size
     /// * `callback_code_hash` - String holding the code hash of the contract being queried
     /// * `contract_addr` - address of the contract being queried
-    pub fn query<S: Storage, A: Api, Q: Querier, T: DeserializeOwned>(
+    pub fn query<Q: Querier, T: DeserializeOwned>(
         &self,
-        deps: &Extern<S, A, Q>,
+        querier: &Q,
         mut block_size: usize,
         callback_code_hash: String,
         contract_addr: HumanAddr,
@@ -123,7 +122,7 @@ impl<'a> QueryMsg<'a> {
         }
         let mut msg = to_binary(self)?;
         space_pad(&mut msg.0, block_size);
-        deps.querier
+        querier
             .query(&QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr,
                 callback_code_hash,
@@ -175,18 +174,18 @@ pub struct MintersResponse {
 ///
 /// # Arguments
 ///
-/// * `deps` - a reference to the Extern that holds all the external contract dependencies
+/// * `querier` - a reference to the Querier dependency of the querying contract
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn token_info_query<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+pub fn token_info_query<Q: Querier>(
+    querier: &Q,
     block_size: usize,
     callback_code_hash: String,
     contract_addr: HumanAddr,
 ) -> StdResult<TokenInfo> {
     let answer: TokenInfoResponse =
-        QueryMsg::TokenInfo {}.query(deps, block_size, callback_code_hash, contract_addr)?;
+        QueryMsg::TokenInfo {}.query(querier, block_size, callback_code_hash, contract_addr)?;
     Ok(answer.token_info)
 }
 
@@ -194,18 +193,18 @@ pub fn token_info_query<S: Storage, A: Api, Q: Querier>(
 ///
 /// # Arguments
 ///
-/// * `deps` - a reference to the Extern that holds all the external contract dependencies
+/// * `querier` - a reference to the Querier dependency of the querying contract
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn exchange_rate_query<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+pub fn exchange_rate_query<Q: Querier>(
+    querier: &Q,
     block_size: usize,
     callback_code_hash: String,
     contract_addr: HumanAddr,
 ) -> StdResult<ExchangeRate> {
     let answer: ExchangeRateResponse =
-        QueryMsg::ExchangeRate {}.query(deps, block_size, callback_code_hash, contract_addr)?;
+        QueryMsg::ExchangeRate {}.query(querier, block_size, callback_code_hash, contract_addr)?;
     Ok(answer.exchange_rate)
 }
 
@@ -213,7 +212,7 @@ pub fn exchange_rate_query<S: Storage, A: Api, Q: Querier>(
 ///
 /// # Arguments
 ///
-/// * `deps` - a reference to the Extern that holds all the external contract dependencies
+/// * `querier` - a reference to the Querier dependency of the querying contract
 /// * `owner` - a reference to the address that owns the tokens
 /// * `spender` - a reference to the address allowed to send/burn tokens
 /// * `key` - string slice holding the authentication key needed to view the allowance
@@ -221,8 +220,8 @@ pub fn exchange_rate_query<S: Storage, A: Api, Q: Querier>(
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
 #[allow(clippy::too_many_arguments)]
-pub fn allowance_query<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+pub fn allowance_query<Q: Querier>(
+    querier: &Q,
     owner: &HumanAddr,
     spender: &HumanAddr,
     key: &str,
@@ -235,7 +234,7 @@ pub fn allowance_query<S: Storage, A: Api, Q: Querier>(
         spender,
         key,
     }
-    .query(deps, block_size, callback_code_hash, contract_addr)?;
+    .query(querier, block_size, callback_code_hash, contract_addr)?;
     Ok(answer.allowance)
 }
 
@@ -243,14 +242,14 @@ pub fn allowance_query<S: Storage, A: Api, Q: Querier>(
 ///
 /// # Arguments
 ///
-/// * `deps` - a reference to the Extern that holds all the external contract dependencies
+/// * `querier` - a reference to the Querier dependency of the querying contract
 /// * `address` - a reference to the address whose balance should be displayed
 /// * `key` - string slice holding the authentication key needed to view the balance
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn balance_query<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+pub fn balance_query<Q: Querier>(
+    querier: &Q,
     address: &HumanAddr,
     key: &str,
     block_size: usize,
@@ -258,7 +257,7 @@ pub fn balance_query<S: Storage, A: Api, Q: Querier>(
     contract_addr: HumanAddr,
 ) -> StdResult<Balance> {
     let answer: BalanceResponse = QueryMsg::Balance { address, key }.query(
-        deps,
+        querier,
         block_size,
         callback_code_hash,
         contract_addr,
@@ -270,7 +269,7 @@ pub fn balance_query<S: Storage, A: Api, Q: Querier>(
 ///
 /// # Arguments
 ///
-/// * `deps` - a reference to the Extern that holds all the external contract dependencies
+/// * `querier` - a reference to the Querier dependency of the querying contract
 /// * `address` - a reference to the address whose transaction history should be displayed
 /// * `key` - string slice holding the authentication key needed to view transactions
 /// * `page` - Optional u32 representing the page number of transactions to display
@@ -279,8 +278,8 @@ pub fn balance_query<S: Storage, A: Api, Q: Querier>(
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
 #[allow(clippy::too_many_arguments)]
-pub fn transfer_history_query<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+pub fn transfer_history_query<Q: Querier>(
+    querier: &Q,
     address: &HumanAddr,
     key: &str,
     page: Option<u32>,
@@ -295,7 +294,7 @@ pub fn transfer_history_query<S: Storage, A: Api, Q: Querier>(
         page,
         page_size,
     }
-    .query(deps, block_size, callback_code_hash, contract_addr)?;
+    .query(querier, block_size, callback_code_hash, contract_addr)?;
     Ok(answer.transfer_history)
 }
 
@@ -303,17 +302,17 @@ pub fn transfer_history_query<S: Storage, A: Api, Q: Querier>(
 ///
 /// # Arguments
 ///
-/// * `deps` - a reference to the Extern that holds all the external contract dependencies
+/// * `querier` - a reference to the Querier dependency of the querying contract
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn minters_query<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+pub fn minters_query<Q: Querier>(
+    querier: &Q,
     block_size: usize,
     callback_code_hash: String,
     contract_addr: HumanAddr,
 ) -> StdResult<Minters> {
     let answer: MintersResponse =
-        QueryMsg::Minters {}.query(deps, block_size, callback_code_hash, contract_addr)?;
+        QueryMsg::Minters {}.query(querier, block_size, callback_code_hash, contract_addr)?;
     Ok(answer.minters)
 }

@@ -6,9 +6,7 @@ These functions are meant to help you easily interact with SNIP20 compliant toke
 
 You can create a HandleMsg variant and call the `to_cosmos_msg` function to generate the CosmosMsg that shoud be pushed onto the InitResponse or HandleResponse `messages` Vec.
 
-
 Or you can call the individual function for each Handle message to generate the appropriate callback CosmosMsg.
-
 
 You probably have also noticed that CreateViewingKey is not supported.  This is because a contract can not see the viewing key that is returned because it has already finished executing by the time CreateViewingKey would be called.  If a contract needs to have a viewing key, it must create its own sufficiently complex viewing key, and pass it as a parameter to SetViewingKey. You can see an example of creating a complex viewing key in the [Snip20 Reference Implementation](http://github.com/enigmampc/snip20-reference-impl).  It is also highly recommended that you use the block_size padding option to also mask the length of the viewing key your contract has generated.
 
@@ -58,6 +56,5 @@ pub struct Minters {
 }
 ```
 You can create a QueryMsg variant and call the `query` function to query a SNIP20 token contract.
-
 
 Or you can call the individual function for each query.
