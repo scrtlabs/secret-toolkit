@@ -66,28 +66,28 @@ pub struct Minters {
 /// SNIP20 queries
 #[derive(Serialize, Clone, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
-pub enum QueryMsg<'a> {
+pub enum QueryMsg {
     TokenInfo {},
     ExchangeRate {},
     Allowance {
-        owner: &'a HumanAddr,
-        spender: &'a HumanAddr,
-        key: &'a str,
+        owner: HumanAddr,
+        spender: HumanAddr,
+        key: String,
     },
     Balance {
-        address: &'a HumanAddr,
-        key: &'a str,
+        address: HumanAddr,
+        key: String,
     },
     TransferHistory {
-        address: &'a HumanAddr,
-        key: &'a str,
+        address: HumanAddr,
+        key: String,
         page: Option<u32>,
         page_size: u32,
     },
     Minters {},
 }
 
-impl<'a> fmt::Display for QueryMsg<'a> {
+impl fmt::Display for QueryMsg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             QueryMsg::TokenInfo { .. } => write!(f, "TokenInfo"),
@@ -100,7 +100,7 @@ impl<'a> fmt::Display for QueryMsg<'a> {
     }
 }
 
-impl<'a> QueryMsg<'a> {
+impl QueryMsg {
     /// Returns a StdResult<T>, where T is the "Response" type that wraps the query answer
     ///
     /// # Arguments
@@ -213,18 +213,18 @@ pub fn exchange_rate_query<Q: Querier>(
 /// # Arguments
 ///
 /// * `querier` - a reference to the Querier dependency of the querying contract
-/// * `owner` - a reference to the address that owns the tokens
-/// * `spender` - a reference to the address allowed to send/burn tokens
-/// * `key` - string slice holding the authentication key needed to view the allowance
+/// * `owner` - the address that owns the tokens
+/// * `spender` - the address allowed to send/burn tokens
+/// * `key` - String holding the authentication key needed to view the allowance
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
 #[allow(clippy::too_many_arguments)]
 pub fn allowance_query<Q: Querier>(
     querier: &Q,
-    owner: &HumanAddr,
-    spender: &HumanAddr,
-    key: &str,
+    owner: HumanAddr,
+    spender: HumanAddr,
+    key: String,
     block_size: usize,
     callback_code_hash: String,
     contract_addr: HumanAddr,
@@ -243,15 +243,15 @@ pub fn allowance_query<Q: Querier>(
 /// # Arguments
 ///
 /// * `querier` - a reference to the Querier dependency of the querying contract
-/// * `address` - a reference to the address whose balance should be displayed
-/// * `key` - string slice holding the authentication key needed to view the balance
+/// * `address` - the address whose balance should be displayed
+/// * `key` - String holding the authentication key needed to view the balance
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
 pub fn balance_query<Q: Querier>(
     querier: &Q,
-    address: &HumanAddr,
-    key: &str,
+    address: HumanAddr,
+    key: String,
     block_size: usize,
     callback_code_hash: String,
     contract_addr: HumanAddr,
@@ -270,8 +270,8 @@ pub fn balance_query<Q: Querier>(
 /// # Arguments
 ///
 /// * `querier` - a reference to the Querier dependency of the querying contract
-/// * `address` - a reference to the address whose transaction history should be displayed
-/// * `key` - string slice holding the authentication key needed to view transactions
+/// * `address` - the address whose transaction history should be displayed
+/// * `key` - String holding the authentication key needed to view transactions
 /// * `page` - Optional u32 representing the page number of transactions to display
 /// * `page_size` - u32 number of transactions to return
 /// * `block_size` - pad the message to blocks of this size
@@ -280,8 +280,8 @@ pub fn balance_query<Q: Querier>(
 #[allow(clippy::too_many_arguments)]
 pub fn transfer_history_query<Q: Querier>(
     querier: &Q,
-    address: &HumanAddr,
-    key: &str,
+    address: HumanAddr,
+    key: String,
     page: Option<u32>,
     page_size: u32,
     block_size: usize,
