@@ -4,6 +4,7 @@ use cosmwasm_std::StdError;
 
 pub const PRIVATE_KEY_SIZE: usize = secp256k1::util::SECRET_KEY_SIZE;
 pub const PUBLIC_KEY_SIZE: usize = secp256k1::util::FULL_PUBLIC_KEY_SIZE;
+pub const COMPRESSED_PUBLIC_KEY_SIZE: usize = secp256k1::util::COMPRESSED_PUBLIC_KEY_SIZE;
 
 pub struct PrivateKey {
     inner: secp256k1::SecretKey,
@@ -55,6 +56,10 @@ impl PublicKey {
 
     pub fn serialize(&self) -> [u8; PUBLIC_KEY_SIZE] {
         self.inner.serialize()
+    }
+
+    pub fn serialize_compressed(&self) -> [u8; COMPRESSED_PUBLIC_KEY_SIZE] {
+        self.inner.serialize_compressed()
     }
 
     pub fn verify(&self, data: &[u8; MESSAGE_SIZE], signature: Signature) -> bool {
