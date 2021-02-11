@@ -10,7 +10,7 @@ rand_chacha = { version = "0.2.2", default-features = false }
 rand_core = { version =  "0.5.1", default-features = false }
 sha2 = { version = "0.9.1", default-features = false }
 libsecp256k1 = { version = "0.3.5", default-features = false, features = ["hmac"] }
-cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", branch = "debug-print" }
+cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", rev = "004c6bc" }
 
 [dev-dependencies]
 secp256k1-test = { package = "secp256k1", version = "0.17", features = ["rand-std", "recovery"] }

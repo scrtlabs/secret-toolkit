@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-serde = "1.0"
-cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", branch = "debug-print" }
-cosmwasm-storage = { git = "https://github.com/enigmampc/SecretNetwork", branch = "debug-print" }
+serde = "1.0.17"
+cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", rev = "004c6bc" }
+cosmwasm-storage = { git = "https://github.com/enigmampc/SecretNetwork", rev = "004c6bc" }
 secret-toolkit-serialization = { path = "../serialization" }
 
 [dev-dependencies]
-cosmwasm-vm = { package = "cosmwasm-sgx-vm", git = "https://github.com/enigmampc/SecretNetwork", branch = "debug-print" }
+cosmwasm-vm = { package = "cosmwasm-sgx-vm", git = "https://github.com/enigmampc/SecretNetwork", rev = "004c6bc" }
