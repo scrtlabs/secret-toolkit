@@ -176,4 +176,4 @@ Example:
     let nft_dossier =
         nft_dossier_query(&deps.querier, token_id, viewer, include_expired, block_size, callback_code_hash, contract_addr)?;
 ```
-In this example, we are doing an NftDossier query on the token named "TOKEN_ID", supplying the address and viewing key of the querier, and storing the response in the nft_dossier variable, which is of the NftDossier type defined above.  Because no `include_expired` was, specified, the response defaults to only displaying approvals that have not expired, but approvals will only be displayed if the viewer is the owner of the token.  The query message is padded to blocks of 256 bytes.
+In this example, we are doing an NftDossier query on the token named "TOKEN_ID", supplying the address and viewing key of the querier, and storing the response in the nft_dossier variable, which is of the NftDossier type defined above.  Because no `include_expired` was specified, the response defaults to only displaying approvals that have not expired, but approvals will only be displayed if the viewer is the owner of the token.  The query message is padded to blocks of 256 bytes.

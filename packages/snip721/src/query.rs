@@ -8,9 +8,10 @@ use crate::expiration::Expiration;
 use crate::metadata::Metadata;
 use secret_toolkit_utils::space_pad;
 
-///
-/// Structs Used for Input Parameters
-///
+//
+// Structs Used for Input Parameters
+//
+
 /// the address and viewing key making an authenticated query request
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ViewerInfo {
@@ -20,11 +21,12 @@ pub struct ViewerInfo {
     pub viewing_key: String,
 }
 
-///
-/// Base SNIP-721 Query Responses
-///
+//
+// Base SNIP-721 Query Responses
+//
 
-/// ContractInfo response
+/// [`ContractInfo`](QueryMsg::ContractInfo) response
+/// 
 /// display the contract's name and symbol
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ContractInfo {
@@ -32,7 +34,8 @@ pub struct ContractInfo {
     pub symbol: String,
 }
 
-/// NumTokens response
+/// [`NumTokens`](QueryMsg::NumTokens) response
+/// 
 /// display the number of tokens controlled by the contract.  The token supply must
 /// either be public, or the querier must be authorized to view
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -40,11 +43,12 @@ pub struct NumTokens {
     pub count: u32,
 }
 
-/// response for AllTokens and Tokens
-/// AllTokens:
+/// response for [`AllTokens`](QueryMsg::AllTokens) and [`Tokens`](QueryMsg::Tokens)
+/// 
+/// * AllTokens:
 /// display an optionally paginated list of all the tokens controlled by the contract.
 /// The token supply must either be public, or the querier must be authorized to view
-/// Tokens:
+/// * Tokens:
 /// displays a list of all the tokens belonging to the input owner in which the viewer
 /// has view_owner permission
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -62,7 +66,8 @@ pub struct Cw721Approval {
     pub expires: Expiration,
 }
 
-/// response of OwnerOf
+/// response of [`OwnerOf`](QueryMsg::OwnerOf)
+/// 
 /// display the owner of the specified token if authorized to view it.  If the requester
 /// is also the token's owner, the response will also include a list of any addresses
 /// that can transfer this token.  The transfer approval list is for CW721 compliance,
@@ -75,12 +80,9 @@ pub struct OwnerOf {
     pub approvals: Vec<Cw721Approval>,
 }
 
-/// The response if NftInfo is Metadata
-/// NftInfo:
-/// displays the public metadata of a token
-
-/// response of AllNftInfo
-/// displays all the information contained in the OwnerOf and NftInfo queries
+/// response of [`AllNftInfo`](QueryMsg::AllNftInfo)
+/// 
+/// displays all the information contained in the [`OwnerOf`](QueryMsg::OwnerOf) and [`NftInfo`](QueryMsg::NftInfo) queries
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AllNftInfo {
     /// OwnerOf response
@@ -88,10 +90,6 @@ pub struct AllNftInfo {
     /// the public metadata if it exists
     pub info: Option<Metadata>,
 }
-
-/// The response of PrivateMetadata is Metadata
-/// PrivateMetadata:
-/// displays the private metadata if permitted to view it
 
 /// SNIP721 Approval
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -106,7 +104,8 @@ pub struct Snip721Approval {
     pub transfer_expiration: Option<Expiration>,
 }
 
-/// response of NftDossier
+/// response of [`NftDossier`](QueryMsg::NftDossier)
+/// 
 /// displays all the information about a token that the viewer has permission to
 /// see.  This may include the owner, the public metadata, the private metadata, and
 /// the token and inventory approvals
@@ -135,7 +134,8 @@ pub struct NftDossier {
     pub inventory_approvals: Option<Vec<Snip721Approval>>,
 }
 
-/// response of TokenApprovals
+/// response of [`TokenApprovals`](QueryMsg::TokenApprovals)
+/// 
 /// list all the approvals in place for a specified token if given the owner's viewing
 /// key
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -152,7 +152,8 @@ pub struct TokenApprovals {
     pub token_approvals: Vec<Snip721Approval>,
 }
 
-/// response of ApprovedForAll
+/// response of [`ApprovedForAll`](QueryMsg::ApprovedForAll)
+/// 
 /// displays a list of all the CW721-style operators (any address that was granted
 /// approval to transfer all of the owner's tokens).  This query is provided to maintain
 /// CW-721 compliance, however, approvals are private on secret network, so only the
@@ -162,7 +163,8 @@ pub struct ApprovedForAll {
     pub operators: Vec<Cw721Approval>,
 }
 
-/// response of InventoryApprovals
+/// response of [`InventoryApprovals`](QueryMsg::InventoryApprovals)
+/// 
 /// list all the inventory-wide approvals in place for the specified address if given the
 /// the correct viewing key for the address
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -224,7 +226,8 @@ pub struct Tx {
     pub memo: Option<String>,
 }
 
-/// response of TransactionHistory
+/// response of [`TransactionHistory`](QueryMsg::TransactionHistory)
+/// 
 /// display the transaction history for the specified address in reverse
 /// chronological order
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -232,22 +235,28 @@ pub struct TransactionHistory {
     pub txs: Vec<Tx>,
 }
 
-///
-/// Optional Queries
-///
+//
+// Optional Queries
+//
 
+/// response of [`Minters`](QueryMsg::Minters)
+///
 /// display the list of authorized minters
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Minters {
     pub minters: Vec<HumanAddr>,
 }
 
+/// response of [`IsUnwrapped`](QueryMsg::IsUnwrapped)
+///
 /// display if a token is unwrapped
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct IsUnwrapped {
     pub token_is_unwrapped: bool,
 }
 
+/// response of [`VerifyTransferApproval`](QueryMsg::VerifyTransferApproval)
+///
 /// verify that the specified address has approval to transfer every listed token
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct VerifyTransferApproval {
@@ -261,14 +270,18 @@ pub struct VerifyTransferApproval {
 #[derive(Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    ///
-    /// Base SNIP-721 Queries
-    ///
+    //
+    // Base SNIP-721 Queries
+    //
+
+    /// display the contract's name and symbol
     ContractInfo {},
     NumTokens {
         /// optional address and key requesting to view the number of tokens
         viewer: Option<ViewerInfo>,
     },
+    /// display an optionally paginated list of all the tokens controlled by the contract.
+    /// The token supply must either be public, or the querier must be authorized to view
     AllTokens {
         /// optional address and key requesting to view the list of tokens
         viewer: Option<ViewerInfo>,
@@ -278,6 +291,10 @@ pub enum QueryMsg {
         /// optional number of token ids to display
         limit: Option<u32>,
     },
+    /// display the owner of the specified token if authorized to view it.  If the requester
+    /// is also the token's owner, the response will also include a list of any addresses
+    /// that can transfer this token.  The transfer approval list is for CW721 compliance,
+    /// but the NftDossier query will be more complete by showing viewing approvals as well
     OwnerOf {
         token_id: String,
         /// optional address and key requesting to view the token owner
@@ -286,9 +303,11 @@ pub enum QueryMsg {
         /// false, expired Approvals will be filtered out of the response
         include_expired: Option<bool>,
     },
+    /// displays the token's public metadata
     NftInfo {
         token_id: String,
     },
+    /// displays all the information contained in the [`OwnerOf`](QueryMsg::OwnerOf) and [`NftInfo`](QueryMsg::NftInfo) queries
     AllNftInfo {
         token_id: String,
         /// optional address and key requesting to view the token owner
@@ -297,11 +316,15 @@ pub enum QueryMsg {
         /// false, expired Approvals will be filtered out of the response
         include_expired: Option<bool>,
     },
+    /// displays the token's private metadata
     PrivateMetadata {
         token_id: String,
         /// optional address and key requesting to view the private metadata
         viewer: Option<ViewerInfo>,
     },
+    /// displays all the information about a token that the viewer has permission to
+    /// see.  This may include the owner, the public metadata, the private metadata, and
+    /// the token and inventory approvals
     NftDossier {
         token_id: String,
         /// optional address and key requesting to view the token information
@@ -310,6 +333,8 @@ pub enum QueryMsg {
         /// false, expired Approvals will be filtered out of the response
         include_expired: Option<bool>,
     },
+    /// list all the approvals in place for a specified token if given the owner's viewing
+    /// key
     TokenApprovals {
         token_id: String,
         /// the token owner's viewing key
@@ -318,6 +343,10 @@ pub enum QueryMsg {
         /// false, expired Approvals will be filtered out of the response
         include_expired: Option<bool>,
     },
+    /// displays a list of all the CW721-style operators (any address that was granted
+    /// approval to transfer all of the owner's tokens).  This query is provided to maintain
+    /// CW-721 compliance, however, approvals are private on secret network, so only the
+    /// owner's viewing key will authorize the ability to see the list of operators
     ApprovedForAll {
         owner: HumanAddr,
         /// optional viewing key to authenticate this query.  It is "optional" only in the
@@ -328,6 +357,8 @@ pub enum QueryMsg {
         /// false, expired Approvals will be filtered out of the response
         include_expired: Option<bool>,
     },
+    /// list all the inventory-wide approvals in place for the specified address if given the
+    /// the correct viewing key for the address
     InventoryApprovals {
         address: HumanAddr,
         /// the viewing key
@@ -336,6 +367,8 @@ pub enum QueryMsg {
         /// false, expired Approvals will be filtered out of the response
         include_expired: Option<bool>,
     },
+    /// displays a list of all the tokens belonging to the input owner in which the viewer
+    /// has view_owner permission
     Tokens {
         owner: HumanAddr,
         /// optional address of the querier if different from the owner
@@ -348,6 +381,8 @@ pub enum QueryMsg {
         /// optional number of token ids to display
         limit: Option<u32>,
     },
+    /// display the transaction history for the specified address in reverse
+    /// chronological order
     TransactionHistory {
         address: HumanAddr,
         /// viewing key
@@ -358,13 +393,17 @@ pub enum QueryMsg {
         page_size: Option<u32>,
     },
 
-    ///
-    /// Optional Queries
-    ///
+    //
+    // Optional Queries
+    //
+
+    /// display the list of authorized minters
     Minters {},
+    /// display if a token is unwrapped
     IsUnwrapped {
         token_id: String,
     },
+    /// verify that the specified address has approval to transfer every listed token
     VerifyTransferApproval {
         /// list of tokens to verify approval for
         token_ids: Vec<String>,

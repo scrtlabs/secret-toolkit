@@ -1,8 +1,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-/// The response of both NftINfo and PrivateMetadata queries are Metadata
-///
+// The response of both NftINfo and PrivateMetadata queries are Metadata
+//
+
 /// token metadata
 #[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
 pub struct Metadata {

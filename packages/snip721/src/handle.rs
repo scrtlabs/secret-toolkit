@@ -8,9 +8,10 @@ use crate::metadata::Metadata;
 
 use secret_toolkit_utils::space_pad;
 
-///
-/// Structures Used for Input Parameters
-///
+//
+// Structures Used for Input Parameters
+//
+
 /// permission access level
 #[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
 #[serde(rename_all = "snake_case")]
@@ -25,9 +26,10 @@ pub enum AccessLevel {
     None,
 }
 
-/// structs used for optional batch processing as implemented in the reference
-/// contract
-///
+//
+// structs used for optional batch processing as implemented in the reference
+// contract
+//
 
 /// token mint info used when doing a BatchMint
 #[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
@@ -81,9 +83,9 @@ pub struct Send {
 #[derive(Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
-    ///
-    /// Base SNIP-721 Messages
-    ///
+    //
+    // Base SNIP-721 Messages
+    //
 
     /// transfer a token
     TransferNft {
@@ -189,12 +191,13 @@ pub enum HandleMsg {
         padding: Option<String>,
     },
 
-    ///
-    /// Optional Messages
-    ///
+    //
+    // Optional Messages
+    //
 
-    /// Minting and Modifying Tokens
-    ///
+    // Minting and Modifying Tokens
+    //
+
     /// mint new token
     MintNft {
         /// optional token id. if omitted, uses current token index
@@ -250,9 +253,9 @@ pub enum HandleMsg {
         padding: Option<String>,
     },
 
-    ///
-    /// Batch Processing
-    ///
+    //
+    // Batch Processing
+    //
 
     /// Mint multiple tokens
     BatchMintNft {
@@ -276,9 +279,9 @@ pub enum HandleMsg {
         padding: Option<String>,
     },
 
-    ///
-    /// Burning Tokens
-    ///
+    //
+    // Burning Tokens
+    //
 
     /// burn a token
     BurnNft {
@@ -297,9 +300,9 @@ pub enum HandleMsg {
         padding: Option<String>,
     },
 
-    ///
-    /// Making the Owner and/or Private Metadata Public
-    ///
+    //
+    // Making the Owner and/or Private Metadata Public
+    //
 
     /// add/remove approval(s) that whitelist everyone (makes public)
     SetGlobalApproval {
@@ -315,9 +318,9 @@ pub enum HandleMsg {
         padding: Option<String>,
     },
 
-    ///
-    /// Lootboxes and Wrapped Cards
-    ///
+    //
+    // Lootboxes and Wrapped Cards
+    //
 
     /// Reveal the private metadata of a sealed token and mark the token as having been unwrapped
     Reveal {
@@ -369,9 +372,9 @@ impl HandleMsg {
     }
 }
 
-///
-/// Base SNIP-721 messages
-///
+//
+// Base SNIP-721 messages
+//
 
 /// Returns a StdResult<CosmosMsg> used to execute TransferNft
 ///
@@ -632,12 +635,12 @@ pub fn set_viewing_key_msg(
     )
 }
 
-///
-/// Optional Messages
-///
+//
+// Optional Messages
+//
 
-/// Minting and Modifying Tokens
-///
+// Minting and Modifying Tokens
+//
 
 /// Returns a StdResult<CosmosMsg> used to execute MintNft
 ///
@@ -799,9 +802,9 @@ pub fn set_private_metadata_msg(
     .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
-///
-/// Batch Processing
-///
+//
+// Batch Processing
+//
 
 /// Returns a StdResult<CosmosMsg> used to execute BatchMintNft
 ///
@@ -875,9 +878,9 @@ pub fn batch_send_nft_msg(
     )
 }
 
-///
-/// Burning Tokens
-///
+//
+// Burning Tokens
+//
 
 /// Returns a StdResult<CosmosMsg> used to execute BurnNft
 ///
@@ -929,9 +932,9 @@ pub fn batch_burn_nft_msg(
     )
 }
 
-///
-/// Making the Owner and/or Private Metadata Public
-///
+//
+// Making the Owner and/or Private Metadata Public
+//
 
 /// Returns a StdResult<CosmosMsg> used to execute SetGlobalApproval
 ///
@@ -966,9 +969,9 @@ pub fn set_global_approval_msg(
     .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
-///
-/// Lootboxes and Wrapped Cards
-///
+//
+// Lootboxes and Wrapped Cards
+//
 
 /// Returns a StdResult<CosmosMsg> used to execute Reveal
 ///
