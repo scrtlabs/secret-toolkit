@@ -26,7 +26,7 @@ pub struct ViewerInfo {
 //
 
 /// [`ContractInfo`](QueryMsg::ContractInfo) response
-/// 
+///
 /// display the contract's name and symbol
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ContractInfo {
@@ -35,7 +35,7 @@ pub struct ContractInfo {
 }
 
 /// [`NumTokens`](QueryMsg::NumTokens) response
-/// 
+///
 /// display the number of tokens controlled by the contract.  The token supply must
 /// either be public, or the querier must be authorized to view
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -44,7 +44,7 @@ pub struct NumTokens {
 }
 
 /// response for [`AllTokens`](QueryMsg::AllTokens) and [`Tokens`](QueryMsg::Tokens)
-/// 
+///
 /// * AllTokens:
 /// display an optionally paginated list of all the tokens controlled by the contract.
 /// The token supply must either be public, or the querier must be authorized to view
@@ -67,11 +67,11 @@ pub struct Cw721Approval {
 }
 
 /// response of [`OwnerOf`](QueryMsg::OwnerOf)
-/// 
+///
 /// display the owner of the specified token if authorized to view it.  If the requester
 /// is also the token's owner, the response will also include a list of any addresses
 /// that can transfer this token.  The transfer approval list is for CW721 compliance,
-/// but the NftDossier query will be more complete by showing viewing approvals as well
+/// but the [`NftDossier`](QueryMsg::NftDossier) query will be more complete by showing viewing approvals as well
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OwnerOf {
     /// Owner of the token if permitted to view it
@@ -81,7 +81,7 @@ pub struct OwnerOf {
 }
 
 /// response of [`AllNftInfo`](QueryMsg::AllNftInfo)
-/// 
+///
 /// displays all the information contained in the [`OwnerOf`](QueryMsg::OwnerOf) and [`NftInfo`](QueryMsg::NftInfo) queries
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AllNftInfo {
@@ -105,7 +105,7 @@ pub struct Snip721Approval {
 }
 
 /// response of [`NftDossier`](QueryMsg::NftDossier)
-/// 
+///
 /// displays all the information about a token that the viewer has permission to
 /// see.  This may include the owner, the public metadata, the private metadata, and
 /// the token and inventory approvals
@@ -135,8 +135,8 @@ pub struct NftDossier {
 }
 
 /// response of [`TokenApprovals`](QueryMsg::TokenApprovals)
-/// 
-/// list all the approvals in place for a specified token if given the owner's viewing
+///
+/// list all the [`Approvals`](Snip721Approval) in place for a specified token if given the owner's viewing
 /// key
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TokenApprovals {
@@ -153,7 +153,7 @@ pub struct TokenApprovals {
 }
 
 /// response of [`ApprovedForAll`](QueryMsg::ApprovedForAll)
-/// 
+///
 /// displays a list of all the CW721-style operators (any address that was granted
 /// approval to transfer all of the owner's tokens).  This query is provided to maintain
 /// CW-721 compliance, however, approvals are private on secret network, so only the
@@ -164,8 +164,8 @@ pub struct ApprovedForAll {
 }
 
 /// response of [`InventoryApprovals`](QueryMsg::InventoryApprovals)
-/// 
-/// list all the inventory-wide approvals in place for the specified address if given the
+///
+/// list all the inventory-wide [`Approvals`](Snip721Approval) in place for the specified address if given the
 /// the correct viewing key for the address
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InventoryApprovals {
@@ -227,7 +227,7 @@ pub struct Tx {
 }
 
 /// response of [`TransactionHistory`](QueryMsg::TransactionHistory)
-/// 
+///
 /// display the transaction history for the specified address in reverse
 /// chronological order
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -273,9 +273,10 @@ pub enum QueryMsg {
     //
     // Base SNIP-721 Queries
     //
-
     /// display the contract's name and symbol
     ContractInfo {},
+    /// display the number of tokens controlled by the contract.  The token supply must
+    /// either be public, or the querier must be an authenticated minter
     NumTokens {
         /// optional address and key requesting to view the number of tokens
         viewer: Option<ViewerInfo>,
@@ -294,29 +295,27 @@ pub enum QueryMsg {
     /// display the owner of the specified token if authorized to view it.  If the requester
     /// is also the token's owner, the response will also include a list of any addresses
     /// that can transfer this token.  The transfer approval list is for CW721 compliance,
-    /// but the NftDossier query will be more complete by showing viewing approvals as well
+    /// but the [`NftDossier`](QueryMsg::NftDossier) query will be more complete by showing viewing approvals as well
     OwnerOf {
         token_id: String,
         /// optional address and key requesting to view the token owner
         viewer: Option<ViewerInfo>,
-        /// optionally include expired Approvals in the response list.  If ommitted or
-        /// false, expired Approvals will be filtered out of the response
+        /// optionally include expired [Approvals](Cw721Approval) in the response list.  If ommitted or
+        /// false, expired [Approvals](Cw721Approval) will be filtered out of the response
         include_expired: Option<bool>,
     },
     /// displays the token's public metadata
-    NftInfo {
-        token_id: String,
-    },
+    NftInfo { token_id: String },
     /// displays all the information contained in the [`OwnerOf`](QueryMsg::OwnerOf) and [`NftInfo`](QueryMsg::NftInfo) queries
     AllNftInfo {
         token_id: String,
         /// optional address and key requesting to view the token owner
         viewer: Option<ViewerInfo>,
-        /// optionally include expired Approvals in the response list.  If ommitted or
-        /// false, expired Approvals will be filtered out of the response
+        /// optionally include expired [Approvals](Cw721Approval) in the response list.  If ommitted or
+        /// false, expired [Approvals](Cw721Approval) will be filtered out of the response
         include_expired: Option<bool>,
     },
-    /// displays the token's private metadata
+    /// displays the token's private [`Metadata`](crate::metadata::Metadata)
     PrivateMetadata {
         token_id: String,
         /// optional address and key requesting to view the private metadata
@@ -329,18 +328,18 @@ pub enum QueryMsg {
         token_id: String,
         /// optional address and key requesting to view the token information
         viewer: Option<ViewerInfo>,
-        /// optionally include expired Approvals in the response list.  If ommitted or
-        /// false, expired Approvals will be filtered out of the response
+        /// optionally include expired [`Approvals`](Snip721Approval) in the response list.  If ommitted or
+        /// false, expired [`Approvals`](Snip721Approval) will be filtered out of the response
         include_expired: Option<bool>,
     },
-    /// list all the approvals in place for a specified token if given the owner's viewing
+    /// list all the [`Approvals`](Snip721Approval) in place for a specified token if given the owner's viewing
     /// key
     TokenApprovals {
         token_id: String,
         /// the token owner's viewing key
         viewing_key: String,
-        /// optionally include expired Approvals in the response list.  If ommitted or
-        /// false, expired Approvals will be filtered out of the response
+        /// optionally include expired [`Approvals`](Snip721Approval) in the response list.  If ommitted or
+        /// false, expired [`Approvals`](Snip721Approval) will be filtered out of the response
         include_expired: Option<bool>,
     },
     /// displays a list of all the CW721-style operators (any address that was granted
@@ -353,18 +352,18 @@ pub enum QueryMsg {
         /// sense that a CW721 query does not have this field.  However, not providing the
         /// key will always result in an empty list
         viewing_key: Option<String>,
-        /// optionally include expired Approvals in the response list.  If ommitted or
-        /// false, expired Approvals will be filtered out of the response
+        /// optionally include expired [`Approvals`](Cw721Approval) in the response list.  If ommitted or
+        /// false, expired [`Approvals`](Cw721Approval) will be filtered out of the response
         include_expired: Option<bool>,
     },
-    /// list all the inventory-wide approvals in place for the specified address if given the
+    /// list all the inventory-wide [`Approvals`](Snip721Approval) in place for the specified address if given the
     /// the correct viewing key for the address
     InventoryApprovals {
         address: HumanAddr,
         /// the viewing key
         viewing_key: String,
-        /// optionally include expired Approvals in the response list.  If ommitted or
-        /// false, expired Approvals will be filtered out of the response
+        /// optionally include expired [`Approvals`](Snip721Approval) in the response list.  If ommitted or
+        /// false, expired [`Approvals`](Snip721Approval) will be filtered out of the response
         include_expired: Option<bool>,
     },
     /// displays a list of all the tokens belonging to the input owner in which the viewer
@@ -396,13 +395,10 @@ pub enum QueryMsg {
     //
     // Optional Queries
     //
-
     /// display the list of authorized minters
     Minters {},
     /// display if a token is unwrapped
-    IsUnwrapped {
-        token_id: String,
-    },
+    IsUnwrapped { token_id: String },
     /// verify that the specified address has approval to transfer every listed token
     VerifyTransferApproval {
         /// list of tokens to verify approval for
@@ -471,97 +467,97 @@ impl QueryMsg {
     }
 }
 
-/// wrapper to deserialize ContractInfo response
+/// wrapper to deserialize [`ContractInfo`](ContractInfo) response
 #[derive(Serialize, Deserialize)]
 pub struct ContractInfoResponse {
     pub contract_info: ContractInfo,
 }
 
-/// wrapper to deserialize NumTokens response
+/// wrapper to deserialize [`NumTokens`](NumTokens) response
 #[derive(Serialize, Deserialize)]
 pub struct NumTokensResponse {
     pub num_tokens: NumTokens,
 }
 
-/// wrapper to deserialize AllTokens and Tokens responses
+/// wrapper to deserialize [`AllTokens`](TokenList) and [`Tokens`](TokenList) responses
 #[derive(Serialize, Deserialize)]
 pub struct TokenListResponse {
     pub token_list: TokenList,
 }
 
-/// wrapper to deserialize OwnerOf responses
+/// wrapper to deserialize [`OwnerOf`](OwnerOf) responses
 #[derive(Serialize, Deserialize)]
 pub struct OwnerOfResponse {
     pub owner_of: OwnerOf,
 }
 
-/// wrapper to deserialize NftInfo responses
+/// wrapper to deserialize [`NftInfo`](crate::metadata::Metadata) responses
 #[derive(Serialize, Deserialize)]
 pub struct NftInfoResponse {
     pub nft_info: Metadata,
 }
 
-/// wrapper to deserialize AllNftInfo responses
+/// wrapper to deserialize [`AllNftInfo`](AllNftInfo) responses
 #[derive(Serialize, Deserialize)]
 pub struct AllNftInfoResponse {
     pub all_nft_info: AllNftInfo,
 }
 
-/// wrapper to deserialize PrivateMetadata responses
+/// wrapper to deserialize [`PrivateMetadata`](crate::metadata::Metadata) responses
 #[derive(Serialize, Deserialize)]
 pub struct PrivateMetadataResponse {
     pub private_metadata: Metadata,
 }
 
-/// wrapper to deserialize NftDossier responses
+/// wrapper to deserialize [`NftDossier`](NftDossier) responses
 #[derive(Serialize, Deserialize)]
 pub struct NftDossierResponse {
     pub nft_dossier: NftDossier,
 }
 
-/// wrapper to deserialize TokenApprovals responses
+/// wrapper to deserialize [`TokenApprovals`](TokenApprovals) responses
 #[derive(Serialize, Deserialize)]
 pub struct TokenApprovalsResponse {
     pub token_approvals: TokenApprovals,
 }
 
-/// wrapper to deserialize ApprovedForAll responses
+/// wrapper to deserialize [`ApprovedForAll`](ApprovedForAll) responses
 #[derive(Serialize, Deserialize)]
 pub struct ApprovedForAllResponse {
     pub approved_for_all: ApprovedForAll,
 }
 
-/// wrapper to deserialize InventoryApprovals responses
+/// wrapper to deserialize [`InventoryApprovals`](InventoryApprovals) responses
 #[derive(Serialize, Deserialize)]
 pub struct InventoryApprovalsResponse {
     pub inventory_approvals: InventoryApprovals,
 }
 
-/// wrapper to deserialize TransactionHistory response
+/// wrapper to deserialize [`TransactionHistory`](TransactionHistory) response
 #[derive(Serialize, Deserialize)]
 pub struct TransactionHistoryResponse {
     pub transaction_history: TransactionHistory,
 }
 
-/// wrapper to deserialize Minters response
+/// wrapper to deserialize [`Minters`](Minters) response
 #[derive(Serialize, Deserialize)]
 pub struct MintersResponse {
     pub minters: Minters,
 }
 
-/// wrapper to deserialize IsUnwrapped response
+/// wrapper to deserialize [`IsUnwrapped`](IsUnwrapped) response
 #[derive(Serialize, Deserialize)]
 pub struct IsUnwrappedResponse {
     pub is_unwrapped: IsUnwrapped,
 }
 
-/// wrapper to deserialize VerifyTransferApproval response
+/// wrapper to deserialize [`VerifyTransferApproval`](VerifyTransferApproval) response
 #[derive(Serialize, Deserialize)]
 pub struct VerifyTransferApprovalResponse {
     pub verify_transfer_approval: VerifyTransferApproval,
 }
 
-/// Returns a StdResult<ContractInfo> from performing ContractInfo query
+/// Returns a StdResult<[`ContractInfo`](ContractInfo)> from performing [`ContractInfo`](QueryMsg::ContractInfo) query
 ///
 /// # Arguments
 ///
@@ -580,7 +576,7 @@ pub fn contract_info_query<Q: Querier>(
     Ok(answer.contract_info)
 }
 
-/// Returns a StdResult<NumTokens> from performing NumTokens query
+/// Returns a StdResult<[`NumTokens`](NumTokens)> from performing [`NumTokens`](QueryMsg::NumTokens) query
 ///
 /// # Arguments
 ///
@@ -605,7 +601,7 @@ pub fn num_tokens_query<Q: Querier>(
     Ok(answer.num_tokens)
 }
 
-/// Returns a StdResult<TokenList> from performing AllTokens query
+/// Returns a StdResult<[`TokenList`](TokenList)> from performing [`AllTokens`](QueryMsg::AllTokens) query
 ///
 /// # Arguments
 ///
@@ -635,7 +631,7 @@ pub fn all_tokens_query<Q: Querier>(
     Ok(answer.token_list)
 }
 
-/// Returns a StdResult<OwnerOf> from performing OwnerOf query
+/// Returns a StdResult<[`OwnerOf`](OwnerOf)> from performing [`OwnerOf`](QueryMsg::OwnerOf) query
 ///
 /// # Arguments
 ///
@@ -666,7 +662,7 @@ pub fn owner_of_query<Q: Querier>(
     Ok(answer.owner_of)
 }
 
-/// Returns a StdResult<Metadata> from performing NftInfo query
+/// Returns a StdResult<[`Metadata`](crate::metadata::Metadata)> from performing [`NftInfo`](QueryMsg::NftInfo) query
 ///
 /// # Arguments
 ///
@@ -691,7 +687,7 @@ pub fn nft_info_query<Q: Querier>(
     Ok(answer.nft_info)
 }
 
-/// Returns a StdResult<AllNftInfo> from performing AllNftInfo query
+/// Returns a StdResult<[`AllNftInfo`](AllNftInfo)> from performing [`AllNftInfo`](QueryMsg::AllNftInfo) query
 ///
 /// # Arguments
 ///
@@ -722,7 +718,7 @@ pub fn all_nft_info_query<Q: Querier>(
     Ok(answer.all_nft_info)
 }
 
-/// Returns a StdResult<Metadata> from performing PrivateMetadata query
+/// Returns a StdResult<[`Metadata`](crate::metadata::Metadata)> from performing [`PrivateMetadata`](QueryMsg::PrivateMetadata) query
 ///
 /// # Arguments
 ///
@@ -749,7 +745,7 @@ pub fn private_metadata_query<Q: Querier>(
     Ok(answer.private_metadata)
 }
 
-/// Returns a StdResult<NftDossier> from performing NftDossier query
+/// Returns a StdResult<[`NftDossier`](NftDossier)> from performing [`NftDossier`](QueryMsg::NftDossier) query
 ///
 /// # Arguments
 ///
@@ -780,7 +776,7 @@ pub fn nft_dossier_query<Q: Querier>(
     Ok(answer.nft_dossier)
 }
 
-/// Returns a StdResult<TokenApprovals> from performing TokenApprovals query
+/// Returns a StdResult<[`TokenApprovals`](TokenApprovals)> from performing [`TokenApprovals`](QueryMsg::TokenApprovals) query
 ///
 /// # Arguments
 ///
@@ -811,7 +807,7 @@ pub fn token_approvals_query<Q: Querier>(
     Ok(answer.token_approvals)
 }
 
-/// Returns a StdResult<ApprovedForAll> from performing ApprovedForAll query
+/// Returns a StdResult<[`ApprovedForAll`](ApprovedForAll)> from performing [`ApprovedForAll`](QueryMsg::ApprovedForAll) query
 ///
 /// # Arguments
 ///
@@ -842,7 +838,7 @@ pub fn approved_for_all_query<Q: Querier>(
     Ok(answer.approved_for_all)
 }
 
-/// Returns a StdResult<InventoryApprovals> from performing InventoryApprovals query
+/// Returns a StdResult<[`InventoryApprovals`](InventoryApprovals)> from performing [`InventoryApprovals`](QueryMsg::InventoryApprovals) query
 ///
 /// # Arguments
 ///
@@ -873,7 +869,7 @@ pub fn inventory_approvals_query<Q: Querier>(
     Ok(answer.inventory_approvals)
 }
 
-/// Returns a StdResult<TokenList> from performing Tokens query
+/// Returns a StdResult<[`TokenList`](TokenList)> from performing [`Tokens`](QueryMsg::Tokens) query
 ///
 /// # Arguments
 ///
@@ -910,7 +906,7 @@ pub fn tokens_query<Q: Querier>(
     Ok(answer.token_list)
 }
 
-/// Returns a StdResult<TransactionHistory> from performing TransactionHistory query
+/// Returns a StdResult<[`TransactionHistory`](TransactionHistory)> from performing [`TransactionHistory`](QueryMsg::TransactionHistory) query
 ///
 /// # Arguments
 ///
@@ -943,7 +939,7 @@ pub fn transaction_history_query<Q: Querier>(
     Ok(answer.transaction_history)
 }
 
-/// Returns a StdResult<Minters> from performing Minters query
+/// Returns a StdResult<[`Minters`](Minters)> from performing [`Minters`](QueryMsg::Minters) query
 ///
 /// # Arguments
 ///
@@ -962,7 +958,7 @@ pub fn minters_query<Q: Querier>(
     Ok(answer.minters)
 }
 
-/// Returns a StdResult<IsUnwrapped> from performing IsUnwrapped query
+/// Returns a StdResult<[`IsUnwrapped`](IsUnwrapped)> from performing [`IsUnwrapped`](QueryMsg::IsUnwrapped) query
 ///
 /// # Arguments
 ///
@@ -987,7 +983,7 @@ pub fn is_unwrapped_query<Q: Querier>(
     Ok(answer.is_unwrapped)
 }
 
-/// Returns a StdResult<VerifyTransferApproval> from performing VerifyTransferApproval query
+/// Returns a StdResult<[`VerifyTransferApproval`](VerifyTransferApproval)> from performing [`VerifyTransferApproval`](QueryMsg::VerifyTransferApproval) query
 ///
 /// # Arguments
 ///

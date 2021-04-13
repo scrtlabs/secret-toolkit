@@ -31,7 +31,7 @@ pub enum AccessLevel {
 // contract
 //
 
-/// token mint info used when doing a BatchMint
+/// token mint info used when doing a [`BatchMintNft`](HandleMsg::BatchMintNft)
 #[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
 pub struct Mint {
     /// optional token id. if omitted, use current token index
@@ -46,7 +46,7 @@ pub struct Mint {
     pub memo: Option<String>,
 }
 
-/// token burn info used when doing a BatchBurnNft
+/// token burn info used when doing a [`BatchBurnNft`](HandleMsg::BatchBurnNft)
 #[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
 pub struct Burn {
     /// tokens being burnt
@@ -55,7 +55,7 @@ pub struct Burn {
     pub memo: Option<String>,
 }
 
-/// token transfer info used when doing a BatchTransferNft
+/// token transfer info used when doing a [`BatchTransferNft`](HandleMsg::BatchTransferNft)
 #[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
 pub struct Transfer {
     /// recipient of the transferred tokens
@@ -66,7 +66,7 @@ pub struct Transfer {
     pub memo: Option<String>,
 }
 
-/// send token info used when doing a BatchSendNft
+/// send token info used when doing a [`BatchSendNft`](HandleMsg::BatchSendNft)
 #[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
 pub struct Send {
     /// recipient of the sent tokens
@@ -86,7 +86,6 @@ pub enum HandleMsg {
     //
     // Base SNIP-721 Messages
     //
-
     /// transfer a token
     TransferNft {
         /// recipient of the transfer
@@ -112,7 +111,7 @@ pub enum HandleMsg {
         padding: Option<String>,
     },
     /// gives the spender permission to transfer the specified token.  If you are the owner
-    /// of the token, you can use SetWhitelistedApproval to accomplish the same thing.  If
+    /// of the token, you can use [`SetWhitelistedApproval`](HandleMsg::SetWhitelistedApproval) to accomplish the same thing.  If
     /// you are an operator, you can only use Approve
     Approve {
         /// address being granted the permission
@@ -125,7 +124,7 @@ pub enum HandleMsg {
         padding: Option<String>,
     },
     /// revokes the spender's permission to transfer the specified token.  If you are the owner
-    /// of the token, you can use SetWhitelistedApproval to accomplish the same thing.  If you
+    /// of the token, you can use [`SetWhitelistedApproval`](HandleMsg::SetWhitelistedApproval) to accomplish the same thing.  If you
     /// are an operator, you can only use Revoke, but you can not revoke the transfer approval
     /// of another operator
     Revoke {
@@ -136,7 +135,7 @@ pub enum HandleMsg {
         /// optional message length padding
         padding: Option<String>,
     },
-    /// provided for cw721 compliance, but can be done with SetWhitelistedApproval...
+    /// provided for cw721 compliance, but can be done with [`SetWhitelistedApproval`](HandleMsg::SetWhitelistedApproval)...
     /// gives the operator permission to transfer all of the message sender's tokens
     ApproveAll {
         /// address being granted permission to transfer
@@ -146,7 +145,7 @@ pub enum HandleMsg {
         /// optional message length padding
         padding: Option<String>,
     },
-    /// provided for cw721 compliance, but can be done with SetWhitelistedApproval...
+    /// provided for cw721 compliance, but can be done with [`SetWhitelistedApproval`](HandleMsg::SetWhitelistedApproval)...
     /// revokes the operator's permission to transfer any of the message sender's tokens
     RevokeAll {
         /// address whose permissions are revoked
@@ -197,7 +196,6 @@ pub enum HandleMsg {
 
     // Minting and Modifying Tokens
     //
-
     /// mint new token
     MintNft {
         /// optional token id. if omitted, uses current token index
@@ -256,7 +254,6 @@ pub enum HandleMsg {
     //
     // Batch Processing
     //
-
     /// Mint multiple tokens
     BatchMintNft {
         /// list of mint operations to perform
@@ -282,7 +279,6 @@ pub enum HandleMsg {
     //
     // Burning Tokens
     //
-
     /// burn a token
     BurnNft {
         /// token to burn
@@ -303,7 +299,6 @@ pub enum HandleMsg {
     //
     // Making the Owner and/or Private Metadata Public
     //
-
     /// add/remove approval(s) that whitelist everyone (makes public)
     SetGlobalApproval {
         /// optional token id to apply approval/revocation to
@@ -321,7 +316,6 @@ pub enum HandleMsg {
     //
     // Lootboxes and Wrapped Cards
     //
-
     /// Reveal the private metadata of a sealed token and mark the token as having been unwrapped
     Reveal {
         /// id of the token to unwrap
@@ -376,7 +370,7 @@ impl HandleMsg {
 // Base SNIP-721 messages
 //
 
-/// Returns a StdResult<CosmosMsg> used to execute TransferNft
+/// Returns a StdResult<CosmosMsg> used to execute [`TransferNft`](HandleMsg::TransferNft)
 ///
 /// # Arguments
 ///
@@ -405,7 +399,7 @@ pub fn transfer_nft_msg(
     .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute SendNft
+/// Returns a StdResult<CosmosMsg> used to execute [`SendNft`](HandleMsg::SendNft)
 ///
 /// # Arguments
 ///
@@ -440,7 +434,7 @@ pub fn send_nft_msg(
     .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute Approve
+/// Returns a StdResult<CosmosMsg> used to execute [`Approve`](HandleMsg::Approve)
 ///
 /// # Arguments
 ///
@@ -469,7 +463,7 @@ pub fn approve_msg(
     .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute Revoke
+/// Returns a StdResult<CosmosMsg> used to execute [`Revoke`](HandleMsg::Revoke)
 ///
 /// # Arguments
 ///
@@ -495,7 +489,7 @@ pub fn revoke_msg(
     .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute ApproveAll
+/// Returns a StdResult<CosmosMsg> used to execute [`ApproveAll`](HandleMsg::ApproveAll)
 ///
 /// # Arguments
 ///
@@ -521,7 +515,7 @@ pub fn approve_all_msg(
     .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute RevokeAll
+/// Returns a StdResult<CosmosMsg> used to execute [`RevokeAll`](HandleMsg::RevokeAll)
 ///
 /// # Arguments
 ///
@@ -545,7 +539,7 @@ pub fn revoke_all_msg(
     )
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute SetWhitelistedApproval
+/// Returns a StdResult<CosmosMsg> used to execute [`SetWhitelistedApproval`](HandleMsg::SetWhitelistedApproval)
 ///
 /// # Arguments
 ///
@@ -584,7 +578,7 @@ pub fn set_whitelisted_approval_msg(
     .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute RegisterReceiveNft
+/// Returns a StdResult<CosmosMsg> used to execute [`RegisterReceiveNft`](HandleMsg::RegisterReceiveNft)
 ///
 /// # Arguments
 ///
@@ -611,7 +605,7 @@ pub fn register_receive_nft_msg(
     .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute SetViewingKey
+/// Returns a StdResult<CosmosMsg> used to execute [`SetViewingKey`](HandleMsg::SetViewingKey)
 ///
 /// # Arguments
 ///
@@ -642,7 +636,7 @@ pub fn set_viewing_key_msg(
 // Minting and Modifying Tokens
 //
 
-/// Returns a StdResult<CosmosMsg> used to execute MintNft
+/// Returns a StdResult<CosmosMsg> used to execute [`MintNft`](HandleMsg::MintNft)
 ///
 /// # Arguments
 ///
@@ -678,7 +672,7 @@ pub fn mint_nft_msg(
     .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute AddMinters
+/// Returns a StdResult<CosmosMsg> used to execute [`AddMinters`](HandleMsg::AddMinters)
 ///
 /// # Arguments
 ///
@@ -702,7 +696,7 @@ pub fn add_minters_msg(
     )
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute RemoveMinters
+/// Returns a StdResult<CosmosMsg> used to execute [`RemoveMinters`](HandleMsg::RemoveMinters)
 ///
 /// # Arguments
 ///
@@ -726,7 +720,7 @@ pub fn remove_minters_msg(
     )
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute SetMinters
+/// Returns a StdResult<CosmosMsg> used to execute [`SetMinters`](HandleMsg::SetMinters)
 ///
 /// # Arguments
 ///
@@ -750,7 +744,7 @@ pub fn set_minters_msg(
     )
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute SetPublicMetadata
+/// Returns a StdResult<CosmosMsg> used to execute [`SetPublicMetadata`](HandleMsg::SetPublicMetadata)
 ///
 /// # Arguments
 ///
@@ -776,7 +770,7 @@ pub fn set_public_metadata_msg(
     .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute SetPrivateMetadata
+/// Returns a StdResult<CosmosMsg> used to execute [`SetPrivateMetadata`](HandleMsg::SetPrivateMetadata)
 ///
 /// # Arguments
 ///
@@ -806,7 +800,7 @@ pub fn set_private_metadata_msg(
 // Batch Processing
 //
 
-/// Returns a StdResult<CosmosMsg> used to execute BatchMintNft
+/// Returns a StdResult<CosmosMsg> used to execute [`BatchMintNft`](HandleMsg::BatchMintNft)
 ///
 /// # Arguments
 ///
@@ -830,7 +824,7 @@ pub fn batch_mint_nft_msg(
     )
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute BatchTransferNft
+/// Returns a StdResult<CosmosMsg> used to execute [`BatchTransferNft`](HandleMsg::BatchTransferNft)
 ///
 /// # Arguments
 ///
@@ -854,7 +848,7 @@ pub fn batch_transfer_nft_msg(
     )
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute BatchSendNft
+/// Returns a StdResult<CosmosMsg> used to execute [`BatchSendNft`](HandleMsg::BatchSendNft)
 ///
 /// # Arguments
 ///
@@ -882,7 +876,7 @@ pub fn batch_send_nft_msg(
 // Burning Tokens
 //
 
-/// Returns a StdResult<CosmosMsg> used to execute BurnNft
+/// Returns a StdResult<CosmosMsg> used to execute [`BurnNft`](HandleMsg::BurnNft)
 ///
 /// # Arguments
 ///
@@ -908,7 +902,7 @@ pub fn burn_nft_msg(
     .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute BatchBurnNft
+/// Returns a StdResult<CosmosMsg> used to execute [`BatchBurnNft`](HandleMsg::BatchBurnNft)
 ///
 /// # Arguments
 ///
@@ -936,7 +930,7 @@ pub fn batch_burn_nft_msg(
 // Making the Owner and/or Private Metadata Public
 //
 
-/// Returns a StdResult<CosmosMsg> used to execute SetGlobalApproval
+/// Returns a StdResult<CosmosMsg> used to execute [`SetGlobalApproval`](HandleMsg::SetGlobalApproval)
 ///
 /// # Arguments
 ///
@@ -973,7 +967,7 @@ pub fn set_global_approval_msg(
 // Lootboxes and Wrapped Cards
 //
 
-/// Returns a StdResult<CosmosMsg> used to execute Reveal
+/// Returns a StdResult<CosmosMsg> used to execute [`Reveal`](HandleMsg::Reveal)
 ///
 /// # Arguments
 ///
