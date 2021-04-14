@@ -9,3 +9,4 @@ secret-toolkit-serialization = { path = "../serialization" }
 secret-toolkit-storage = { path = "../storage" }
 secret-toolkit-utils = { path = "../utils" }
 secret-toolkit-snip20 = { path = "../snip20" }
+secret-toolkit-snip721 = { path = "../snip721" }
