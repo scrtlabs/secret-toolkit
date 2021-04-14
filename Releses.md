@@ -1,7 +1,11 @@
 # Release notes for the Secret Toolkit
 
 ## Next Release
-* TBD
+TODO: change SecretNetwork dependency after `debug-print` is merged, and before
+merging this branch.
+
+* SecretNetwork dependency is now at `v1.0.4-debug-print` allowing usage of
+  `debug_print`. Users must set their SecretNetwork dependency to the same tag.
 
 ## v0.1.1
 * Removed unused dev-dependency that was slowing down test compilation times.
