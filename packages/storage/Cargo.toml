@@ -5,6 +5,6 @@ edition = "2018"
 
 [dependencies]
 serde = "1.0"
-cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.0.0" }
-cosmwasm-storage = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.0.0" }
+cosmwasm-std = { version = "0.10.1", features = ["iterator"] }
+cosmwasm-storage = { version = "0.10.1", features = ["iterator"] }
 secret-toolkit-serialization = { path = "../serialization" }
