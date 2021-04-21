@@ -25,13 +25,11 @@ pub trait InitCallback: Serialize {
     ///
     /// * `label` - String holding the label for the new contract instance
     /// * `code_id` - code ID of the contract to be instantiated
-    /// * `callback_code_hash` - String holding the code hash of the contract to be instantiated
     /// * `send_amount` - Optional Uint128 amount of native coin to send with instantiation message
     fn to_cosmos_msg(
         &self,
-        label: String,
+        label: Option<String>,
         code_id: u64,
-        callback_code_hash: String,
         send_amount: Option<Uint128>,
     ) -> StdResult<CosmosMsg> {
         let mut msg = to_binary(self)?;
@@ -52,7 +50,6 @@ pub trait InitCallback: Serialize {
         let init = WasmMsg::Instantiate {
             code_id,
             msg,
-            callback_code_hash,
             send,
             label,
         };
@@ -76,12 +73,10 @@ pub trait HandleCallback: Serialize {
     ///
     /// # Arguments
     ///
-    /// * `callback_code_hash` - String holding the code hash of the contract to be executed
     /// * `contract_addr` - address of the contract being called
     /// * `send_amount` - Optional Uint128 amount of native coin to send with the handle message
     fn to_cosmos_msg(
         &self,
-        callback_code_hash: String,
         contract_addr: HumanAddr,
         send_amount: Option<Uint128>,
     ) -> StdResult<CosmosMsg> {
@@ -103,7 +98,6 @@ pub trait HandleCallback: Serialize {
         let execute = WasmMsg::Execute {
             msg,
             contract_addr,
-            callback_code_hash,
             send,
         };
         Ok(execute.into())
@@ -125,12 +119,10 @@ pub trait Query: Serialize {
     /// # Arguments
     ///
     /// * `querier` - a reference to the Querier dependency of the querying contract
-    /// * `callback_code_hash` - String holding the code hash of the contract to be queried
     /// * `contract_addr` - address of the contract being queried
     fn query<Q: Querier, T: DeserializeOwned>(
         &self,
         querier: &Q,
-        callback_code_hash: String,
         contract_addr: HumanAddr,
     ) -> StdResult<T> {
         let mut msg = to_binary(self)?;
@@ -141,11 +133,7 @@ pub trait Query: Serialize {
             Self::BLOCK_SIZE
         };
         space_pad(&mut msg.0, padding);
-        querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr,
-            callback_code_hash,
-            msg,
-        }))
+        querier.query(&QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }))
     }
 }
 
@@ -199,12 +187,10 @@ mod tests {
         match cosmos_message {
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
-                callback_code_hash,
                 msg,
                 send,
             }) => {
                 assert_eq!(contract_addr, address);
-                assert_eq!(callback_code_hash, hash);
                 let mut expected_msg = r#"{"Var1":{"f1":1,"f2":2}}"#.as_bytes().to_vec();
                 space_pad(&mut expected_msg, 256);
                 assert_eq!(msg.0, expected_msg);
@@ -230,7 +216,6 @@ mod tests {
             CosmosMsg::Wasm(WasmMsg::Instantiate {
                 code_id,
                 msg,
-                callback_code_hash,
                 send,
                 label,
             }) => {
@@ -238,7 +223,6 @@ mod tests {
                 let mut expected_msg = r#"{"f1":1,"f2":2}"#.as_bytes().to_vec();
                 space_pad(&mut expected_msg, 256);
                 assert_eq!(msg.0, expected_msg);
-                assert_eq!(callback_code_hash, hash);
                 assert_eq!(send, vec![Coin::new(amount.0, "uscrt")]);
                 assert_eq!(label, lbl)
             }
@@ -265,7 +249,6 @@ mod tests {
                 let expected_request: QueryRequest<FooQuery> =
                     QueryRequest::Wasm(WasmQuery::Smart {
                         contract_addr: HumanAddr("secret1xyzasdf".to_string()),
-                        callback_code_hash: "asdf".to_string(),
                         msg: Binary(expected_msg),
                     });
                 let test_req: &[u8] = &to_vec(&expected_request).unwrap();
