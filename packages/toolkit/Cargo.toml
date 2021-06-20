@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-secret-toolkit-crypto = { path = "../crypto" }
-secret-toolkit-serialization = { path = "../serialization" }
+# secret-toolkit-crypto = { path = "../crypto" }
+# secret-toolkit-serialization = { path = "../serialization" }
 secret-toolkit-storage = { path = "../storage" }
-secret-toolkit-utils = { path = "../utils" }
+# secret-toolkit-utils = { path = "../utils" }

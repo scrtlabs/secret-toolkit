@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
+use cosmwasm_std::{StdError, StdResult, Storage};
 
 use secret_toolkit_serialization::{Bincode2, Serde};
 
@@ -71,7 +71,7 @@ where
 pub struct TypedStore<'a, T, S, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
     Ser: Serde,
 {
     storage: &'a S,
@@ -82,7 +82,7 @@ where
 impl<'a, T, S> TypedStore<'a, T, S, Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
 {
     pub fn attach(storage: &'a S) -> Self {
         Self::attach_with_serialization(storage, Bincode2)
@@ -92,7 +92,7 @@ where
 impl<'a, T, S, Ser> TypedStore<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
     Ser: Serde,
 {
     pub fn attach_with_serialization(storage: &'a S, _serialization: Ser) -> Self {
@@ -171,8 +171,7 @@ mod tests {
         // Try to load it with the wrong format
         let typed_store = TypedStore::<i32, _, _>::attach_with_serialization(&storage, Json);
         match typed_store.load(b"key2") {
-            Err(StdError::ParseErr { target, msg, .. })
-                if target == "i32" && msg == "Invalid type" => {}
+            Err(StdError::ParseErr { msg, .. }) if msg == "Invalid type" => {}
             other => panic!("unexpected value: {:?}", other),
         }
 
