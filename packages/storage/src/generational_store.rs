@@ -536,7 +536,7 @@ where
             StdError::generic_err(format!("No item in generational store at position {}", pos))
         })?;
         match serialized[0] {
-            0x00 => { // free entry
+            FREE_ENTRY => { // free entry
                 let result: StdResult<StoredFreeEntry> = Ser::deserialize(&serialized);
                 match result {
                     Ok(result) => {
@@ -545,7 +545,7 @@ where
                     Err(_) => Err(StdError::generic_err("error deserializing free entry from generational store")),
                 }
             },
-            0x01 => { // occupied entry
+            OCCUPIED_ENTRY => { // occupied entry
                 let result: StdResult<StoredOccupiedEntry<T>> = Ser::deserialize(&serialized);
                 match result {
                     Ok(result) => {
