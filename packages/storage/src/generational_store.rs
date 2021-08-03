@@ -26,6 +26,8 @@ const LEN_KEY: &[u8] = b"len";
 const GENERATION_KEY: &[u8] = b"gen";
 const FREE_LIST_HEAD_KEY: &[u8] = b"head";
 const CAPACITY_KEY: &[u8] = b"cap";
+const FREE_ENTRY: u8 = 0x00;
+const OCCUPIED_ENTRY: u8 = 0x01;
 
 #[derive(Serialize, Clone, Debug, PartialEq, Eq, PartialOrd)]
 pub struct Index {
@@ -64,6 +66,23 @@ impl Index {
 pub enum Entry<T> {
     Free { next_free: u32 },
     Occupied { generation: u64, value: T },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd)]
+pub struct StoredFreeEntry {
+    // free entry first byte is 0x00
+    // used by get
+    kind: u8, 
+    next_free: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd)]
+pub struct StoredOccupiedEntry<T> {
+    // occupied entry first byte is 0x01
+    // used by get
+    kind: u8,
+    generation: u64,
+    value: T,
 }
 
 // Mutable generational index store
@@ -142,13 +161,6 @@ where
             let capacity_vec = 0_u32.to_be_bytes();
             storage.set(CAPACITY_KEY, &capacity_vec);
 
-            // initialize first empty
-            //let entry: Entry<()> = Entry::Free {
-            //    next_free: 1_u32,
-            //};
-            //let serialized = Ser::serialize(&entry)?;
-            //storage.set(&0_u32.to_be_bytes(), &serialized);
-
             Self::new(storage, &len_vec, &generation_vec, &free_list_head_vec, &capacity_vec)
         }
     }
@@ -156,7 +168,7 @@ where
     /// Try to use the provided storage as an GenerationalStore.
     /// This method allows choosing the serialization format you want to use.
     ///
-    /// Returns None if the provided storage doesn't seem like an AppendStore.
+    /// Returns None if the provided storage doesn't seem like an GenerationalStore.
     /// Returns Err if the contents of the storage can not be parsed.
     pub fn attach_with_serialization(storage: &'a mut S, _ser: Ser) -> Option<StdResult<Self>> {
         let len_vec = storage.get(LEN_KEY)?;
@@ -262,11 +274,10 @@ where
     fn insert_slow_path(&mut self, value: T) -> StdResult<Index> {
         let start = self.capacity;
         // initialize next empty
-        let entry: Entry<()> = Entry::Free {
+        let entry: Entry<T> = Entry::Free {
             next_free: self.free_list_head,
         };
-        let serialized = Ser::serialize(&entry)?;
-        self.storage.set(&start.to_be_bytes(), &serialized);
+        self.set_at_unchecked(start, &entry)?;
         let index = self.try_insert(value)
             .map_err(|_| ())
             .expect("inserting should always succeed");
@@ -336,8 +347,25 @@ where
     /// Will return an error if the position is out of bounds
 
     fn set_at_unchecked(&mut self, pos: u32, item: &Entry<T>) -> StdResult<()> {
-        let serialized = Ser::serialize(item)?;
-        self.storage.set(&pos.to_be_bytes(), &serialized);
+        match item {
+            Entry::Free { next_free } => {
+                let stored_free_entry = StoredFreeEntry { 
+                    kind: FREE_ENTRY,
+                    next_free: *next_free,
+                };
+                let serialized = Ser::serialize(&stored_free_entry)?;
+                self.storage.set(&pos.to_be_bytes(), &serialized);
+            },
+            Entry::Occupied { generation, value } => {
+                let stored_occupied_entry = StoredOccupiedEntry { 
+                    kind: OCCUPIED_ENTRY,
+                    generation: *generation, 
+                    value,
+                };
+                let serialized = Ser::serialize(&stored_occupied_entry)?;
+                self.storage.set(&pos.to_be_bytes(), &serialized);
+            }
+        }
         Ok(())
     }
 
@@ -403,9 +431,9 @@ where
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
 {
-    /// Try to use the provided storage as an AppendStore.
+    /// Try to use the provided storage as an GenerationalStore.
     ///
-    /// Returns None if the provided storage doesn't seem like an AppendStore.
+    /// Returns None if the provided storage doesn't seem like an GenerationalStore.
     /// Returns Err if the contents of the storage can not be parsed.
     pub fn attach(storage: &'a S) -> Option<StdResult<Self>> {
         GenerationalStore::attach_with_serialization(storage, Bincode2)
@@ -421,7 +449,7 @@ where
     /// Try to use the provided storage as an GenerationalStore.
     /// This method allows choosing the serialization format you want to use.
     ///
-    /// Returns None if the provided storage doesn't seem like an AppendStore.
+    /// Returns None if the provided storage doesn't seem like an GenerationalStore.
     /// Returns Err if the contents of the storage can not be parsed.
     pub fn attach_with_serialization(storage: &'a S, _ser: Ser) -> Option<StdResult<Self>> {
         let len_vec = storage.get(LEN_KEY)?;
@@ -505,9 +533,29 @@ where
 
     fn get_at_unchecked(&self, pos: u32) -> StdResult<Entry<T>> {
         let serialized = self.storage.get(&pos.to_be_bytes()).ok_or_else(|| {
-            StdError::generic_err(format!("No item in GenerationalStorage at position {}", pos))
+            StdError::generic_err(format!("No item in generational store at position {}", pos))
         })?;
-        Ser::deserialize(&serialized)
+        match serialized[0] {
+            0x00 => { // free entry
+                let result: StdResult<StoredFreeEntry> = Ser::deserialize(&serialized);
+                match result {
+                    Ok(result) => {
+                        Ok(Entry::Free { next_free: result.next_free,})
+                    },
+                    Err(_) => Err(StdError::generic_err("error deserializing free entry from generational store")),
+                }
+            },
+            0x01 => { // occupied entry
+                let result: StdResult<StoredOccupiedEntry<T>> = Ser::deserialize(&serialized);
+                match result {
+                    Ok(result) => {
+                        Ok(Entry::Occupied { generation: result.generation, value: result.value })
+                    },
+                    Err(_) => Err(StdError::generic_err("error deserializing occupied entry from generational store")),
+                }
+            }
+            _ => Err(StdError::generic_err("invalid entry kind in generational store"))
+        }
     }
 
     pub fn get(&self, i: Index) -> Option<T> {
