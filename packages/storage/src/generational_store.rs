@@ -845,7 +845,7 @@ mod tests {
         assert_eq!(gen_store.remove(beta.clone()), Ok(Some(String::from("Beta"))));
         assert_eq!(gen_store.len(), 2_u32);
         assert_eq!(gen_store.get(alpha), Some(String::from("Alpha")));
-        assert_eq!(gen_store.get(beta), None);
+        assert_eq!(gen_store.get(beta.clone()), None);
         assert_eq!(gen_store.get(gamma), Some(String::from("Gamma")));
 
         let delta = gen_store.insert(String::from("Delta"));
@@ -854,6 +854,27 @@ mod tests {
         assert_ne!(delta.clone(), Index{ index: 1, generation: 0 });
         // delta has filled the slot where beta was but generation is now 1
         assert_eq!(delta, Index{ index: 1, generation: 1 });
+
+        // cannot remove twice
+        assert!(gen_store.remove(beta).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_get_update() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let mut gen_store = GenerationalStoreMut::attach_or_create(&mut storage)?;
+        let alpha = gen_store.insert(String::from("Alpha"));
+        let beta = gen_store.insert(String::from("Beta"));
+
+        let old_alpha = gen_store.update(alpha.clone(), String::from("New Alpha"))?;
+        assert_eq!(old_alpha, Some(String::from("Alpha")));
+        assert_eq!(gen_store.get(alpha), Some(String::from("New Alpha")));
+
+        gen_store.remove(beta.clone())?;
+        // cannot update once something has been removed
+        assert!(gen_store.update(beta, String::from("New Beta")).is_err());
 
         Ok(())
     }
