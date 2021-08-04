@@ -290,10 +290,29 @@ where
                     self.set_free_list_head(i.index);
                     self.set_length(self.len - 1);
                     Ok(value)
-                }
-                _ => Ok(None),
+                },
+                _ => Err(StdError::generic_err("cannot remove an entry from generational store that does not exist")),
             },
-            _ => Ok(None),
+            _ => Err(StdError::generic_err("cannot remove an entry from generational store that does not exist")),
+        }
+    }
+
+    // updates the entry value at a given index, must already be occupied or fails
+    // if successful, returns the old value
+    pub fn update(&mut self, i: Index, new_value: T) -> StdResult<Option<T>> {
+        match self.get_at_unchecked(i.index) {
+            Ok(entry) => match entry {
+                Entry::Occupied { generation, value } if i.generation == generation => {
+                    let new_entry = Entry::Occupied {
+                        generation, 
+                        value: new_value
+                    };
+                    self.set_at_unchecked(i.index, &new_entry)?;
+                    Ok(Some(value))
+                },
+                _ => Err(StdError::generic_err("cannot update an entry from generational store that does not exist")),
+            },
+            _ => Err(StdError::generic_err("cannot update an entry from generational store that does not exist")),
         }
     }
 
