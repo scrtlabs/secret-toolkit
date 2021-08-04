@@ -70,17 +70,11 @@ pub enum Entry<T> {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd)]
 pub struct StoredFreeEntry {
-    // free entry first byte is 0x00
-    // used by get
-    kind: u8, 
     next_free: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd)]
 pub struct StoredOccupiedEntry<T> {
-    // occupied entry first byte is 0x01
-    // used by get
-    kind: u8,
     generation: u64,
     value: T,
 }
@@ -350,7 +344,6 @@ where
         match item {
             Entry::Free { next_free } => {
                 let stored_free_entry = StoredFreeEntry { 
-                    kind: FREE_ENTRY,
                     next_free: *next_free,
                 };
                 let serialized = Ser::serialize(&stored_free_entry)?;
@@ -360,7 +353,6 @@ where
             },
             Entry::Occupied { generation, value } => {
                 let stored_occupied_entry = StoredOccupiedEntry { 
-                    kind: OCCUPIED_ENTRY,
                     generation: *generation, 
                     value,
                 };
