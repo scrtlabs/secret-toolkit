@@ -354,7 +354,9 @@ where
                     next_free: *next_free,
                 };
                 let serialized = Ser::serialize(&stored_free_entry)?;
-                self.storage.set(&pos.to_be_bytes(), &serialized);
+                let mut kind_plus_serialized: Vec<u8> = vec![FREE_ENTRY];
+                kind_plus_serialized.extend(serialized);
+                self.storage.set(&pos.to_be_bytes(), &kind_plus_serialized);
             },
             Entry::Occupied { generation, value } => {
                 let stored_occupied_entry = StoredOccupiedEntry { 
@@ -363,7 +365,9 @@ where
                     value,
                 };
                 let serialized = Ser::serialize(&stored_occupied_entry)?;
-                self.storage.set(&pos.to_be_bytes(), &serialized);
+                let mut kind_plus_serialized: Vec<u8> = vec![OCCUPIED_ENTRY];
+                kind_plus_serialized.extend(serialized);
+                self.storage.set(&pos.to_be_bytes(), &kind_plus_serialized);
             }
         }
         Ok(())
@@ -532,21 +536,24 @@ where
     }
 
     fn get_at_unchecked(&self, pos: u32) -> StdResult<Entry<T>> {
-        let serialized = self.storage.get(&pos.to_be_bytes()).ok_or_else(|| {
+        let kind_plus_serialized = self.storage.get(&pos.to_be_bytes()).ok_or_else(|| {
             StdError::generic_err(format!("No item in generational store at position {}", pos))
         })?;
-        match serialized[0] {
+        if kind_plus_serialized.len() < 1 {
+            return Err(StdError::generic_err("Invalid data in generational store"));
+        }
+        match kind_plus_serialized[0] { // check first byte to see what kind of entry it is
             FREE_ENTRY => { // free entry
-                let result: StdResult<StoredFreeEntry> = Ser::deserialize(&serialized);
+                let result: StdResult<StoredFreeEntry> = Ser::deserialize(&kind_plus_serialized[1..]);
                 match result {
                     Ok(result) => {
-                        Ok(Entry::Free { next_free: result.next_free,})
+                        Ok(Entry::Free { next_free: result.next_free })
                     },
                     Err(_) => Err(StdError::generic_err("error deserializing free entry from generational store")),
                 }
             },
             OCCUPIED_ENTRY => { // occupied entry
-                let result: StdResult<StoredOccupiedEntry<T>> = Ser::deserialize(&serialized);
+                let result: StdResult<StoredOccupiedEntry<T>> = Ser::deserialize(&kind_plus_serialized[1..]);
                 match result {
                     Ok(result) => {
                         Ok(Entry::Occupied { generation: result.generation, value: result.value })
@@ -577,6 +584,7 @@ where
     pub fn contains(&self, i: Index) -> bool {
         self.get(i).is_some()
     }
+
 }
 
 impl<'a, T, S, Ser> IntoIterator for GenerationalStore<'a, T, S, Ser>
@@ -831,7 +839,9 @@ mod tests {
 
         let delta = gen_store.insert(String::from("Delta"));
         assert_eq!(gen_store.get(delta.clone()), Some(String::from("Delta")));
+        // check that the generation has updated
         assert_ne!(delta.clone(), Index{ index: 1, generation: 0 });
+        // delta has filled the slot where beta was but generation is now 1
         assert_eq!(delta, Index{ index: 1, generation: 1 });
 
         Ok(())
@@ -849,17 +859,22 @@ mod tests {
         // iterate twice to make sure nothing changed
         assert_eq!(gen_store.iter().count(), 4);
         gen_store.remove(second)?;
-        // count is still 4
+        // len is 3 (# of occupied slots)
+        assert_eq!(gen_store.len(), 3);
+        // but iterator count is still 4
         assert_eq!(gen_store.iter().count(), 4);
         let iter = gen_store.iter().filter(|item| matches!(item, (_, Entry::Occupied { .. })));
+        // when we filter iter on only occupied, we get 3
         assert_eq!(iter.count(), 3);
 
         // insert another in second's place
         gen_store.insert(5555);
+        assert_eq!(gen_store.len(), 4);
         assert_eq!(gen_store.iter().count(), 4);
 
         // next one should increase the size
         gen_store.insert(6666);
+        assert_eq!(gen_store.len(), 5);
         assert_eq!(gen_store.iter().count(), 5);
 
         Ok(())
