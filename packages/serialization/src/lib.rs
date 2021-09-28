@@ -2,7 +2,6 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use cosmwasm_std::StdResult;
 
-#[cfg(feature = "base64")]
 mod base64;
 #[cfg(feature = "bincode2")]
 mod bincode2;
@@ -13,7 +12,6 @@ mod json;
 pub use crate::base64::Base64Bincode2Of;
 #[cfg(feature = "json")]
 pub use crate::base64::Base64JsonOf;
-#[cfg(feature = "base64")]
 pub use crate::base64::{Base64, Base64Of};
 
 #[cfg(feature = "bincode2")]

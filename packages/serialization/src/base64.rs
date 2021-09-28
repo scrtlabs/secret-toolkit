@@ -55,7 +55,6 @@ impl<Ser: crate::Serde, T: ser::Serialize> ser::Serialize for Base64Of<Ser, T> {
             Ok(b) => Binary(b).to_base64(),
             Err(err) => return Err(<S::Error as ser::Error>::custom(err)),
         };
-        println!("{}", string);
         serializer.serialize_str(&string)
     }
 }
