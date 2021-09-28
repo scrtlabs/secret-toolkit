@@ -9,5 +9,6 @@ bincode2 = { version = "2.0", optional = true }
 cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.0.0" }
 
 [features]
-default = ["json", "bincode2"]
+default = ["json", "bincode2", "base64"]
 json = []
+base64 = []
