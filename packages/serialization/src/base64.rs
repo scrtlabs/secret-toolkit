@@ -8,8 +8,12 @@ use cosmwasm_std::Binary;
 /// Alias of `cosmwasm_std::Binary` for better naming
 pub type Base64 = Binary;
 
-/// A wrapper that automatically deserializes base64 strings to one of the
-/// `Serde` types.
+/// A wrapper that automatically deserializes base64 strings to `T` using
+/// one of the `Serde` types.
+/// Use it as a field of your Handle messages (input and output), for
+/// example in the `msg` field of the `Receive` interface, to remove the
+/// boilerplate of serializing or deserializing the `Binary` to the relevant
+/// type `T`.
 #[derive()]
 pub struct Base64Of<S: crate::Serde, T> {
     // This is pub so that users can easily unwrap this if needed,
