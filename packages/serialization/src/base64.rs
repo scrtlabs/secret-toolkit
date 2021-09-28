@@ -14,7 +14,6 @@ pub type Base64 = Binary;
 /// example in the `msg` field of the `Receive` interface, to remove the
 /// boilerplate of serializing or deserializing the `Binary` to the relevant
 /// type `T`.
-#[derive()]
 pub struct Base64Of<S: crate::Serde, T> {
     // This is pub so that users can easily unwrap this if needed,
     // or just swap the entire instance.
