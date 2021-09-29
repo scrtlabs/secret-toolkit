@@ -114,12 +114,17 @@ impl<'de, S: crate::Serde, T: for<'des> de::Deserialize<'des>> de::Visitor<'de>
 /// These traits are conditionally implemented for Base64Of<S, T>
 /// if T implements the trait being implemented.
 mod passthrough_impls {
+    use std::cmp::Ordering;
     use std::fmt::{Debug, Display, Formatter};
+    use std::hash::{Hash, Hasher};
     use std::marker::PhantomData;
 
+    use schemars::JsonSchema;
+
     use super::Base64Of;
-    use std::cmp::Ordering;
-    use std::hash::{Hash, Hasher};
+    use cosmwasm_std::Binary;
+    use schemars::gen::SchemaGenerator;
+    use schemars::schema::Schema;
 
     // Clone
     impl<S: crate::Serde, T: Clone> Clone for Base64Of<S, T> {
@@ -206,17 +211,30 @@ mod passthrough_impls {
             }
         }
     }
+
+    // JsonSchema
+    impl<S: crate::Serde, T: JsonSchema> JsonSchema for Base64Of<S, T> {
+        fn schema_name() -> String {
+            Binary::schema_name()
+        }
+
+        fn json_schema(gen: &mut SchemaGenerator) -> Schema {
+            Binary::json_schema(gen)
+        }
+    }
 }
 
 #[cfg(test)]
 mod test {
+    use cosmwasm_schema::schema_for;
+    use schemars::JsonSchema;
     use serde::{Deserialize, Serialize};
 
     use cosmwasm_std::{Binary, StdResult};
 
     use crate::base64::Base64JsonOf;
 
-    #[derive(Deserialize, Serialize, PartialEq, Debug)]
+    #[derive(Deserialize, Serialize, PartialEq, Debug, JsonSchema)]
     struct Foo {
         bar: String,
         baz: u32,
@@ -231,7 +249,7 @@ mod test {
         }
     }
 
-    #[derive(Deserialize, Serialize, PartialEq, Debug)]
+    #[derive(Deserialize, Serialize, PartialEq, Debug, JsonSchema)]
     struct Wrapper {
         inner: Base64JsonOf<Foo>,
     }
@@ -277,5 +295,26 @@ mod test {
         assert_eq!(obj2.inner, Foo::new());
 
         Ok(())
+    }
+
+    #[test]
+    fn test_schema() {
+        let schema = schema_for!(Wrapper);
+        let pretty = serde_json::to_string_pretty(&schema).unwrap();
+        println!("{}", pretty);
+        println!("{:#?}", schema);
+
+        assert_eq!(schema.schema.metadata.unwrap().title.unwrap(), "Wrapper");
+        let object = schema.schema.object.unwrap();
+        let required = object.required;
+        assert_eq!(required.len(), 1);
+        assert!(required.contains("inner"));
+
+        // This checks that the schema sees the Base64Of field as a Binary object
+        if let schemars::schema::Schema::Object(ref obj) = object.properties["inner"] {
+            assert_eq!(obj.reference.as_ref().unwrap(), "#/definitions/Binary")
+        } else {
+            panic!("unexpected schema");
+        }
     }
 }
