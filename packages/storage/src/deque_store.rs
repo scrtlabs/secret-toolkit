@@ -204,15 +204,15 @@ where
         }
     }
 
-    /// Remove an element off the collection at the position provided
+    /// Remove an element from the collection at the specified position.
     ///
     /// Removing an element from the head (first) or tail (last) has a constant cost.
-    /// Removing from the middle the cost will depend on the proximity to the head or tail.
-    /// In this case, all the elements between the closest tip of the collection (head or tail)
-    /// and the remove position will be shifting positions.
+    /// The cost of removing from the middle will depend on the proximity to the head or tail.
+    /// In that case, all the elements between the closest tip of the collection (head or tail)
+    /// and the specified position will be shifted in storage.
     ///
-    /// Worst case scenario, in terms of cost, will be if the element position is
-    /// exactly in the middle of the collection.
+    /// Removing an element from the middle of the collection
+    /// has the worst runtime and gas cost.
     pub fn remove(&mut self, pos: u32) -> StdResult<T> {
         if pos >= self.len {
             return Err(StdError::generic_err("DequeStorage access out of bounds"));
