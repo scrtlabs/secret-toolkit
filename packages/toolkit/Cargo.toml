@@ -6,6 +6,7 @@ edition = "2018"
 [dependencies]
 secret-toolkit-crypto = { path = "../crypto" }
 secret-toolkit-serialization = { path = "../serialization" }
+secret-toolkit-incubator = { path = "../incubator" }
 secret-toolkit-storage = { path = "../storage" }
 secret-toolkit-utils = { path = "../utils" }
 secret-toolkit-snip20 = { path = "../snip20" }
