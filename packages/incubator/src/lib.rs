@@ -1,5 +1,3 @@
-#![feature(hashmap_internals)]
-
 pub mod cashmap;
 pub mod generational_store;
 

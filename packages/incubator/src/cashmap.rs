@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 use std::any::type_name;
-#[allow(deprecated)]
-use std::hash::{Hash, Hasher, SipHasher13};
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use siphasher::sip::SipHasher13;
 
 use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
 

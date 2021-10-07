@@ -5,6 +5,7 @@ edition = "2018"
 
 [dependencies]
 serde = "1.0"
+siphasher = "0.3.0"
 cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.0.0" }
 cosmwasm-storage = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.0.0" }
 secret-toolkit-serialization = { path = "../serialization" }
