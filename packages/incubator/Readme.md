@@ -94,4 +94,5 @@ As the error message states, you cannot compile that code with stable Rust. You 
 ```install rustup nightly```
 
 and only build using 
+
 ```cargo +nightly build```
