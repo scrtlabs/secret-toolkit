@@ -29,7 +29,7 @@ const CAPACITY_KEY: &[u8] = b"cap";
 const FREE_ENTRY: u8 = 0x00;
 const OCCUPIED_ENTRY: u8 = 0x01;
 
-#[derive(Serialize, Clone, Debug, PartialEq, Eq, PartialOrd)]
+#[derive(Serialize,Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd)]
 pub struct Index {
     index: u32,
     generation: u64,
