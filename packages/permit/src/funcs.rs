@@ -10,7 +10,7 @@ fn validate_permit<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     permit: &Permit,
     current_token_address: HumanAddr,
-) -> StdResult<()> {
+) -> StdResult<HumanAddr> {
     if !permit
         .params
         .allowed_tokens
@@ -70,7 +70,7 @@ fn validate_permit<S: Storage, A: Api, Q: Querier>(
             ))
         })?;
 
-    Ok(())
+    Ok(account)
 }
 
 fn pubkey_to_account(pubkey: &Binary) -> CanonicalAddr {
