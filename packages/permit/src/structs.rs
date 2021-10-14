@@ -146,7 +146,11 @@ impl PermitContent {
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Permission {
+    /// Allowance for SNIP-20
     Allowance,
+    /// Balance for SNIP-20
     Balance,
+    /// History for SNIP-20
     History,
+    // TODO SNIP-721 permissions
 }
