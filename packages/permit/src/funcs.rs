@@ -9,12 +9,16 @@ use sha2::Sha256;
 fn validate_permit<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     permit: &Permit,
-    token_address: HumanAddr,
+    current_token_address: HumanAddr,
 ) -> StdResult<()> {
-    if !permit.params.allowed_tokens.contains(&token_address) {
+    if !permit
+        .params
+        .allowed_tokens
+        .contains(&current_token_address)
+    {
         return Err(StdError::generic_err(format!(
             "Permit doesn't apply to token {:?}, allowed tokens: {:?}",
-            token_address.as_str(),
+            current_token_address.as_str(),
             permit
                 .params
                 .allowed_tokens
