@@ -5,6 +5,6 @@ edition = "2018"
 
 [dependencies]
 serde = "1.0"
-cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.0.0" }
+cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.0.4-debug-print" }
 secret-toolkit-utils = { path = "../utils" }
 schemars = "0.7"

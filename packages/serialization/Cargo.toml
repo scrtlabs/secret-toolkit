@@ -6,7 +6,7 @@ edition = "2018"
 [dependencies]
 serde = "1.0"
 bincode2 = { version = "2.0", optional = true }
-cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.0.0" }
+cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.0.4-debug-print" }
 
 [features]
 default = ["json", "bincode2"]
