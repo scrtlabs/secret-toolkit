@@ -6,7 +6,7 @@ use ripemd160::{Digest, Ripemd160};
 use secp256k1::Secp256k1;
 use sha2::Sha256;
 
-fn validate_permit<S: Storage, A: Api, Q: Querier>(
+pub fn validate_permit<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     permit: &Permit,
     current_token_address: HumanAddr,
@@ -73,7 +73,7 @@ fn validate_permit<S: Storage, A: Api, Q: Querier>(
     Ok(account)
 }
 
-fn pubkey_to_account(pubkey: &Binary) -> CanonicalAddr {
+pub fn pubkey_to_account(pubkey: &Binary) -> CanonicalAddr {
     let mut hasher = Ripemd160::new();
     hasher.update(Sha256::digest(&pubkey.0));
     CanonicalAddr(Binary(hasher.finalize().to_vec()))
