@@ -1,10 +1,11 @@
-use crate::*;
 use cosmwasm_std::{
     to_binary, Api, Binary, CanonicalAddr, Extern, HumanAddr, Querier, StdError, StdResult, Storage,
 };
 use ripemd160::{Digest, Ripemd160};
 use secp256k1::Secp256k1;
 use sha2::Sha256;
+
+use crate::{Permit, RevokedPemits, SignedPermit};
 
 pub fn validate_permit<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
