@@ -7,16 +7,12 @@ use sha2::Sha256;
 
 use crate::{Permit, RevokedPemits, SignedPermit};
 
-pub fn validate_permit<S: Storage, A: Api, Q: Querier>(
+pub fn validate<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     permit: &Permit,
     current_token_address: HumanAddr,
 ) -> StdResult<HumanAddr> {
-    if !permit
-        .params
-        .allowed_tokens
-        .contains(&current_token_address)
-    {
+    if !permit.check_token(&current_token_address) {
         return Err(StdError::generic_err(format!(
             "Permit doesn't apply to token {:?}, allowed tokens: {:?}",
             current_token_address.as_str(),

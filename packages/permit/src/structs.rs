@@ -12,6 +12,16 @@ pub struct Permit {
     pub signature: PermitSignature,
 }
 
+impl Permit {
+    pub fn check_token(&self, token: &HumanAddr) -> bool {
+        self.params.allowed_tokens.contains(token)
+    }
+
+    pub fn check_permission(&self, permission: &Permission) -> bool {
+        self.params.permissions.contains(permission)
+    }
+}
+
 #[derive(Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct PermitParams {
