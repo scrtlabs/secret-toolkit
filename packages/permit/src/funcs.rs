@@ -9,6 +9,7 @@ use crate::{Permit, RevokedPemits, SignedPermit};
 
 pub fn validate<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
+    storage_prefix: &str,
     permit: &Permit,
     current_token_address: HumanAddr,
 ) -> StdResult<HumanAddr> {
@@ -31,7 +32,8 @@ pub fn validate<S: Storage, A: Api, Q: Querier>(
 
     // Validate permit_name
     let permit_name = &permit.params.permit_name;
-    let is_permit_revoked = RevokedPemits::is_permit_revoked(&deps.storage, &account, permit_name);
+    let is_permit_revoked =
+        RevokedPemits::is_permit_revoked(&deps.storage, storage_prefix, &account, permit_name);
     if is_permit_revoked {
         return Err(StdError::generic_err(format!(
             "Permit {:?} was revoked by account {:?}",
