@@ -1,8 +1,8 @@
 use cosmwasm_std::{HumanAddr, Storage};
 
-pub struct RevokedPemits;
+pub struct RevokedPermits;
 
-impl RevokedPemits {
+impl RevokedPermits {
     pub fn is_permit_revoked(
         storgae: &dyn Storage,
         storage_prefix: &str,

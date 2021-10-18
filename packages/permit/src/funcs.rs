@@ -5,7 +5,7 @@ use ripemd160::{Digest, Ripemd160};
 use secp256k1::Secp256k1;
 use sha2::Sha256;
 
-use crate::{Permit, RevokedPemits, SignedPermit};
+use crate::{Permit, RevokedPermits, SignedPermit};
 
 pub fn validate<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
@@ -33,7 +33,7 @@ pub fn validate<S: Storage, A: Api, Q: Querier>(
     // Validate permit_name
     let permit_name = &permit.params.permit_name;
     let is_permit_revoked =
-        RevokedPemits::is_permit_revoked(&deps.storage, storage_prefix, &account, permit_name);
+        RevokedPermits::is_permit_revoked(&deps.storage, storage_prefix, &account, permit_name);
     if is_permit_revoked {
         return Err(StdError::generic_err(format!(
             "Permit {:?} was revoked by account {:?}",
