@@ -162,5 +162,12 @@ pub enum Permission {
     Balance,
     /// History for SNIP-20
     History,
-    // TODO SNIP-721 permissions
+    /// Owner permission indicates that the bearer of this permit should be granted all 
+    /// the access of the creator/signer of the permit.  SNIP-721 uses this to grant 
+    /// viewing access to all data that the permit creator owns and is whitelisted for.
+    /// For SNIP-721 use, a permit with Owner permission should NEVER be given to 
+    /// anyone else.  If someone wants to share private data, they should whitelist
+    /// the address they want to share with via a SetWhitelistedApproval tx, and that 
+    /// address will view the data by creating their own permit with Owner permission
+    Owner,
 }
