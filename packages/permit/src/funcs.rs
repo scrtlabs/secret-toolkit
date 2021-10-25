@@ -3,7 +3,6 @@ use cosmwasm_std::{
 };
 use ripemd160::{Digest, Ripemd160};
 use secp256k1::Secp256k1;
-use sha2::Sha256;
 
 use crate::{Permit, RevokedPermits, SignedPermit};
 
@@ -44,14 +43,13 @@ pub fn validate<S: Storage, A: Api, Q: Querier>(
 
     // Validate signature, reference: https://github.com/enigmampc/SecretNetwork/blob/f591ed0cb3af28608df3bf19d6cfb733cca48100/cosmwasm/packages/wasmi-runtime/src/crypto/secp256k1.rs#L49-L82
     let signed_bytes = to_binary(&SignedPermit::from_params(&permit.params))?;
-    let signed_bytes_hash = Sha256::digest(signed_bytes.as_slice());
-    let secp256k1_msg =
-        secp256k1::Message::from_slice(signed_bytes_hash.as_slice()).map_err(|err| {
-            StdError::generic_err(format!(
-                "Failed to create a secp256k1 message from signed_bytes: {:?}",
-                err
-            ))
-        })?;
+    let signed_bytes_hash = secret_toolkit_crypto::sha_256(signed_bytes.as_slice());
+    let secp256k1_msg = secp256k1::Message::from_slice(&signed_bytes_hash).map_err(|err| {
+        StdError::generic_err(format!(
+            "Failed to create a secp256k1 message from signed_bytes: {:?}",
+            err
+        ))
+    })?;
 
     let secp256k1_verifier = Secp256k1::verification_only();
 
@@ -74,6 +72,6 @@ pub fn validate<S: Storage, A: Api, Q: Querier>(
 
 pub fn pubkey_to_account(pubkey: &Binary) -> CanonicalAddr {
     let mut hasher = Ripemd160::new();
-    hasher.update(Sha256::digest(&pubkey.0));
+    hasher.update(secret_toolkit_crypto::sha_256(&pubkey.0));
     CanonicalAddr(Binary(hasher.finalize().to_vec()))
 }
