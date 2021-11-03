@@ -3,6 +3,7 @@ use serde::Serialize;
 use cosmwasm_std::{to_binary, Binary, Coin, CosmosMsg, HumanAddr, StdResult, Uint128, WasmMsg};
 
 use secret_toolkit_utils::space_pad;
+use crate::{TransferFromAction, TransferAction, SendAction, SendFromAction, BurnFromAction, MintAction};
 
 /// SNIP20 token handle messages
 #[derive(Serialize, Clone, Debug, PartialEq)]
@@ -24,16 +25,34 @@ pub enum HandleMsg {
     Transfer {
         recipient: HumanAddr,
         amount: Uint128,
+        memo: Option<String>,
         padding: Option<String>,
     },
     Send {
         recipient: HumanAddr,
         amount: Uint128,
         msg: Option<Binary>,
+        memo: Option<String>,
+        padding: Option<String>,
+    },
+    //TODO: IMPLEMENT FUNCTION
+    BatchTransfer {
+        actions: Vec<TransferAction>,
+        padding: Option<String>,
+    },
+    //TODO: IMPLEMENT FUNCTION
+    BatchSend {
+        actions: Vec<SendAction>,
         padding: Option<String>,
     },
     Burn {
         amount: Uint128,
+        memo: Option<String>,
+        padding: Option<String>,
+    },
+    //TODO: IMPLEMENT FUNCTION
+    CreateViewingKey {
+        entropy: String,
         padding: Option<String>,
     },
     SetViewingKey {
@@ -58,6 +77,7 @@ pub enum HandleMsg {
         owner: HumanAddr,
         recipient: HumanAddr,
         amount: Uint128,
+        memo: Option<String>,
         padding: Option<String>,
     },
     SendFrom {
@@ -65,6 +85,17 @@ pub enum HandleMsg {
         recipient: HumanAddr,
         amount: Uint128,
         msg: Option<Binary>,
+        memo: Option<String>,
+        padding: Option<String>,
+    },
+    //TODO: IMPLEMENT FUNCTION
+    BatchTransferFrom {
+        actions: Vec<TransferFromAction>,
+        padding: Option<String>,
+    },
+    //TODO: IMPLEMENT FUNCTION
+    BatchSendFrom {
+        actions: Vec<SendFromAction>,
         padding: Option<String>,
     },
     BurnFrom {
@@ -72,11 +103,21 @@ pub enum HandleMsg {
         amount: Uint128,
         padding: Option<String>,
     },
+    //TODO: IMPLEMENT FUNCTION
+    BatchBurnFrom {
+        actions: Vec<BurnFromAction>,
+        padding: Option<String>,
+    },
 
     // Mint
     Mint {
         recipient: HumanAddr,
         amount: Uint128,
+        padding: Option<String>,
+    },
+    //TODO: IMPLEMENT FUNCTION
+    BatchMint {
+        actions: Vec<MintAction>,
         padding: Option<String>,
     },
     AddMinters {
@@ -162,7 +203,7 @@ pub fn redeem_msg(
         denom,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute Deposit
@@ -195,6 +236,7 @@ pub fn deposit_msg(
 ///
 /// * `recipient` - the address the tokens are to be sent to
 /// * `amount` - Uint128 amount of tokens to send
+/// * `memo` - A message to include in transaction
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being called
@@ -202,6 +244,7 @@ pub fn deposit_msg(
 pub fn transfer_msg(
     recipient: HumanAddr,
     amount: Uint128,
+    memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
@@ -210,9 +253,10 @@ pub fn transfer_msg(
     HandleMsg::Transfer {
         recipient,
         amount,
+        memo,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute Send
@@ -223,6 +267,7 @@ pub fn transfer_msg(
 /// * `amount` - Uint128 amount of tokens to send
 /// * `msg` - Optional base64 encoded string to pass to the recipient contract's
 ///           Receive function
+/// * `memo` - A message to include in transaction
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being called
@@ -231,6 +276,7 @@ pub fn send_msg(
     recipient: HumanAddr,
     amount: Uint128,
     msg: Option<Binary>,
+    memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
@@ -240,9 +286,10 @@ pub fn send_msg(
         recipient,
         amount,
         msg,
+        memo,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute Burn
@@ -250,18 +297,20 @@ pub fn send_msg(
 /// # Arguments
 ///
 /// * `amount` - Uint128 amount of tokens to burn
+/// * `memo` - A message to include in transaction
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn burn_msg(
     amount: Uint128,
+    memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
     contract_addr: HumanAddr,
 ) -> StdResult<CosmosMsg> {
-    HandleMsg::Burn { amount, padding }.to_cosmos_msg(
+    HandleMsg::Burn { amount, memo, padding }.to_cosmos_msg(
         block_size,
         callback_code_hash,
         contract_addr,
@@ -289,7 +338,7 @@ pub fn register_receive_msg(
         code_hash: your_contracts_code_hash,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute SetViewingKey
@@ -342,7 +391,7 @@ pub fn increase_allowance_msg(
         expiration,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute DecreaseAllowance
@@ -371,7 +420,7 @@ pub fn decrease_allowance_msg(
         expiration,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute TransferFrom
@@ -381,6 +430,7 @@ pub fn decrease_allowance_msg(
 /// * `owner` - the address of the owner of the tokens to be sent
 /// * `recipient` - the address the tokens are to be sent to
 /// * `amount` - Uint128 amount of tokens to send
+/// * `memo` - A message to include in transaction
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being called
@@ -389,6 +439,7 @@ pub fn transfer_from_msg(
     owner: HumanAddr,
     recipient: HumanAddr,
     amount: Uint128,
+    memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
@@ -398,9 +449,10 @@ pub fn transfer_from_msg(
         owner,
         recipient,
         amount,
+        memo,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute SendFrom
@@ -412,6 +464,7 @@ pub fn transfer_from_msg(
 /// * `amount` - Uint128 amount of tokens to send
 /// * `msg` - Optional base64 encoded string to pass to the recipient contract's
 ///           Receive function
+/// * `memo` - A message to include in transaction
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being called
@@ -422,6 +475,7 @@ pub fn send_from_msg(
     recipient: HumanAddr,
     amount: Uint128,
     msg: Option<Binary>,
+    memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
@@ -432,9 +486,10 @@ pub fn send_from_msg(
         recipient,
         amount,
         msg,
+        memo,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute BurnFrom
@@ -460,7 +515,7 @@ pub fn burn_from_msg(
         amount,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute Mint
@@ -486,7 +541,7 @@ pub fn mint_msg(
         amount,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute AddMinters
