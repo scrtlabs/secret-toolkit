@@ -35,12 +35,10 @@ pub enum HandleMsg {
         memo: Option<String>,
         padding: Option<String>,
     },
-    //TODO: IMPLEMENT FUNCTION
     BatchTransfer {
         actions: Vec<TransferAction>,
         padding: Option<String>,
     },
-    //TODO: IMPLEMENT FUNCTION
     BatchSend {
         actions: Vec<SendAction>,
         padding: Option<String>,
@@ -50,7 +48,6 @@ pub enum HandleMsg {
         memo: Option<String>,
         padding: Option<String>,
     },
-    //TODO: IMPLEMENT FUNCTION
     CreateViewingKey {
         entropy: String,
         padding: Option<String>,
@@ -88,12 +85,10 @@ pub enum HandleMsg {
         memo: Option<String>,
         padding: Option<String>,
     },
-    //TODO: IMPLEMENT FUNCTION
     BatchTransferFrom {
         actions: Vec<TransferFromAction>,
         padding: Option<String>,
     },
-    //TODO: IMPLEMENT FUNCTION
     BatchSendFrom {
         actions: Vec<SendFromAction>,
         padding: Option<String>,
@@ -103,7 +98,6 @@ pub enum HandleMsg {
         amount: Uint128,
         padding: Option<String>,
     },
-    //TODO: IMPLEMENT FUNCTION
     BatchBurnFrom {
         actions: Vec<BurnFromAction>,
         padding: Option<String>,
@@ -115,7 +109,6 @@ pub enum HandleMsg {
         amount: Uint128,
         padding: Option<String>,
     },
-    //TODO: IMPLEMENT FUNCTION
     BatchMint {
         actions: Vec<MintAction>,
         padding: Option<String>,
@@ -292,6 +285,52 @@ pub fn send_msg(
         .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
+/// Returns a StdResult<CosmosMsg> used to execute BatchTransfer
+///
+/// # Arguments
+/// * `actions` - Batch of actions
+/// * `padding` - Optional String used as padding if you don't want to use block padding
+/// * `block_size` - pad the message to blocks of this size
+/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `contract_addr` - address of the contract being called
+pub fn batch_transfer_msg(
+    actions: Vec<TransferAction>,
+    padding: Option<String>,
+    block_size: usize,
+    callback_code_hash: String,
+    contract_addr: HumanAddr,
+) -> StdResult<CosmosMsg> {
+    HandleMsg::BatchTransfer { actions, padding }.to_cosmos_msg(
+        block_size,
+        callback_code_hash,
+        contract_addr,
+        None,
+    )
+}
+
+/// Returns a StdResult<CosmosMsg> used to execute BatchSend
+///
+/// # Arguments
+/// * `actions` - Batch of actions
+/// * `padding` - Optional String used as padding if you don't want to use block padding
+/// * `block_size` - pad the message to blocks of this size
+/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `contract_addr` - address of the contract being called
+pub fn batch_send_msg(
+    actions: Vec<SendAction>,
+    padding: Option<String>,
+    block_size: usize,
+    callback_code_hash: String,
+    contract_addr: HumanAddr,
+) -> StdResult<CosmosMsg> {
+    HandleMsg::BatchSend { actions, padding }.to_cosmos_msg(
+        block_size,
+        callback_code_hash,
+        contract_addr,
+        None,
+    )
+}
+
 /// Returns a StdResult<CosmosMsg> used to execute Burn
 ///
 /// # Arguments
@@ -311,6 +350,29 @@ pub fn burn_msg(
     contract_addr: HumanAddr,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::Burn { amount, memo, padding }.to_cosmos_msg(
+        block_size,
+        callback_code_hash,
+        contract_addr,
+        None,
+    )
+}
+
+/// Returns a StdResult<CosmosMsg> used to execute CreateViewingKey
+///
+/// # Arguments
+/// * `actions` - Batch of actions
+/// * `padding` - Optional String used as padding if you don't want to use block padding
+/// * `block_size` - pad the message to blocks of this size
+/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `contract_addr` - address of the contract being called
+pub fn create_viewing_key_msg(
+    entropy: String,
+    padding: Option<String>,
+    block_size: usize,
+    callback_code_hash: String,
+    contract_addr: HumanAddr,
+) -> StdResult<CosmosMsg> {
+    HandleMsg::CreateViewingKey { entropy, padding }.to_cosmos_msg(
         block_size,
         callback_code_hash,
         contract_addr,
@@ -492,6 +554,52 @@ pub fn send_from_msg(
         .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
+/// Returns a StdResult<CosmosMsg> used to execute BatchTransferFrom
+///
+/// # Arguments
+/// * `actions` - Batch of actions
+/// * `padding` - Optional String used as padding if you don't want to use block padding
+/// * `block_size` - pad the message to blocks of this size
+/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `contract_addr` - address of the contract being called
+pub fn batch_transfer_from_msg(
+    actions: Vec<TransferFromAction>,
+    padding: Option<String>,
+    block_size: usize,
+    callback_code_hash: String,
+    contract_addr: HumanAddr,
+) -> StdResult<CosmosMsg> {
+    HandleMsg::BatchTransferFrom { actions, padding }.to_cosmos_msg(
+        block_size,
+        callback_code_hash,
+        contract_addr,
+        None,
+    )
+}
+
+/// Returns a StdResult<CosmosMsg> used to execute BatchSendFrom
+///
+/// # Arguments
+/// * `actions` - Batch of actions
+/// * `padding` - Optional String used as padding if you don't want to use block padding
+/// * `block_size` - pad the message to blocks of this size
+/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `contract_addr` - address of the contract being called
+pub fn batch_send_from_msg(
+    actions: Vec<SendFromAction>,
+    padding: Option<String>,
+    block_size: usize,
+    callback_code_hash: String,
+    contract_addr: HumanAddr,
+) -> StdResult<CosmosMsg> {
+    HandleMsg::BatchSendFrom { actions, padding }.to_cosmos_msg(
+        block_size,
+        callback_code_hash,
+        contract_addr,
+        None,
+    )
+}
+
 /// Returns a StdResult<CosmosMsg> used to execute BurnFrom
 ///
 /// # Arguments
@@ -518,6 +626,29 @@ pub fn burn_from_msg(
         .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
+/// Returns a StdResult<CosmosMsg> used to execute BatchBurnFrom
+///
+/// # Arguments
+/// * `actions` - Batch of actions
+/// * `padding` - Optional String used as padding if you don't want to use block padding
+/// * `block_size` - pad the message to blocks of this size
+/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `contract_addr` - address of the contract being called
+pub fn batch_burn_from_msg(
+    actions: Vec<BurnFromAction>,
+    padding: Option<String>,
+    block_size: usize,
+    callback_code_hash: String,
+    contract_addr: HumanAddr,
+) -> StdResult<CosmosMsg> {
+    HandleMsg::BatchBurnFrom { actions, padding }.to_cosmos_msg(
+        block_size,
+        callback_code_hash,
+        contract_addr,
+        None,
+    )
+}
+
 /// Returns a StdResult<CosmosMsg> used to execute Mint
 ///
 /// # Arguments
@@ -542,6 +673,29 @@ pub fn mint_msg(
         padding,
     }
         .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+}
+
+/// Returns a StdResult<CosmosMsg> used to execute BatchMint
+///
+/// # Arguments
+/// * `actions` - Batch of actions
+/// * `padding` - Optional String used as padding if you don't want to use block padding
+/// * `block_size` - pad the message to blocks of this size
+/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `contract_addr` - address of the contract being called
+pub fn batch_mint_msg(
+    actions: Vec<MintAction>,
+    padding: Option<String>,
+    block_size: usize,
+    callback_code_hash: String,
+    contract_addr: HumanAddr,
+) -> StdResult<CosmosMsg> {
+    HandleMsg::BatchMint { actions, padding }.to_cosmos_msg(
+        block_size,
+        callback_code_hash,
+        contract_addr,
+        None,
+    )
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute AddMinters

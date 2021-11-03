@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Binary, HumanAddr, Uint128};
 
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct TransferAction {
     pub recipient: HumanAddr,
@@ -11,7 +11,7 @@ pub struct TransferAction {
     pub memo: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct SendAction {
     pub recipient: HumanAddr,
@@ -20,7 +20,7 @@ pub struct SendAction {
     pub memo: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct TransferFromAction {
     pub owner: HumanAddr,
@@ -29,7 +29,7 @@ pub struct TransferFromAction {
     pub memo: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct SendFromAction {
     pub owner: HumanAddr,
@@ -39,7 +39,7 @@ pub struct SendFromAction {
     pub memo: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct MintAction {
     pub recipient: HumanAddr,
@@ -47,7 +47,7 @@ pub struct MintAction {
     pub memo: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct BurnFromAction {
     pub owner: HumanAddr,
