@@ -82,3 +82,4 @@ pub struct Authentication {
     pub key: Option<String>,
     /// username used in basic authentication
     pub user: Option<String>,
+}
