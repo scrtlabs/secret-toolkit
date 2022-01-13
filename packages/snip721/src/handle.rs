@@ -232,21 +232,14 @@ pub enum HandleMsg {
         /// optional message length padding
         padding: Option<String>,
     },
-    /// set the public metadata.
-    SetPublicMetadata {
-        /// id of the token whose public metadata should be updated
+    /// set the public and/or private metadata.
+    SetMetadata {
+        /// id of the token whose metadata should be updated
         token_id: String,
-        /// the new public metadata
-        metadata: Metadata,
-        /// optional message length padding
-        padding: Option<String>,
-    },
-    /// set the private metadata.
-    SetPrivateMetadata {
-        /// id of the token whose private metadata should be updated
-        token_id: String,
-        /// the new private metadata
-        metadata: Metadata,
+        /// the optional new public metadata
+        public_metadata: Option<Metadata>,
+        /// the optional new private metadata
+        private_metadata: Option<Metadata>,
         /// optional message length padding
         padding: Option<String>,
     },
@@ -744,53 +737,30 @@ pub fn set_minters_msg(
     )
 }
 
-/// Returns a StdResult<CosmosMsg> used to execute [`SetPublicMetadata`](HandleMsg::SetPublicMetadata)
+/// Returns a StdResult<CosmosMsg> used to execute [`SetMetadata`](HandleMsg::SetMetadata)
 ///
 /// # Arguments
 ///
 /// * `token_id` - ID String of the token whose public metadata should be altered
-/// * `metadata` - the new Metadata that everyone can view
+/// * `public_metadata` - optional new Metadata that everyone can view
+/// * `private_metadata` - optional new Metadata that only the owner and whitelist can view
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
-pub fn set_public_metadata_msg(
+pub fn set_metadata_msg(
     token_id: String,
-    metadata: Metadata,
+    public_metadata: Option<Metadata>,
+    private_metadata: Option<Metadata>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
     contract_addr: HumanAddr,
 ) -> StdResult<CosmosMsg> {
-    HandleMsg::SetPublicMetadata {
+    HandleMsg::SetMetadata {
         token_id,
-        metadata,
-        padding,
-    }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
-}
-
-/// Returns a StdResult<CosmosMsg> used to execute [`SetPrivateMetadata`](HandleMsg::SetPrivateMetadata)
-///
-/// # Arguments
-///
-/// * `token_id` - ID String of the token whose private metadata should be altered
-/// * `metadata` - the new Metadata that only the owner and whitelist can view
-/// * `padding` - Optional String used as padding if you don't want to use block padding
-/// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
-/// * `contract_addr` - address of the contract being called
-pub fn set_private_metadata_msg(
-    token_id: String,
-    metadata: Metadata,
-    padding: Option<String>,
-    block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
-) -> StdResult<CosmosMsg> {
-    HandleMsg::SetPrivateMetadata {
-        token_id,
-        metadata,
+        public_metadata,
+        private_metadata,
         padding,
     }
     .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
@@ -1437,64 +1407,35 @@ mod tests {
     }
 
     #[test]
-    fn test_set_public_metadata_msg() -> StdResult<()> {
+    fn test_set_metadata_msg() -> StdResult<()> {
         let token_id = "NFT1".to_string();
-        let metadata = Metadata {
+        let public_metadata = Some(Metadata {
             name: Some("public name".to_string()),
             description: Some("public description".to_string()),
             image: None,
-        };
-        let padding = None;
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
-
-        let test_msg = set_public_metadata_msg(
-            token_id.clone(),
-            metadata.clone(),
-            padding.clone(),
-            256usize,
-            callback_code_hash.clone(),
-            contract_addr.clone(),
-        )?;
-        let mut msg = to_binary(&HandleMsg::SetPublicMetadata {
-            token_id,
-            metadata,
-            padding,
-        })?;
-        let msg = space_pad(&mut msg.0, 256usize);
-        let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-            msg: Binary(msg.to_vec()),
-            contract_addr,
-            callback_code_hash,
-            send: vec![],
         });
-        assert_eq!(test_msg, expected_msg);
-        Ok(())
-    }
-
-    #[test]
-    fn test_set_private_metadata_msg() -> StdResult<()> {
-        let token_id = "NFT1".to_string();
-        let metadata = Metadata {
+        let private_metadata = Some(Metadata {
             name: Some("private name".to_string()),
             description: Some("private description".to_string()),
             image: Some("private image".to_string()),
-        };
+        });
         let padding = None;
         let callback_code_hash = "code hash".to_string();
         let contract_addr = HumanAddr("contract".to_string());
 
-        let test_msg = set_private_metadata_msg(
+        let test_msg = set_metadata_msg(
             token_id.clone(),
-            metadata.clone(),
+            public_metadata.clone(),
+            private_metadata.clone(),
             padding.clone(),
             256usize,
             callback_code_hash.clone(),
             contract_addr.clone(),
         )?;
-        let mut msg = to_binary(&HandleMsg::SetPrivateMetadata {
+        let mut msg = to_binary(&HandleMsg::SetMetadata {
             token_id,
-            metadata,
+            public_metadata,
+            private_metadata,
             padding,
         })?;
         let msg = space_pad(&mut msg.0, 256usize);

@@ -3,11 +3,17 @@ name = "secret-toolkit-serialization"
 version = "0.1.0"
 edition = "2018"
 
+[features]
+default = ["json", "bincode2", "base64"]
+json = []
+base64 = ["schemars"]
+
 [dependencies]
 serde = "1.0"
 bincode2 = { version = "2.0", optional = true }
 cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.2.3" }
+schemars = { version = "0", optional = true }
 
-[features]
-default = ["json", "bincode2"]
-json = []
+[dev-dependencies]
+serde_json = "1"
+cosmwasm-schema = { version = "0.9.2" }
