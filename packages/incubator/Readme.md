@@ -87,3 +87,10 @@ See tests in `generational_store.rs` for more examples, including iteration.
 #### Todo
 
 Rename as SlotMap? (see: [https://docs.rs/slotmap/1.0.5/slotmap/](https://docs.rs/slotmap/1.0.5/slotmap/)) Simpler name though maybe not as evocative of what it actually does.
+
+#### Warning
+Incase of error ```error[E0554]: `#![feature]` may not be used on the stable release channel"``` over here ```/packages/incubator/src/lib.rs:1:1```
+As the error message states, you cannot compile that code with stable Rust. You need to install nightly Rust and then use it to compile the program:
+
+```install rustup nightly```
+```cargo +nightly build```
