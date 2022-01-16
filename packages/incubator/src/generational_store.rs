@@ -837,8 +837,6 @@ where
 mod tests {
     use cosmwasm_std::testing::MockStorage;
 
-    use secret_toolkit_serialization::Json;
-
     use super::*;
 
     #[test]
