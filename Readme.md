@@ -13,6 +13,13 @@ a wrapper around the other packages. For example `secret-toolkit-storage` is exp
 `secret_toolkit::storage`. If you only need some of the tools from the toolkit, you may get
 better compile times by depending on the different components directly.
 
+Each of the subpackages is imported with a feature flag, and most subpackages are included
+in the default flags. The exceptions to this are:
+* `"crypto"` - has a deep dependency tree and increases compilation times significantly
+* `"permit"` - depends on `"crypto"` and imports it automatically
+* `"incubator"` - includes experimental functionality. Minor version releases may cause
+    breaking changes in this subpackage.
+
 ## License
 
 The license file in the top directory of this repository applies to all packages it contains.

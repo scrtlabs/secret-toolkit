@@ -5,10 +5,10 @@ edition = "2018"
 
 [dependencies]
 serde = "1.0"
-cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.2.3" }
-secret-toolkit-utils = { path = "../utils" }
-secret-toolkit-crypto = { path = "../crypto" }
 schemars = "0.7"
 remain = "0.2.2"
 ripemd160 = "0.9.1"
 secp256k1 = "0.20.3"
+cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.2.3" }
+secret-toolkit-crypto = { path = "../crypto" }
+secret-toolkit-utils = { path = "../utils" }
