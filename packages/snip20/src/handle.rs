@@ -269,6 +269,7 @@ pub fn transfer_msg(
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
+#[allow(clippy::too_many_arguments)]
 pub fn send_msg(
     recipient: HumanAddr,
     amount: Uint128,
@@ -304,6 +305,7 @@ pub fn send_msg(
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
+#[allow(clippy::too_many_arguments)]
 pub fn send_msg_with_code_hash(
     recipient: HumanAddr,
     recipient_code_hash: Option<String>,
@@ -538,6 +540,7 @@ pub fn decrease_allowance_msg(
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
+#[allow(clippy::too_many_arguments)]
 pub fn transfer_from_msg(
     owner: HumanAddr,
     recipient: HumanAddr,

@@ -334,7 +334,7 @@ where
 {
     fn clone(&self) -> Self {
         Self {
-            storage: &self.storage,
+            storage: self.storage,
             item_type: self.item_type,
             serialization_type: self.serialization_type,
             len: self.len,

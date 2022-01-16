@@ -107,7 +107,7 @@ where
     pub fn remove(&mut self, key: &[u8]) -> StdResult<()> {
         let mut len = self.as_readonly().len();
 
-        let item = self.as_readonly()._direct_get(&key);
+        let item = self.as_readonly()._direct_get(key);
 
         if item.is_none() || len == 0 {
             return Err(StdError::not_found("Item not found in map"));
@@ -286,7 +286,7 @@ where
     }
 
     fn get_position(&self, key: &[u8]) -> Option<u32> {
-        return if let Some(res) = self.as_readonly()._direct_get(&key) {
+        return if let Some(res) = self.as_readonly()._direct_get(key) {
             Some(res.meta_data.position)
         } else {
             None
@@ -298,12 +298,12 @@ where
         if let Some(prefix) = &self.prefix {
             let mut store = PrefixedStorage::new(prefix, self.storage);
             store.set(
-                &[&INDEXES, index.to_be_bytes().to_vec().as_slice()].concat(),
+                &[INDEXES, index.to_be_bytes().to_vec().as_slice()].concat(),
                 &Ser::serialize(indexes)?,
             );
         } else {
             self.storage.set(
-                &[&INDEXES, index.to_be_bytes().to_vec().as_slice()].concat(),
+                &[INDEXES, index.to_be_bytes().to_vec().as_slice()].concat(),
                 &Ser::serialize(indexes)?,
             );
         }
@@ -483,9 +483,9 @@ where
     pub fn len(&self) -> u32 {
         let maybe_serialized = if let Some(prefix) = &self.prefix {
             let store = ReadonlyPrefixedStorage::new(prefix, self.storage);
-            store.get(&MAP_LENGTH)
+            store.get(MAP_LENGTH)
         } else {
-            self.storage.get(&MAP_LENGTH)
+            self.storage.get(MAP_LENGTH)
         };
         // let maybe_serialized = self.storage.get(&MAP_LENGTH);
         let serialized = maybe_serialized.unwrap_or_default();
@@ -564,10 +564,10 @@ where
     pub fn get_indexes(&self, index: u32) -> Vec<u64> {
         let maybe_serialized = if let Some(prefix) = &self.prefix {
             let store = ReadonlyPrefixedStorage::new(prefix, self.storage);
-            store.get(&[&INDEXES, index.to_be_bytes().to_vec().as_slice()].concat())
+            store.get(&[INDEXES, index.to_be_bytes().to_vec().as_slice()].concat())
         } else {
             self.storage
-                .get(&[&INDEXES, index.to_be_bytes().to_vec().as_slice()].concat())
+                .get(&[INDEXES, index.to_be_bytes().to_vec().as_slice()].concat())
         };
         let serialized = maybe_serialized.unwrap_or_default();
         Ser::deserialize(&serialized).unwrap_or_default()
@@ -632,7 +632,7 @@ where
     }
 
     fn get_no_hash(&self, hash: &u64) -> Option<InternalItem<T>> {
-        if let Ok(result) = self._load_internal(&hash) {
+        if let Ok(result) = self._load_internal(hash) {
             Some(result)
         } else {
             None
@@ -644,14 +644,7 @@ where
         #[allow(deprecated)]
         let mut hasher = SipHasher13::new_with_keys(HASH_KEY_0, HASH_KEY_1);
         key.hash(&mut hasher);
-        let hash = hasher.finish();
-        //debug_print(format!("***hashing {:?}: result= {}", key, &hash));
-        hash
-        // match key {
-        //     b"one" => 1,
-        //     b"two" => 2,
-        //     _ => 3,
-        // }
+        hasher.finish()
     }
 
     pub fn iter(&self) -> Iter<'a, T, S, Ser> {
@@ -742,7 +735,7 @@ where
 {
     fn clone(&self) -> Self {
         Self {
-            storage: &self.storage,
+            storage: self.storage,
             item_type: self.item_type,
             serialization_type: self.serialization_type,
             prefix: self.prefix.clone(),
