@@ -18,6 +18,30 @@ pub struct TokenInfo {
     pub total_supply: Option<Uint128>,
 }
 
+/// TokenConfig response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct TokenConfig {
+    pub public_total_supply: bool,
+    pub deposit_enabled: bool,
+    pub redeem_enabled: bool,
+    pub mint_enabled: bool,
+    pub burn_enabled: bool,
+}
+
+/// Contract status
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub enum ContractStatusLevel {
+    NormalRun,
+    StopAllButRedeems,
+    StopAll,
+}
+
+/// ContractStatus Response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ContractStatus {
+    pub status: ContractStatusLevel,
+}
+
 /// ExchangeRate response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ExchangeRate {
@@ -57,6 +81,44 @@ pub struct TransferHistory {
     pub txs: Vec<Tx>,
 }
 
+/// The type of transaction
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub enum TxAction {
+    Transfer {
+        from: HumanAddr,
+        sender: HumanAddr,
+        recipient: HumanAddr,
+    },
+    Mint {
+        minter: HumanAddr,
+        recipient: HumanAddr,
+    },
+    Burn {
+        burner: HumanAddr,
+        owner: HumanAddr,
+    },
+    Deposit {},
+    Redeem {},
+}
+
+/// Detailed transaction data
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct RichTx {
+    pub id: u64,
+    pub action: TxAction,
+    pub coins: Coin,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memo: Option<String>,
+    pub block_time: u64,
+    pub block_height: u64,
+}
+
+/// TransactionHistory response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct TransactionHistory {
+    pub txs: Vec<RichTx>,
+}
+
 /// Minters response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Minters {
@@ -68,6 +130,8 @@ pub struct Minters {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     TokenInfo {},
+    TokenConfig {},
+    ContractStatus {},
     ExchangeRate {},
     Allowance {
         owner: HumanAddr,
@@ -84,6 +148,12 @@ pub enum QueryMsg {
         page: Option<u32>,
         page_size: u32,
     },
+    TransactionHistory {
+        address: HumanAddr,
+        key: String,
+        page: Option<u32>,
+        page_size: u32,
+    },
     Minters {},
 }
 
@@ -91,10 +161,13 @@ impl fmt::Display for QueryMsg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             QueryMsg::TokenInfo { .. } => write!(f, "TokenInfo"),
+            QueryMsg::TokenConfig { .. } => write!(f, "TokenConfig"),
+            QueryMsg::ContractStatus { .. } => write!(f, "ContractStatus"),
             QueryMsg::ExchangeRate { .. } => write!(f, "ExchangeRate"),
             QueryMsg::Allowance { .. } => write!(f, "Allowance"),
             QueryMsg::Balance { .. } => write!(f, "Balance"),
             QueryMsg::TransferHistory { .. } => write!(f, "TransferHistory"),
+            QueryMsg::TransactionHistory { .. } => write!(f, "TransactionHistory"),
             QueryMsg::Minters { .. } => write!(f, "Minters"),
         }
     }
@@ -140,6 +213,18 @@ pub struct TokenInfoResponse {
     pub token_info: TokenInfo,
 }
 
+/// wrapper to deserialize TokenConfig response
+#[derive(Deserialize)]
+pub struct TokenConfigResponse {
+    pub token_config: TokenConfig,
+}
+
+/// wrapper to deserialize ContractStatus response
+#[derive(Deserialize)]
+pub struct ContractStatusResponse {
+    pub contract_status: ContractStatus,
+}
+
 /// wrapper to deserialize ExchangeRate response
 #[derive(Deserialize)]
 pub struct ExchangeRateResponse {
@@ -162,6 +247,12 @@ pub struct BalanceResponse {
 #[derive(Deserialize)]
 pub struct TransferHistoryResponse {
     pub transfer_history: TransferHistory,
+}
+
+/// wrapper to deserialize TransactionHistory response
+#[derive(Deserialize)]
+pub struct TransactionHistoryResponse {
+    pub transaction_history: TransactionHistory,
 }
 
 /// wrapper to deserialize Minters response
@@ -187,6 +278,44 @@ pub fn token_info_query<Q: Querier>(
     let answer: TokenInfoResponse =
         QueryMsg::TokenInfo {}.query(querier, block_size, callback_code_hash, contract_addr)?;
     Ok(answer.token_info)
+}
+
+/// Returns a StdResult<TokenConfig> from performing TokenConfig query
+///
+/// # Arguments
+///
+/// * `querier` - a reference to the Querier dependency of the querying contract
+/// * `block_size` - pad the message to blocks of this size
+/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `contract_addr` - address of the contract being queried
+pub fn token_config_query<Q: Querier>(
+    querier: &Q,
+    block_size: usize,
+    callback_code_hash: String,
+    contract_addr: HumanAddr,
+) -> StdResult<TokenConfig> {
+    let answer: TokenConfigResponse =
+        QueryMsg::TokenConfig {}.query(querier, block_size, callback_code_hash, contract_addr)?;
+    Ok(answer.token_config)
+}
+
+/// Returns a StdResult<ContractStatus> from performing ContractStatus query
+///
+/// # Arguments
+///
+/// * `querier` - a reference to the Querier dependency of the querying contract
+/// * `block_size` - pad the message to blocks of this size
+/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `contract_addr` - address of the contract being queried
+pub fn contract_status_query<Q: Querier>(
+    querier: &Q,
+    block_size: usize,
+    callback_code_hash: String,
+    contract_addr: HumanAddr,
+) -> StdResult<ContractStatus> {
+    let answer: ContractStatusResponse =
+        QueryMsg::ContractStatus {}.query(querier, block_size, callback_code_hash, contract_addr)?;
+    Ok(answer.contract_status)
 }
 
 /// Returns a StdResult<ExchangeRate> from performing ExchangeRate query
@@ -296,6 +425,39 @@ pub fn transfer_history_query<Q: Querier>(
     }
     .query(querier, block_size, callback_code_hash, contract_addr)?;
     Ok(answer.transfer_history)
+}
+
+/// Returns a StdResult<TransactionHistory> from performing TransactionHistory query
+///
+/// # Arguments
+///
+/// * `querier` - a reference to the Querier dependency of the querying contract
+/// * `address` - the address whose transaction history should be displayed
+/// * `key` - String holding the authentication key needed to view transactions
+/// * `page` - Optional u32 representing the page number of transactions to display
+/// * `page_size` - u32 number of transactions to return
+/// * `block_size` - pad the message to blocks of this size
+/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `contract_addr` - address of the contract being queried
+#[allow(clippy::too_many_arguments)]
+pub fn transaction_history_query<Q: Querier>(
+    querier: &Q,
+    address: HumanAddr,
+    key: String,
+    page: Option<u32>,
+    page_size: u32,
+    block_size: usize,
+    callback_code_hash: String,
+    contract_addr: HumanAddr,
+) -> StdResult<TransactionHistory> {
+    let answer: TransactionHistoryResponse = QueryMsg::TransactionHistory {
+        address,
+        key,
+        page,
+        page_size,
+    }
+        .query(querier, block_size, callback_code_hash, contract_addr)?;
+    Ok(answer.transaction_history)
 }
 
 /// Returns a StdResult<Minters> from performing Minters query
