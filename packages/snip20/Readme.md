@@ -1,5 +1,7 @@
 # Secret Contract Development Toolkit - SNIP20 Interface
 
+⚠️ This package is a sub-package of the `secret-toolkit` package. Please see its crate page for more context.
+
 These functions are meant to help you easily interact with SNIP20 compliant tokens.  
 
 ## Handle Messages

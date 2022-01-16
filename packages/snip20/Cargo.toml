@@ -1,7 +1,14 @@
 [package]
 name = "secret-toolkit-snip20"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
+authors = ["SCRT Labs <info@scrtlabs.com>"]
+license-file = "../../LICENSE"
+repository = "https://github.com/scrtlabs/secret-toolkit"
+readme = "Readme.md"
+description = "Boilerplate for using SNIP-20 contracts on Secret Network"
+categories = ["cryptography::cryptocurrencies", "wasm"]
+keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 
 [dependencies]
 serde = "1.0"

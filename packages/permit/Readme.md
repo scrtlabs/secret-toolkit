@@ -1,5 +1,5 @@
-# Secret Contract Development Toolkit - Crypto Tools
+# Secret Contract Development Toolkit - Permits
 
 ⚠️ This package is a sub-package of the `secret-toolkit` package. Please see its crate page for more context.
 
-This package contains all the tools related to crypto
+Utils for implementing permits, used by SNIP20 & SNIP721.

@@ -1,5 +1,7 @@
 # Secret Contract Development Toolkit - SNIP-721 Interface
 
+⚠️ This package is a sub-package of the `secret-toolkit` package. Please see its crate page for more context.
+
 These functions are meant to help you easily interact with SNIP-721 compliant NFT contracts.  
 
 ## Handle Messages

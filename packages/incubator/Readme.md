@@ -1,5 +1,7 @@
 # Secret Contract Development Toolkit - Incubator
 
+⚠️ This package is a sub-package of the `secret-toolkit` package. Please see its crate page for more context.
+
 This package contains tools that are not yet final and may change or contain unknown bugs, and are pending more testing or reviews.
 
 ## Cashmap
