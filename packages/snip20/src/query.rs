@@ -73,16 +73,24 @@ pub struct Tx {
     pub sender: HumanAddr,
     pub receiver: HumanAddr,
     pub coins: Coin,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memo: Option<String>,
+    // The block time and block height are optional so that the JSON schema
+    // reflects that some SNIP-20 contracts may not include this info.
+    pub block_time: Option<u64>,
+    pub block_height: Option<u64>,
 }
 
 /// TransferHistory response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TransferHistory {
+    pub total: Option<u64>,
     pub txs: Vec<Tx>,
 }
 
-/// The type of transaction
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+/// Types of transactions for RichTx
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum TxAction {
     Transfer {
         from: HumanAddr,
@@ -101,8 +109,8 @@ pub enum TxAction {
     Redeem {},
 }
 
-/// Detailed transaction data
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+/// Rich transaction data used for TransactionHistory
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct RichTx {
     pub id: u64,
     pub action: TxAction,
@@ -116,6 +124,7 @@ pub struct RichTx {
 /// TransactionHistory response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TransactionHistory {
+    pub total: Option<u64>,
     pub txs: Vec<RichTx>,
 }
 
@@ -207,6 +216,31 @@ impl QueryMsg {
     }
 }
 
+/// enum used to screen for a ViewingKeyError response from an authenticated query
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AuthenticatedQueryResponse {
+    Allowance {
+        spender: HumanAddr,
+        owner: HumanAddr,
+        allowance: Uint128,
+        expiration: Option<u64>,
+    },
+    Balance {
+        amount: Uint128,
+    },
+    TransferHistory {
+        txs: Vec<Tx>,
+        total: Option<u64>,
+    },
+    TransactionHistory {
+        txs: Vec<RichTx>,
+        total: Option<u64>,
+    },
+    ViewingKeyError {
+        msg: String,
+    },
+}
 /// wrapper to deserialize TokenInfo response
 #[derive(Deserialize)]
 pub struct TokenInfoResponse {
@@ -229,30 +263,6 @@ pub struct ContractStatusResponse {
 #[derive(Deserialize)]
 pub struct ExchangeRateResponse {
     pub exchange_rate: ExchangeRate,
-}
-
-/// wrapper to deserialize Allowance response
-#[derive(Deserialize)]
-pub struct AllowanceResponse {
-    pub allowance: Allowance,
-}
-
-/// wrapper to deserialize Balance response
-#[derive(Deserialize)]
-pub struct BalanceResponse {
-    pub balance: Balance,
-}
-
-/// wrapper to deserialize TransferHistory response
-#[derive(Deserialize)]
-pub struct TransferHistoryResponse {
-    pub transfer_history: TransferHistory,
-}
-
-/// wrapper to deserialize TransactionHistory response
-#[derive(Deserialize)]
-pub struct TransactionHistoryResponse {
-    pub transaction_history: TransactionHistory,
 }
 
 /// wrapper to deserialize Minters response
@@ -313,8 +323,12 @@ pub fn contract_status_query<Q: Querier>(
     callback_code_hash: String,
     contract_addr: HumanAddr,
 ) -> StdResult<ContractStatus> {
-    let answer: ContractStatusResponse =
-        QueryMsg::ContractStatus {}.query(querier, block_size, callback_code_hash, contract_addr)?;
+    let answer: ContractStatusResponse = QueryMsg::ContractStatus {}.query(
+        querier,
+        block_size,
+        callback_code_hash,
+        contract_addr,
+    )?;
     Ok(answer.contract_status)
 }
 
@@ -358,13 +372,27 @@ pub fn allowance_query<Q: Querier>(
     callback_code_hash: String,
     contract_addr: HumanAddr,
 ) -> StdResult<Allowance> {
-    let answer: AllowanceResponse = QueryMsg::Allowance {
+    let answer: AuthenticatedQueryResponse = QueryMsg::Allowance {
         owner,
         spender,
         key,
     }
     .query(querier, block_size, callback_code_hash, contract_addr)?;
-    Ok(answer.allowance)
+    match answer {
+        AuthenticatedQueryResponse::Allowance {
+            spender,
+            owner,
+            allowance,
+            expiration,
+        } => Ok(Allowance {
+            spender,
+            owner,
+            allowance,
+            expiration,
+        }),
+        AuthenticatedQueryResponse::ViewingKeyError { .. } => Err(StdError::unauthorized()),
+        _ => Err(StdError::generic_err("Invalid Allowance query response")),
+    }
 }
 
 /// Returns a StdResult<Balance> from performing Balance query
@@ -385,13 +413,17 @@ pub fn balance_query<Q: Querier>(
     callback_code_hash: String,
     contract_addr: HumanAddr,
 ) -> StdResult<Balance> {
-    let answer: BalanceResponse = QueryMsg::Balance { address, key }.query(
+    let answer: AuthenticatedQueryResponse = QueryMsg::Balance { address, key }.query(
         querier,
         block_size,
         callback_code_hash,
         contract_addr,
     )?;
-    Ok(answer.balance)
+    match answer {
+        AuthenticatedQueryResponse::Balance { amount } => Ok(Balance { amount }),
+        AuthenticatedQueryResponse::ViewingKeyError { .. } => Err(StdError::unauthorized()),
+        _ => Err(StdError::generic_err("Invalid Balance query response")),
+    }
 }
 
 /// Returns a StdResult<TransferHistory> from performing TransferHistory query
@@ -417,14 +449,22 @@ pub fn transfer_history_query<Q: Querier>(
     callback_code_hash: String,
     contract_addr: HumanAddr,
 ) -> StdResult<TransferHistory> {
-    let answer: TransferHistoryResponse = QueryMsg::TransferHistory {
+    let answer: AuthenticatedQueryResponse = QueryMsg::TransferHistory {
         address,
         key,
         page,
         page_size,
     }
     .query(querier, block_size, callback_code_hash, contract_addr)?;
-    Ok(answer.transfer_history)
+    match answer {
+        AuthenticatedQueryResponse::TransferHistory { txs, total } => {
+            Ok(TransferHistory { txs, total })
+        }
+        AuthenticatedQueryResponse::ViewingKeyError { .. } => Err(StdError::unauthorized()),
+        _ => Err(StdError::generic_err(
+            "Invalid TransferHistory query response",
+        )),
+    }
 }
 
 /// Returns a StdResult<TransactionHistory> from performing TransactionHistory query
@@ -450,14 +490,22 @@ pub fn transaction_history_query<Q: Querier>(
     callback_code_hash: String,
     contract_addr: HumanAddr,
 ) -> StdResult<TransactionHistory> {
-    let answer: TransactionHistoryResponse = QueryMsg::TransactionHistory {
+    let answer: AuthenticatedQueryResponse = QueryMsg::TransactionHistory {
         address,
         key,
         page,
         page_size,
     }
-        .query(querier, block_size, callback_code_hash, contract_addr)?;
-    Ok(answer.transaction_history)
+    .query(querier, block_size, callback_code_hash, contract_addr)?;
+    match answer {
+        AuthenticatedQueryResponse::TransactionHistory { txs, total } => {
+            Ok(TransactionHistory { txs, total })
+        }
+        AuthenticatedQueryResponse::ViewingKeyError { .. } => Err(StdError::unauthorized()),
+        _ => Err(StdError::generic_err(
+            "Invalid TransactionHistory query response",
+        )),
+    }
 }
 
 /// Returns a StdResult<Minters> from performing Minters query
