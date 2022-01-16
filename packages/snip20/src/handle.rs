@@ -2,8 +2,10 @@ use serde::Serialize;
 
 use cosmwasm_std::{to_binary, Binary, Coin, CosmosMsg, HumanAddr, StdResult, Uint128, WasmMsg};
 
+use crate::batch::{
+    BurnFromAction, MintAction, SendAction, SendFromAction, TransferAction, TransferFromAction,
+};
 use secret_toolkit_utils::space_pad;
-use crate::{TransferFromAction, TransferAction, SendAction, SendFromAction, BurnFromAction, MintAction};
 
 /// SNIP20 token handle messages
 #[derive(Serialize, Clone, Debug, PartialEq)]
@@ -196,7 +198,7 @@ pub fn redeem_msg(
         denom,
         padding,
     }
-        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute Deposit
@@ -249,7 +251,7 @@ pub fn transfer_msg(
         memo,
         padding,
     }
-        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute Send
@@ -282,7 +284,7 @@ pub fn send_msg(
         memo,
         padding,
     }
-        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute BatchTransfer
@@ -349,18 +351,18 @@ pub fn burn_msg(
     callback_code_hash: String,
     contract_addr: HumanAddr,
 ) -> StdResult<CosmosMsg> {
-    HandleMsg::Burn { amount, memo, padding }.to_cosmos_msg(
-        block_size,
-        callback_code_hash,
-        contract_addr,
-        None,
-    )
+    HandleMsg::Burn {
+        amount,
+        memo,
+        padding,
+    }
+    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute CreateViewingKey
 ///
 /// # Arguments
-/// * `actions` - Batch of actions
+/// * `entropy` - Random bytes used to generate the viewing key
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being called
@@ -400,7 +402,7 @@ pub fn register_receive_msg(
         code_hash: your_contracts_code_hash,
         padding,
     }
-        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute SetViewingKey
@@ -453,7 +455,7 @@ pub fn increase_allowance_msg(
         expiration,
         padding,
     }
-        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute DecreaseAllowance
@@ -482,7 +484,7 @@ pub fn decrease_allowance_msg(
         expiration,
         padding,
     }
-        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute TransferFrom
@@ -514,7 +516,7 @@ pub fn transfer_from_msg(
         memo,
         padding,
     }
-        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute SendFrom
@@ -551,7 +553,7 @@ pub fn send_from_msg(
         memo,
         padding,
     }
-        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute BatchTransferFrom
@@ -623,7 +625,7 @@ pub fn burn_from_msg(
         amount,
         padding,
     }
-        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute BatchBurnFrom
@@ -672,7 +674,7 @@ pub fn mint_msg(
         amount,
         padding,
     }
-        .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute BatchMint
