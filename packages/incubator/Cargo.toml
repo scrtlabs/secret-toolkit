@@ -15,4 +15,4 @@ serde = "1.0"
 siphasher = "0.3.0"
 cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
 cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "0.10" }
-secret-toolkit-serialization = { path = "../serialization" }
+secret-toolkit-serialization = { version = "0.2", path = "../serialization" }
