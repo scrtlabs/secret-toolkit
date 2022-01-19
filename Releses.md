@@ -1,7 +1,7 @@
 # Release notes for the Secret Toolkit
 
 ## Next Release
-* TBD
+* Added `clear` method to `AppendStore` and `DequeStore` to quickly reset the collections (#34)
 
 ## v0.2.0
 This release includes a ton of new features, and a few breaking changes in various interfaces.

@@ -166,6 +166,11 @@ where
         }
     }
 
+    /// Clear the collection
+    pub fn clear(&mut self) {
+        self.set_length(0);
+    }
+
     /// Set the length of the collection
     fn set_length(&mut self, len: u32) {
         self.storage.set(LEN_KEY, &len.to_be_bytes());
