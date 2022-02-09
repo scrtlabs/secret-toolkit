@@ -10,6 +10,9 @@ description = "Various tools for writing Secret Contracts"
 categories = ["cryptography::cryptocurrencies", "wasm"]
 keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 secret-toolkit-crypto = { version = "0.2", path = "../crypto", optional = true }
 secret-toolkit-incubator = { version = "0.2", path = "../incubator", optional = true }

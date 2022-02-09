@@ -2,6 +2,7 @@
 
 ## Next Release
 * Added `clear` method to `AppendStore` and `DequeStore` to quickly reset the collections (#34)
+* docs.rs documentation now includes all sub-crates
 
 ## v0.2.0
 This release includes a ton of new features, and a few breaking changes in various interfaces.
