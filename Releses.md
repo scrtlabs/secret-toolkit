@@ -3,6 +3,8 @@
 ## Next Release
 * Added `clear` method to `AppendStore` and `DequeStore` to quickly reset the collections (#34)
 * docs.rs documentation now includes all sub-crates
+* Implemented `rand_core::RngCore` for `secret_toolkit::crypto::Prng`
+* Added `generate` method to `PrivateKey` to generate a keying using a RNG
 
 ## v0.2.0
 This release includes a ton of new features, and a few breaking changes in various interfaces.
