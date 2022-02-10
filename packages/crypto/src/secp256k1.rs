@@ -1,3 +1,4 @@
+use rand_core::RngCore;
 pub use secp256k1::util::{MESSAGE_SIZE, SIGNATURE_SIZE};
 
 use cosmwasm_std::StdError;
@@ -23,6 +24,11 @@ impl PrivateKey {
         secp256k1::SecretKey::parse(raw)
             .map(|key| PrivateKey { inner: key })
             .map_err(|err| StdError::generic_err(format!("Error parsing PrivateKey: {}", err)))
+    }
+
+    pub fn generate<R: RngCore>(rng: &mut R) -> PrivateKey {
+        let inner = secp256k1::SecretKey::random(rng);
+        PrivateKey { inner }
     }
 
     pub fn serialize(&self) -> [u8; PRIVATE_KEY_SIZE] {
@@ -85,7 +91,7 @@ impl Signature {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sha_256;
+    use crate::{sha_256, Prng};
     use secp256k1_test::{rand::thread_rng, Secp256k1};
 
     #[test]
@@ -118,5 +124,16 @@ mod tests {
 
         let pubkey = pk.pubkey();
         assert!(pubkey.verify(&data, signature));
+    }
+
+    #[test]
+    fn test_gen_privkey_prng() {
+        let mut prng = Prng::new(b"seed", b"totaly_random_entropy");
+        let deterministic_privk_bytes = [
+            231, 69, 203, 68, 12, 68, 1, 65, 112, 124, 211, 125, 255, 27, 232, 141, 172, 221, 75,
+            35, 83, 175, 8, 34, 15, 213, 110, 92, 215, 144, 20, 210,
+        ];
+        let privk = PrivateKey::generate(&mut prng);
+        assert_eq!(deterministic_privk_bytes, privk.serialize());
     }
 }
