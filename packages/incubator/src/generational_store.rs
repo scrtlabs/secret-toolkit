@@ -1,22 +1,22 @@
-//! A "generational index store" is a storage wrapper for a generational index, which allows for constant time insert and 
+//! A "generational index store" is a storage wrapper for a generational index, which allows for constant time insert and
 //! removal of arbitrary entries in a list. In this case an appendstore will not be suitable because it will mess up the indexes
 //! of all entries that follow the one that was deleted. Each get from the store requires a tuple of (index, generation), where
 //! generation is a monotonically increasing value that records the generation of the current data value at that index.
-//! 
+//!
 //! Generational indexes are commonly used in Entity Component System architectures for game development, but can be used in
-//! other situations. It is a useful data structure for adding or deleting nodes from a graph in constant time; for example, 
+//! other situations. It is a useful data structure for adding or deleting nodes from a graph in constant time; for example,
 //! if you are building a social network application and want to record follower relationships.
-//! 
+//!
 //! Unlike an appendstore, the order of iteration over the entries is not specified.
 //!
-//! The implementation was inspired by the [generational arena repository](https://github.com/fitzgen/generational-arena), 
+//! The implementation was inspired by the [generational arena repository](https://github.com/fitzgen/generational-arena),
 //! which in turn was inspired by [Catherine West's closing keynote at RustConf 2018](https://www.youtube.com/watch?v=aKLntZcp27M).
-//! 
+//!
 
 use std::convert::TryInto;
 use std::marker::PhantomData;
 
-use serde::{de::DeserializeOwned, Serialize, Deserialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
 
@@ -29,7 +29,7 @@ const CAPACITY_KEY: &[u8] = b"cap";
 const FREE_ENTRY: u8 = 0x00;
 const OCCUPIED_ENTRY: u8 = 0x01;
 
-#[derive(Serialize, Clone, Debug, PartialEq, Eq, PartialOrd)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd)]
 pub struct Index {
     index: u32,
     generation: u64,
@@ -132,18 +132,20 @@ where
     ///
     /// Returns Err if the contents of the storage can not be parsed.
     pub fn attach_or_create_with_serialization(storage: &'a mut S, _ser: Ser) -> StdResult<Self> {
-        let len_vec_wrapped = storage.get(LEN_KEY);
-        let generation_vec_wrapped = storage.get(GENERATION_KEY);
-        let free_list_head_vec_wrapped = storage.get(FREE_LIST_HEAD_KEY);
-        let capacity_vec_wrapped = storage.get(CAPACITY_KEY);
-        if len_vec_wrapped.is_some() && generation_vec_wrapped.is_some() && 
-           free_list_head_vec_wrapped.is_some() && capacity_vec_wrapped.is_some() {
+        let len_vec = storage.get(LEN_KEY);
+        let generation_vec = storage.get(GENERATION_KEY);
+        let free_list_head_vec = storage.get(FREE_LIST_HEAD_KEY);
+        let capacity_vec = storage.get(CAPACITY_KEY);
+
+        if let (Some(len_vec), Some(generation_vec), Some(free_list_head_vec), Some(capacity_vec)) =
+            (len_vec, generation_vec, free_list_head_vec, capacity_vec)
+        {
             Self::new(
-                storage, 
-                &len_vec_wrapped.unwrap(), 
-                &generation_vec_wrapped.unwrap(), 
-                &free_list_head_vec_wrapped.unwrap(),
-                &capacity_vec_wrapped.unwrap(),
+                storage,
+                &len_vec,
+                &generation_vec,
+                &free_list_head_vec,
+                &capacity_vec,
             )
         } else {
             let len_vec = 0_u32.to_be_bytes();
@@ -155,7 +157,13 @@ where
             let capacity_vec = 0_u32.to_be_bytes();
             storage.set(CAPACITY_KEY, &capacity_vec);
 
-            Self::new(storage, &len_vec, &generation_vec, &free_list_head_vec, &capacity_vec)
+            Self::new(
+                storage,
+                &len_vec,
+                &generation_vec,
+                &free_list_head_vec,
+                &capacity_vec,
+            )
         }
     }
 
@@ -169,13 +177,19 @@ where
         let generation_vec = storage.get(GENERATION_KEY)?;
         let free_list_head_vec = storage.get(FREE_LIST_HEAD_KEY)?;
         let capacity_vec = storage.get(CAPACITY_KEY)?;
-        Some(Self::new(storage, &len_vec, &generation_vec, &free_list_head_vec, &capacity_vec))
+        Some(Self::new(
+            storage,
+            &len_vec,
+            &generation_vec,
+            &free_list_head_vec,
+            &capacity_vec,
+        ))
     }
 
     fn new(
-        storage: &'a mut S, 
-        len_vec: &[u8], 
-        generation_vec: &[u8], 
+        storage: &'a mut S,
+        len_vec: &[u8],
+        generation_vec: &[u8],
         free_list_head_vec: &[u8],
         capacity_vec: &[u8],
     ) -> StdResult<Self> {
@@ -216,7 +230,7 @@ where
             Err(value) => {
                 // add new to end
                 self.insert_slow_path(value).ok().unwrap()
-            },
+            }
         }
     }
 
@@ -231,16 +245,17 @@ where
                 let result = self.set_at_unchecked(index.index, &new_entry);
                 match result {
                     Ok(_) => {
-                        if index.index >= self.capacity { 
+                        if index.index >= self.capacity {
                             // for iter
                             self.set_capacity(index.index + 1);
                         }
                         Ok(index)
-                    },
-                    Err(_) => { panic!("error serializing new entry in generational index store") }
+                    }
+                    Err(_) => {
+                        panic!("error serializing new entry in generational index store")
+                    }
                 }
-
-            },
+            }
         }
     }
 
@@ -248,17 +263,15 @@ where
         let i = self.as_readonly().get_at_unchecked(self.free_list_head);
         let old_free_list_head = self.free_list_head;
         match i {
-            Ok(i) => {
-                match i {
-                    Entry::Occupied { .. } => panic!("corrupt free list"),
-                    Entry::Free { next_free } => {
-                        self.set_free_list_head(next_free);
-                        self.set_length(self.len + 1);
-                        Some(Index {
-                            index: old_free_list_head,
-                            generation: self.generation,
-                        })
-                    }
+            Ok(i) => match i {
+                Entry::Occupied { .. } => panic!("corrupt free list"),
+                Entry::Free { next_free } => {
+                    self.set_free_list_head(next_free);
+                    self.set_length(self.len + 1);
+                    Some(Index {
+                        index: old_free_list_head,
+                        generation: self.generation,
+                    })
                 }
             },
             _ => None,
@@ -272,7 +285,8 @@ where
             next_free: self.free_list_head,
         };
         self.set_at_unchecked(start, &entry)?;
-        let index = self.try_insert(value)
+        let index = self
+            .try_insert(value)
             .map_err(|_| ())
             .expect("inserting should always succeed");
         self.set_free_list_head(self.capacity);
@@ -285,15 +299,24 @@ where
             Ok(entry) => match entry {
                 Entry::Occupied { generation, .. } if i.generation == generation => {
                     let value = self.get(i.clone());
-                    self.set_at_unchecked(i.index, &Entry::Free { next_free: self.free_list_head })?;
+                    self.set_at_unchecked(
+                        i.index,
+                        &Entry::Free {
+                            next_free: self.free_list_head,
+                        },
+                    )?;
                     self.set_generation(self.generation + 1);
                     self.set_free_list_head(i.index);
                     self.set_length(self.len - 1);
                     Ok(value)
-                },
-                _ => Err(StdError::generic_err("cannot remove an entry from generational store that does not exist")),
+                }
+                _ => Err(StdError::generic_err(
+                    "cannot remove an entry from generational store that does not exist",
+                )),
             },
-            _ => Err(StdError::generic_err("cannot remove an entry from generational store that does not exist")),
+            _ => Err(StdError::generic_err(
+                "cannot remove an entry from generational store that does not exist",
+            )),
         }
     }
 
@@ -304,15 +327,19 @@ where
             Ok(entry) => match entry {
                 Entry::Occupied { generation, value } if i.generation == generation => {
                     let new_entry = Entry::Occupied {
-                        generation, 
-                        value: new_value
+                        generation,
+                        value: new_value,
                     };
                     self.set_at_unchecked(i.index, &new_entry)?;
                     Ok(Some(value))
-                },
-                _ => Err(StdError::generic_err("cannot update an entry from generational store that does not exist")),
+                }
+                _ => Err(StdError::generic_err(
+                    "cannot update an entry from generational store that does not exist",
+                )),
             },
-            _ => Err(StdError::generic_err("cannot update an entry from generational store that does not exist")),
+            _ => Err(StdError::generic_err(
+                "cannot update an entry from generational store that does not exist",
+            )),
         }
     }
 
@@ -362,17 +389,17 @@ where
     fn set_at_unchecked(&mut self, pos: u32, item: &Entry<T>) -> StdResult<()> {
         match item {
             Entry::Free { next_free } => {
-                let stored_free_entry = StoredFreeEntry { 
+                let stored_free_entry = StoredFreeEntry {
                     next_free: *next_free,
                 };
                 let serialized = Ser::serialize(&stored_free_entry)?;
                 let mut kind_plus_serialized: Vec<u8> = vec![FREE_ENTRY];
                 kind_plus_serialized.extend(serialized);
                 self.storage.set(&pos.to_be_bytes(), &kind_plus_serialized);
-            },
+            }
             Entry::Occupied { generation, value } => {
-                let stored_occupied_entry = StoredOccupiedEntry { 
-                    generation: *generation, 
+                let stored_occupied_entry = StoredOccupiedEntry {
+                    generation: *generation,
                     value,
                 };
                 let serialized = Ser::serialize(&stored_occupied_entry)?;
@@ -392,7 +419,8 @@ where
 
     /// Set the free list head of the generational index
     fn set_free_list_head(&mut self, free_list_head: u32) {
-        self.storage.set(FREE_LIST_HEAD_KEY, &free_list_head.to_be_bytes());
+        self.storage
+            .set(FREE_LIST_HEAD_KEY, &free_list_head.to_be_bytes());
         self.free_list_head = free_list_head;
     }
 
@@ -471,12 +499,18 @@ where
         let generation_vec = storage.get(GENERATION_KEY)?;
         let free_list_head_vec = storage.get(FREE_LIST_HEAD_KEY)?;
         let capacity_vec = storage.get(CAPACITY_KEY)?;
-        Some(GenerationalStore::new(storage, len_vec, generation_vec, free_list_head_vec, capacity_vec))
+        Some(GenerationalStore::new(
+            storage,
+            len_vec,
+            generation_vec,
+            free_list_head_vec,
+            capacity_vec,
+        ))
     }
 
     fn new(
-        storage: &'a S, 
-        len_vec: Vec<u8>, 
+        storage: &'a S,
+        len_vec: Vec<u8>,
         generation_vec: Vec<u8>,
         free_list_head_vec: Vec<u8>,
         capacity_vec: Vec<u8>,
@@ -550,43 +584,50 @@ where
         let kind_plus_serialized = self.storage.get(&pos.to_be_bytes()).ok_or_else(|| {
             StdError::generic_err(format!("No item in generational store at position {}", pos))
         })?;
-        if kind_plus_serialized.len() < 1 {
+        if kind_plus_serialized.is_empty() {
             return Err(StdError::generic_err("Invalid data in generational store"));
         }
-        match kind_plus_serialized[0] { // check first byte to see what kind of entry it is
-            FREE_ENTRY => { // free entry
-                let result: StdResult<StoredFreeEntry> = Ser::deserialize(&kind_plus_serialized[1..]);
+        match kind_plus_serialized[0] {
+            // check first byte to see what kind of entry it is
+            FREE_ENTRY => {
+                // free entry
+                let result: StdResult<StoredFreeEntry> =
+                    Ser::deserialize(&kind_plus_serialized[1..]);
                 match result {
-                    Ok(result) => {
-                        Ok(Entry::Free { next_free: result.next_free })
-                    },
-                    Err(_) => Err(StdError::generic_err("error deserializing free entry from generational store")),
-                }
-            },
-            OCCUPIED_ENTRY => { // occupied entry
-                let result: StdResult<StoredOccupiedEntry<T>> = Ser::deserialize(&kind_plus_serialized[1..]);
-                match result {
-                    Ok(result) => {
-                        Ok(Entry::Occupied { generation: result.generation, value: result.value })
-                    },
-                    Err(_) => Err(StdError::generic_err("error deserializing occupied entry from generational store")),
+                    Ok(result) => Ok(Entry::Free {
+                        next_free: result.next_free,
+                    }),
+                    Err(_) => Err(StdError::generic_err(
+                        "error deserializing free entry from generational store",
+                    )),
                 }
             }
-            _ => Err(StdError::generic_err("invalid entry kind in generational store"))
+            OCCUPIED_ENTRY => {
+                // occupied entry
+                let result: StdResult<StoredOccupiedEntry<T>> =
+                    Ser::deserialize(&kind_plus_serialized[1..]);
+                match result {
+                    Ok(result) => Ok(Entry::Occupied {
+                        generation: result.generation,
+                        value: result.value,
+                    }),
+                    Err(_) => Err(StdError::generic_err(
+                        "error deserializing occupied entry from generational store",
+                    )),
+                }
+            }
+            _ => Err(StdError::generic_err(
+                "invalid entry kind in generational store",
+            )),
         }
     }
 
     pub fn get(&self, i: Index) -> Option<T> {
         let item = self.get_at_unchecked(i.index);
         match item {
-            Ok(item) => {
-                match item {
-                    Entry::Occupied {
-                        generation,
-                        value,
-                    } if generation == i.generation => Some(value),
-                    _ => None,
-                }
+            Ok(item) => match item {
+                Entry::Occupied { generation, value } if generation == i.generation => Some(value),
+                _ => None,
             },
             _ => None,
         }
@@ -595,7 +636,6 @@ where
     pub fn contains(&self, i: Index) -> bool {
         self.get(i).is_some()
     }
-
 }
 
 impl<'a, T, S, Ser> IntoIterator for GenerationalStore<'a, T, S, Ser>
@@ -630,7 +670,7 @@ where
 {
     fn clone(&self) -> Self {
         Self {
-            storage: &self.storage,
+            storage: self.storage,
             item_type: self.item_type,
             serialization_type: self.serialization_type,
             len: self.len,
@@ -670,23 +710,18 @@ where
         }
         let item = self.storage.get_at(self.start);
         match item {
-            Ok(entry) => {
-                match entry {
-                    Entry::Free { .. } => {
-                        self.start += 1;
-                        Some((
-                            None,
-                            entry
-                        ))
-                    },
-                    Entry::Occupied {generation, ..} => {
-                        let index = Index {
-                            index: self.start,
-                            generation,
-                        };
-                        self.start += 1;
-                        return Some((Some(index), entry))
-                    }
+            Ok(entry) => match entry {
+                Entry::Free { .. } => {
+                    self.start += 1;
+                    Some((None, entry))
+                }
+                Entry::Occupied { generation, .. } => {
+                    let index = Index {
+                        index: self.start,
+                        generation,
+                    };
+                    self.start += 1;
+                    Some((Some(index), entry))
                 }
             },
             Err(_) => None,
@@ -763,21 +798,14 @@ where
         self.end -= 1;
         let item = self.storage.get_at(self.end);
         match item {
-            Ok(entry) => {
-                match entry {
-                    Entry::Free { .. } => {
-                        Some((
-                            None,
-                            entry
-                        ))
-                    },
-                    Entry::Occupied {generation, ..} => {
-                        let index = Index {
-                            index: self.start,
-                            generation,
-                        };
-                        Some((Some(index), entry))
-                    }
+            Ok(entry) => match entry {
+                Entry::Free { .. } => Some((None, entry)),
+                Entry::Occupied { generation, .. } => {
+                    let index = Index {
+                        index: self.start,
+                        generation,
+                    };
+                    Some((Some(index), entry))
                 }
             },
             Err(_) => None,
@@ -809,8 +837,6 @@ where
 mod tests {
     use cosmwasm_std::testing::MockStorage;
 
-    use secret_toolkit_serialization::Json;
-
     use super::*;
 
     #[test]
@@ -828,7 +854,13 @@ mod tests {
         assert_eq!(gen_store.get(delta), Some(String::from("Delta")));
 
         assert_eq!(gen_store.len(), 4_u32);
-        assert_eq!(gen_store.get(Index { index: 1, generation: 2 } ), None);
+        assert_eq!(
+            gen_store.get(Index {
+                index: 1,
+                generation: 2
+            }),
+            None
+        );
 
         Ok(())
     }
@@ -842,7 +874,10 @@ mod tests {
         let gamma = gen_store.insert(String::from("Gamma"));
 
         assert_eq!(gen_store.len(), 3_u32);
-        assert_eq!(gen_store.remove(beta.clone()), Ok(Some(String::from("Beta"))));
+        assert_eq!(
+            gen_store.remove(beta.clone()),
+            Ok(Some(String::from("Beta")))
+        );
         assert_eq!(gen_store.len(), 2_u32);
         assert_eq!(gen_store.get(alpha), Some(String::from("Alpha")));
         assert_eq!(gen_store.get(beta.clone()), None);
@@ -851,9 +886,21 @@ mod tests {
         let delta = gen_store.insert(String::from("Delta"));
         assert_eq!(gen_store.get(delta.clone()), Some(String::from("Delta")));
         // check that the generation has updated
-        assert_ne!(delta.clone(), Index{ index: 1, generation: 0 });
+        assert_ne!(
+            delta.clone(),
+            Index {
+                index: 1,
+                generation: 0
+            }
+        );
         // delta has filled the slot where beta was but generation is now 1
-        assert_eq!(delta, Index{ index: 1, generation: 1 });
+        assert_eq!(
+            delta,
+            Index {
+                index: 1,
+                generation: 1
+            }
+        );
 
         // cannot remove twice
         assert!(gen_store.remove(beta).is_err());
@@ -895,7 +942,9 @@ mod tests {
         assert_eq!(gen_store.len(), 3);
         // but iterator count is still 4
         assert_eq!(gen_store.iter().count(), 4);
-        let iter = gen_store.iter().filter(|item| matches!(item, (_, Entry::Occupied { .. })));
+        let iter = gen_store
+            .iter()
+            .filter(|item| matches!(item, (_, Entry::Occupied { .. })));
         // when we filter iter on only occupied, we get 3
         assert_eq!(iter.count(), 3);
 

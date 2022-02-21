@@ -1,10 +1,17 @@
 [package]
 name = "secret-toolkit-snip721"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
+authors = ["SCRT Labs <info@scrtlabs.com>"]
+license-file = "../../LICENSE"
+repository = "https://github.com/scrtlabs/secret-toolkit"
+readme = "Readme.md"
+description = "Boilerplate for using SNIP-20 contracts on Secret Network"
+categories = ["cryptography::cryptocurrencies", "wasm"]
+keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 
 [dependencies]
 serde = "1.0"
-cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.2.3" }
-secret-toolkit-utils = { path = "../utils" }
 schemars = "0.7"
+cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
+secret-toolkit-utils = { version = "0.2", path = "../utils" }

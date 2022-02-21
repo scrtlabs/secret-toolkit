@@ -97,6 +97,12 @@ impl Fee {
     }
 }
 
+impl Default for Fee {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // Note: The order of fields in this struct is important for the permit signature verification!
 #[remain::sorted]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -112,6 +118,12 @@ impl Coin {
             amount: Uint128::zero(),
             denom: "uscrt".to_string(),
         }
+    }
+}
+
+impl Default for Coin {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

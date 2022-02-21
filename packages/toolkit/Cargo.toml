@@ -1,14 +1,36 @@
 [package]
 name = "secret-toolkit"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
+authors = ["SCRT Labs <info@scrtlabs.com>"]
+license-file = "../../LICENSE"
+repository = "https://github.com/scrtlabs/secret-toolkit"
+readme = "../../Readme.md"
+description = "Various tools for writing Secret Contracts"
+categories = ["cryptography::cryptocurrencies", "wasm"]
+keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = ["serialization", "snip20", "snip721", "storage", "utils"]
+
+crypto = ["secret-toolkit-crypto"] # Not in default features because this is slow to compile
+incubator = ["secret-toolkit-incubator", "serialization"] # Should never be in default features!
+permit = ["secret-toolkit-permit", "crypto", "utils"] # Not in default features because it requires "crypto"
+serialization = ["secret-toolkit-serialization"]
+snip20 = ["secret-toolkit-snip20", "utils"]
+snip721 = ["secret-toolkit-snip721", "utils"]
+storage = ["secret-toolkit-storage", "serialization"]
+utils = ["secret-toolkit-utils"]
 
 [dependencies]
-secret-toolkit-crypto = { path = "../crypto" }
-secret-toolkit-serialization = { path = "../serialization" }
-secret-toolkit-incubator = { path = "../incubator" }
-secret-toolkit-storage = { path = "../storage" }
-secret-toolkit-utils = { path = "../utils" }
-secret-toolkit-snip20 = { path = "../snip20" }
-secret-toolkit-snip721 = { path = "../snip721" }
-secret-toolkit-permit = { path = "../permit" }
+secret-toolkit-crypto = { version = "0.2", path = "../crypto", optional = true }
+secret-toolkit-incubator = { version = "0.2", path = "../incubator", optional = true }
+secret-toolkit-permit = { version = "0.2", path = "../permit", optional = true }
+secret-toolkit-serialization = { version = "0.2", path = "../serialization", optional = true }
+secret-toolkit-snip20 = { version = "0.2", path = "../snip20", optional = true }
+secret-toolkit-snip721 = { version = "0.2", path = "../snip721", optional = true }
+secret-toolkit-storage = { version = "0.2", path = "../storage", optional = true }
+secret-toolkit-utils = { version = "0.2", path = "../utils", optional = true }

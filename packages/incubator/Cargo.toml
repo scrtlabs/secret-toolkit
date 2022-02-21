@@ -1,11 +1,18 @@
 [package]
 name = "secret-toolkit-incubator"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
+authors = ["SCRT Labs <info@scrtlabs.com>"]
+license-file = "../../LICENSE"
+repository = "https://github.com/scrtlabs/secret-toolkit"
+readme = "Readme.md"
+description = "Experimental tools for writing Secret Contracts"
+categories = ["cryptography::cryptocurrencies", "wasm"]
+keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 
 [dependencies]
 serde = "1.0"
 siphasher = "0.3.0"
-cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.2.3" }
-cosmwasm-storage = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.2.3" }
-secret-toolkit-serialization = { path = "../serialization" }
+cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
+cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "0.10" }
+secret-toolkit-serialization = { version = "0.2", path = "../serialization" }

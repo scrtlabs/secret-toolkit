@@ -217,7 +217,9 @@ pub struct Tx {
     /// tx id
     pub tx_id: u64,
     /// the block containing this tx
-    pub blockheight: u64,
+    pub block_height: u64,
+    /// the time (in seconds since 01/01/1970) of the block containing this tx
+    pub block_time: u64,
     /// token id
     pub token_id: String,
     /// tx type and specifics
@@ -232,6 +234,9 @@ pub struct Tx {
 /// chronological order
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TransactionHistory {
+    /// total transaction count
+    pub total: u64,
+    /// list of transactions
     pub txs: Vec<Tx>,
 }
 
@@ -1967,10 +1972,12 @@ mod tests {
 
                 let response = TransactionHistoryResponse {
                     transaction_history: TransactionHistory {
+                        total: 3,
                         txs: vec![
                             Tx {
                                 tx_id: 103,
-                                blockheight: 2000000,
+                                block_height: 2000000,
+                                block_time: 2000000000,
                                 token_id: "NFT3".to_string(),
                                 action: TxAction::Burn {
                                     owner: HumanAddr("alice".to_string()),
@@ -1980,7 +1987,8 @@ mod tests {
                             },
                             Tx {
                                 tx_id: 99,
-                                blockheight: 1900000,
+                                block_height: 1900000,
+                                block_time: 1900000000,
                                 token_id: "NFT2".to_string(),
                                 action: TxAction::Transfer {
                                     from: HumanAddr("alice".to_string()),
@@ -1991,7 +1999,8 @@ mod tests {
                             },
                             Tx {
                                 tx_id: 93,
-                                blockheight: 1800000,
+                                block_height: 1800000,
+                                block_time: 1800000000,
                                 token_id: "NFT1".to_string(),
                                 action: TxAction::Mint {
                                     minter: HumanAddr("admin".to_string()),
@@ -2016,10 +2025,12 @@ mod tests {
         let page_size = None;
 
         let expected_response = TransactionHistory {
+            total: 3,
             txs: vec![
                 Tx {
                     tx_id: 103,
-                    blockheight: 2000000,
+                    block_height: 2000000,
+                    block_time: 2000000000,
                     token_id: "NFT3".to_string(),
                     action: TxAction::Burn {
                         owner: HumanAddr("alice".to_string()),
@@ -2029,7 +2040,8 @@ mod tests {
                 },
                 Tx {
                     tx_id: 99,
-                    blockheight: 1900000,
+                    block_height: 1900000,
+                    block_time: 1900000000,
                     token_id: "NFT2".to_string(),
                     action: TxAction::Transfer {
                         from: HumanAddr("alice".to_string()),
@@ -2040,7 +2052,8 @@ mod tests {
                 },
                 Tx {
                     tx_id: 93,
-                    blockheight: 1800000,
+                    block_height: 1800000,
+                    block_time: 1800000000,
                     token_id: "NFT1".to_string(),
                     action: TxAction::Mint {
                         minter: HumanAddr("admin".to_string()),

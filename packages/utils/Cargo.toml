@@ -1,9 +1,16 @@
 [package]
 name = "secret-toolkit-utils"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
+authors = ["SCRT Labs <info@scrtlabs.com>"]
+license-file = "../../LICENSE"
+repository = "https://github.com/scrtlabs/secret-toolkit"
+readme = "Readme.md"
+description = "General utilities for Secret Contracts"
+categories = ["cryptography::cryptocurrencies", "wasm"]
+keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 
 [dependencies]
 serde = "1.0"
 schemars = "0.7"
-cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.2.3" }
+cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
