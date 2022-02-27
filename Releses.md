@@ -5,6 +5,7 @@
 * docs.rs documentation now includes all sub-crates
 * BUGFIX: `secret-toolkit::snip721::Metadata` was severely out of date with the SNIP-721 specification, and not useful.
   It is now compatible with deployed SNIP-721 contracts.
+* Added `types` package, to standardize often used types.
 
 ## v0.2.0
 This release includes a ton of new features, and a few breaking changes in various interfaces.
