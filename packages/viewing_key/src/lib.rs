@@ -32,7 +32,7 @@ pub trait ViewingKeyStore {
     fn set_seed<S: Storage>(storage: &mut S, seed: &[u8]) {
         let mut seed_key = Vec::new();
         seed_key.extend_from_slice(Self::STORAGE_KEY);
-        seed_key.extend_from_slice(b"::seed");
+        seed_key.extend_from_slice(SEED_KEY);
 
         storage.set(&seed_key, seed)
     }
