@@ -3,8 +3,12 @@
 ⚠️ This package is a sub-package of the `secret-toolkit` package. Please see its crate page for more context.
 
 This package contains various uncategorized tools. It should be thought of
-as the shed in your back yard where you put the stuff that doesn't belong
+as the shed in your backyard where you put the stuff that doesn't belong
 elsewhere. There isn't an overarching theme for the items in this package.
+
+# Table of Contents
+1. [Calls module](#calls-module)
+2. [Feature Toggle module](#feature-toggle)
 
 ## Calls module
 This module contains traits used to call another contract.  Do not forget to add the `use` statement for the traits you want.
@@ -127,3 +131,135 @@ let count_response: CountResponse = get_count.query(
 )?;
 ```
 You create an instance of the CounterQueryMsg::GetCount variant, and call its `query` function, returning its value to a variable of the response type.  If you were doing a token_info query, you would write `let token_info_resp: TokenInfoResponse = ...`.  You MUST use explicit type annotation here.
+
+## Feature Toggle
+
+This module implements feature toggles for your contract. The main motivation behind it is to enable pausing/resuming certain operations rather than stopping/resuming the contract entirely, while providing you with helper functions that will reduce your code to a minimum.
+
+The feature toggles are designed to be flexible, so you can choose whether to put entire messages under a toggle or just certain code sections, etc.
+
+### Initializing Features
+
+Normally you'd want to initialize the features in the `init()` function:
+```rust
+pub fn init<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    msg: InitMsg,
+) -> StdResult<InitResponse> {
+    FeatureToggle::init_features(
+        &mut deps.storage,
+        vec![
+            "Feature1".to_string(),
+            "Feature2".to_string(),
+        ],
+        Some(vec![FeatureStatus::Resumed, // `None` will default to `FeatureStatus::Resumed` for all features
+                  FeatureStatus::Resumed]),
+        vec![env.message.sender], // Can put more than one pauser
+    )?;
+}
+```
+
+### Put a toggle on a message
+
+Putting a toggle on a message (or any code section of your choosing) is as easy as calling `FeatureToggle::require_resumed()`. For example if we have a `Redeem` message in our contract, and we initialized the feature as `"Redeem"`:
+```rust
+fn redeem<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    amount: Option<u128>,
+) -> StdResult<HandleResponse> {
+    FeatureToggle::require_resumed(
+        &deps.storage,
+        vec!["Redeem".to_string()], // you can require more than one toggle here
+    )?;
+    
+    // Continue with function's operation
+}
+```
+If the status of the `"Redeem"` feature is `Stopped`, the contract will error out and stop operation.
+
+### Stop/resume a feature
+
+Firstly, we will need to add `Stop` and `Resume` messages in out `HandleMsg` enum. We can simply use `FeatureToggle::FeatureToggleMsg` - it's an enum that contains default messages that `FeatureToggle` also has default implementation for:
+```rust
+pub enum HandleMsg {
+    // Contract messages
+    Redeem {
+        amount: Option<Uint128>,
+    },
+
+    // Feature toggle
+    Features(FeatureToggleMsg),
+}
+```
+
+The `FeatureToggle` struct contains a default implementation for triggering (stopping/resuming) a feature, so you can just call it from your `handle()` function:
+```rust
+pub fn handle<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    msg: HandleMsg,
+) -> StdResult<HandleResponse> {
+    match msg {
+        HandleMsg::Redeem { amount } => redeem(deps, env, amount),
+        HandleMsg::Features(m) => match m {
+            FeatureToggleMsg::Stop { features } => FeatureToggle::stop(deps, env, features),
+            FeatureToggleMsg::Resume { features } => FeatureToggle::resume(deps, env, features),
+        },
+    }
+}
+```
+
+Note: `FeatureToggle::stop()` and `FeatureToggle::resume()` requires `env.message.sender` to be a pauser!
+
+### Adding/removing pausers
+
+Similarly to the section above, add `FeatureToggleMsg` to your `HandleMsg`.
+
+Note: you should only add `Features(FeatureToggleMsg)` to the `HandleMsg` enum once, and it'll add all the supported messages.
+
+`FeatureToggle` provides with default implementation for these too, but you can wrap it with your own logic like requiring the caller to be admin, etc.:
+```rust
+pub fn handle<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    msg: HandleMsg,
+) -> StdResult<HandleResponse> {
+    // This is the same `match` clause from the section above
+    match msg {
+        HandleMsg::Redeem { amount } => redeem(deps, env, amount),
+        HandleMsg::Features(m) => match m {
+            // `Stop` and `Resume` go here too
+            FeatureToggleMsg::SetPauser { address } => set_pauser(deps, env, address),
+            FeatureToggleMsg::RemovePauser { address } => remove_pauser(deps, env, address),
+        },
+    }
+}
+
+fn set_pauser<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    address: HumanAddr,
+) -> StdResult<HandleResponse> {
+    let admin = get_admin()?;
+    if admin != env.message.sender {
+        return Err(StdError::unauthorized());
+    }
+
+    FeatureToggle::set_pauser(deps, env, address)
+}
+
+fn remove_pauser<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    address: HumanAddr,
+) -> StdResult<HandleResponse> {
+    let admin = get_admin()?;
+    if admin != env.message.sender {
+        return Err(StdError::unauthorized());
+    }
+
+    FeatureToggle::remove_pauser(deps, env, address)
+}
+```
