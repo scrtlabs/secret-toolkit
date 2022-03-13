@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    to_binary, Api, Env, Extern, HandleResponse, HumanAddr, Querier, ReadonlyStorage, StdError,
-    StdResult, Storage,
+    to_binary, Api, Env, Extern, HandleResponse, HumanAddr, Querier, QueryResult, ReadonlyStorage,
+    StdError, StdResult, Storage,
 };
 use cosmwasm_storage::{Bucket, ReadonlyBucket};
 use schemars::JsonSchema;
@@ -186,9 +186,41 @@ impl FeatureToggle {
             Bucket::multilevel(&[PREFIX_FEATURE_TOGGLE, PREFIX_FEATURES], storage);
         feature_store.save(key.as_bytes(), &item)
     }
+
+    pub fn status<S: Storage, A: Api, Q: Querier>(
+        deps: &Extern<S, A, Q>,
+        features: Vec<String>,
+    ) -> QueryResult {
+        let mut status = vec![];
+        for f in features {
+            match Self::get_feature_status(&deps.storage, f.clone())? {
+                None => {
+                    return Err(StdError::generic_err(format!(
+                        "invalid feature: {} does not exist",
+                        f
+                    )))
+                }
+                Some(s) => status.push(_FeatureStatus {
+                    feature: f,
+                    status: s,
+                }),
+            }
+        }
+
+        to_binary(&FeatureToggleQueryAnswer::Status { features: status })
+    }
+
+    pub fn is_pauser<S: Storage, A: Api, Q: Querier>(
+        deps: &Extern<S, A, Q>,
+        address: HumanAddr,
+    ) -> QueryResult {
+        let is_pauser = Self::_get_pauser(&deps.storage, address)?.is_some();
+
+        to_binary(&FeatureToggleQueryAnswer::IsPauser { is_pauser })
+    }
 }
 
-#[derive(Serialize, Debug, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Debug, Deserialize, Clone, JsonSchema, PartialEq)]
 pub enum FeatureStatus {
     Resumed,
     Stopped,
@@ -223,6 +255,26 @@ enum HandleAnswer {
     Resume { status: ResponseStatus },
     SetPauser { status: ResponseStatus },
     RemovePauser { status: ResponseStatus },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum FeatureToggleQuery {
+    Status {},
+    IsPauser { address: HumanAddr },
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+enum FeatureToggleQueryAnswer {
+    Status { features: Vec<_FeatureStatus> },
+    IsPauser { is_pauser: bool },
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug)]
+struct _FeatureStatus {
+    feature: String,
+    status: FeatureStatus,
 }
 
 #[cfg(test)]
