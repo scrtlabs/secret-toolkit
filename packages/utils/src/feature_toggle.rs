@@ -229,7 +229,7 @@ enum HandleAnswer {
 mod tests {
     use crate::feature_toggle::{FeatureStatus, FeatureToggle};
     use cosmwasm_std::testing::MockStorage;
-    use cosmwasm_std::{Env, HumanAddr, MemoryStorage, StdResult, Storage};
+    use cosmwasm_std::{HumanAddr, MemoryStorage, StdResult};
 
     fn init_features(storage: &mut MemoryStorage) -> StdResult<()> {
         FeatureToggle::init_features(
@@ -329,6 +329,33 @@ mod tests {
             FeatureToggle::get_feature_status(&storage, "Feature1".to_string())?,
             Some(FeatureStatus::Stopped)
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_require_resumed() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        init_features(&mut storage)?;
+
+        assert!(FeatureToggle::require_resumed(&storage, vec!["Feature1".to_string()]).is_ok());
+        assert!(FeatureToggle::require_resumed(&storage, vec!["Feature3".to_string()]).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_add_remove_pausers() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        init_features(&mut storage)?;
+
+        let bob = HumanAddr("bob".to_string());
+
+        FeatureToggle::_set_pauser(&mut storage, bob.clone())?;
+        assert!(FeatureToggle::_get_pauser(&storage, bob.clone())?.is_some());
+
+        FeatureToggle::_remove_pauser(&mut storage, bob.clone());
+        assert!(FeatureToggle::_get_pauser(&storage, bob.clone())?.is_none());
 
         Ok(())
     }
