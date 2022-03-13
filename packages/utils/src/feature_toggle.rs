@@ -27,7 +27,7 @@ impl FeatureToggle {
         }
 
         for (feature, state) in features.iter().zip(initial_state.iter()) {
-            Self::set_feature_status(storage, feature.clone(), state.clone())?;
+            Self::_set_feature_status(storage, feature.clone(), state.clone())?;
         }
 
         for p in pausers {
@@ -39,7 +39,7 @@ impl FeatureToggle {
 
     pub fn require_resumed<S: Storage>(storage: &S, features: Vec<String>) -> StdResult<()> {
         for f in features {
-            let status = Self::get_feature_status(storage, f.clone())?;
+            let status = Self::_get_feature_status(storage, f.clone())?;
             match status {
                 None => {
                     return Err(StdError::generic_err(format!(
@@ -62,23 +62,7 @@ impl FeatureToggle {
         Ok(())
     }
 
-    fn _stop<S: Storage>(storage: &mut S, features: Vec<String>) -> StdResult<()> {
-        for f in features {
-            Self::set_feature_status(storage, f, FeatureStatus::Stopped)?;
-        }
-
-        Ok(())
-    }
-
-    fn _resume<S: Storage>(storage: &mut S, features: Vec<String>) -> StdResult<()> {
-        for f in features {
-            Self::set_feature_status(storage, f, FeatureStatus::Resumed)?;
-        }
-
-        Ok(())
-    }
-
-    pub fn stop<S: Storage, A: Api, Q: Querier>(
+    pub fn handle_stop<S: Storage, A: Api, Q: Querier>(
         deps: &mut Extern<S, A, Q>,
         env: Env,
         features: Vec<String>,
@@ -98,7 +82,7 @@ impl FeatureToggle {
         })
     }
 
-    pub fn resume<S: Storage, A: Api, Q: Querier>(
+    pub fn handle_resume<S: Storage, A: Api, Q: Querier>(
         deps: &mut Extern<S, A, Q>,
         env: Env,
         features: Vec<String>,
@@ -118,7 +102,7 @@ impl FeatureToggle {
         })
     }
 
-    pub fn set_pauser<S: Storage, A: Api, Q: Querier>(
+    pub fn handle_set_pauser<S: Storage, A: Api, Q: Querier>(
         deps: &mut Extern<S, A, Q>,
         _env: Env,
         address: HumanAddr,
@@ -134,7 +118,7 @@ impl FeatureToggle {
         })
     }
 
-    pub fn remove_pauser<S: Storage, A: Api, Q: Querier>(
+    pub fn handle_remove_pauser<S: Storage, A: Api, Q: Querier>(
         deps: &mut Extern<S, A, Q>,
         _env: Env,
         address: HumanAddr,
@@ -148,6 +132,54 @@ impl FeatureToggle {
                 status: ResponseStatus::Success,
             })?),
         })
+    }
+
+    pub fn query_status<S: Storage, A: Api, Q: Querier>(
+        deps: &Extern<S, A, Q>,
+        features: Vec<String>,
+    ) -> QueryResult {
+        let mut status = vec![];
+        for f in features {
+            match Self::_get_feature_status(&deps.storage, f.clone())? {
+                None => {
+                    return Err(StdError::generic_err(format!(
+                        "invalid feature: {} does not exist",
+                        f
+                    )))
+                }
+                Some(s) => status.push(_FeatureStatus {
+                    feature: f,
+                    status: s,
+                }),
+            }
+        }
+
+        to_binary(&FeatureToggleQueryAnswer::Status { features: status })
+    }
+
+    pub fn query_is_pauser<S: Storage, A: Api, Q: Querier>(
+        deps: &Extern<S, A, Q>,
+        address: HumanAddr,
+    ) -> QueryResult {
+        let is_pauser = Self::_get_pauser(&deps.storage, address)?.is_some();
+
+        to_binary(&FeatureToggleQueryAnswer::IsPauser { is_pauser })
+    }
+
+    fn _stop<S: Storage>(storage: &mut S, features: Vec<String>) -> StdResult<()> {
+        for f in features {
+            Self::_set_feature_status(storage, f, FeatureStatus::Stopped)?;
+        }
+
+        Ok(())
+    }
+
+    fn _resume<S: Storage>(storage: &mut S, features: Vec<String>) -> StdResult<()> {
+        for f in features {
+            Self::_set_feature_status(storage, f, FeatureStatus::Resumed)?;
+        }
+
+        Ok(())
     }
 
     fn _get_pauser<S: ReadonlyStorage>(storage: &S, key: HumanAddr) -> StdResult<Option<u8>> {
@@ -168,7 +200,7 @@ impl FeatureToggle {
         feature_store.remove(key.0.as_bytes())
     }
 
-    fn get_feature_status<S: ReadonlyStorage>(
+    fn _get_feature_status<S: ReadonlyStorage>(
         storage: &S,
         key: String,
     ) -> StdResult<Option<FeatureStatus>> {
@@ -177,7 +209,7 @@ impl FeatureToggle {
         feature_store.may_load(key.as_bytes())
     }
 
-    fn set_feature_status<S: Storage>(
+    fn _set_feature_status<S: Storage>(
         storage: &mut S,
         key: String,
         item: FeatureStatus,
@@ -185,38 +217,6 @@ impl FeatureToggle {
         let mut feature_store =
             Bucket::multilevel(&[PREFIX_FEATURE_TOGGLE, PREFIX_FEATURES], storage);
         feature_store.save(key.as_bytes(), &item)
-    }
-
-    pub fn status<S: Storage, A: Api, Q: Querier>(
-        deps: &Extern<S, A, Q>,
-        features: Vec<String>,
-    ) -> QueryResult {
-        let mut status = vec![];
-        for f in features {
-            match Self::get_feature_status(&deps.storage, f.clone())? {
-                None => {
-                    return Err(StdError::generic_err(format!(
-                        "invalid feature: {} does not exist",
-                        f
-                    )))
-                }
-                Some(s) => status.push(_FeatureStatus {
-                    feature: f,
-                    status: s,
-                }),
-            }
-        }
-
-        to_binary(&FeatureToggleQueryAnswer::Status { features: status })
-    }
-
-    pub fn is_pauser<S: Storage, A: Api, Q: Querier>(
-        deps: &Extern<S, A, Q>,
-        address: HumanAddr,
-    ) -> QueryResult {
-        let is_pauser = Self::_get_pauser(&deps.storage, address)?.is_some();
-
-        to_binary(&FeatureToggleQueryAnswer::IsPauser { is_pauser })
     }
 }
 
@@ -259,7 +259,7 @@ enum HandleAnswer {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum FeatureToggleQuery {
+pub enum FeatureToggleQueryMsg {
     Status {},
     IsPauser { address: HumanAddr },
 }
