@@ -1,0 +1,24 @@
+[package]
+name = "secret-toolkit-viewing-key"
+version = "0.2.0"
+edition = "2018"
+authors = ["SCRT Labs <info@scrtlabs.com>"]
+license-file = "../../LICENSE"
+repository = "https://github.com/scrtlabs/secret-toolkit"
+readme = "Readme.md"
+description = "Boilerplate for using viewing keys in Secret Contracts"
+categories = ["cryptography::cryptocurrencies", "wasm"]
+keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
+
+[dependencies]
+serde = "1.0"
+schemars = "0.7"
+remain = "0.2.2"
+base64 = "0.11.0" # Same as used by cosmwas-std
+subtle = { version = "2.2.3", default-features = false }
+ripemd160 = "0.9.1"
+secp256k1 = "0.20.3"
+cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
+cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "0.10" }
+secret-toolkit-crypto = { version = "0.2", path = "../crypto" }
+secret-toolkit-utils = { version = "0.2", path = "../utils" }
