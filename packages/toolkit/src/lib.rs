@@ -4,6 +4,8 @@ pub use secret_toolkit_crypto as crypto;
 pub use secret_toolkit_incubator as incubator;
 #[cfg(feature = "permit")]
 pub use secret_toolkit_permit as permit;
+#[cfg(feature = "viewing-key")]
+pub use secret_toolkit_viewing_key as viewing_key;
 #[cfg(feature = "serialization")]
 pub use secret_toolkit_serialization as serialization;
 #[cfg(feature = "snip20")]

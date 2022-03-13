@@ -19,6 +19,7 @@ secret-toolkit-snip20 = { version = "0.2", path = "../snip20", optional = true }
 secret-toolkit-snip721 = { version = "0.2", path = "../snip721", optional = true }
 secret-toolkit-storage = { version = "0.2", path = "../storage", optional = true }
 secret-toolkit-utils = { version = "0.2", path = "../utils", optional = true }
+secret-toolkit-viewing-key = { version = "0.2", path = "../viewing-key", optional = true }
 
 [features]
 default = ["serialization", "snip20", "snip721", "storage", "utils"]
@@ -31,3 +32,4 @@ snip20 = ["secret-toolkit-snip20", "utils"]
 snip721 = ["secret-toolkit-snip721", "utils"]
 storage = ["secret-toolkit-storage", "serialization"]
 utils = ["secret-toolkit-utils"]
+viewing-key = ["secret-toolkit-viewing-key"]
