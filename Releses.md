@@ -2,6 +2,11 @@
 
 ## Next Release
 * Added `clear` method to `AppendStore` and `DequeStore` to quickly reset the collections (#34)
+* docs.rs documentation now includes all sub-crates
+* BUGFIX: `secret-toolkit::snip721::Metadata` was severely out of date with the SNIP-721 specification, and not useful.
+  It is now compatible with deployed SNIP-721 contracts.
+* Added `types` module under the `util` package, to standardize often used types.
+* Added `secret-toolkit::viewing_key`, which can be imported by enabling the `viewing-key` feature.
 
 ## v0.2.0
 This release includes a ton of new features, and a few breaking changes in various interfaces.

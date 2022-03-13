@@ -16,3 +16,5 @@ pub use secret_toolkit_snip721 as snip721;
 pub use secret_toolkit_storage as storage;
 #[cfg(feature = "utils")]
 pub use secret_toolkit_utils as utils;
+#[cfg(feature = "viewing-key")]
+pub use secret_toolkit_viewing_key as viewing_key;
