@@ -3,7 +3,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Binary, HumanAddr, Uint128};
+use crate::pubkey_to_account;
+use cosmwasm_std::{Binary, CanonicalAddr, HumanAddr, Uint128};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -45,6 +46,12 @@ pub struct PubKey {
     pub r#type: String,
     /// Secp256k1 PubKey
     pub value: Binary,
+}
+
+impl PubKey {
+    pub fn canonical_address(&self) -> CanonicalAddr {
+        pubkey_to_account(&self.value)
+    }
 }
 
 // Note: The order of fields in this struct is important for the permit signature verification!
