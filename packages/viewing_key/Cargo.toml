@@ -13,12 +13,9 @@ keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 [dependencies]
 serde = "1.0"
 schemars = "0.7"
-remain = "0.2.2"
 base64 = "0.11.0" # Same as used by cosmwas-std
 subtle = { version = "2.2.3", default-features = false }
-ripemd160 = "0.9.1"
-secp256k1 = "0.20.3"
 cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
 cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "0.10" }
-secret-toolkit-crypto = { version = "0.2", path = "../crypto" }
+secret-toolkit-crypto = { version = "0.2", path = "../crypto", default-features = false, features = ["hash", "rand"] }
 secret-toolkit-utils = { version = "0.2", path = "../utils" }
