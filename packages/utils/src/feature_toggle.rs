@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    to_binary, Api, Env, Extern, HandleResponse, HumanAddr, Querier, QueryResult, ReadonlyStorage,
-    StdError, StdResult, Storage,
+    to_binary, Api, Env, Extern, HandleResponse, HandleResult, HumanAddr, Querier, QueryResult,
+    ReadonlyStorage, StdError, StdResult, Storage,
 };
 use cosmwasm_storage::{Bucket, ReadonlyBucket};
 use schemars::JsonSchema;
@@ -120,7 +120,7 @@ impl FeatureToggle {
         deps: &mut Extern<S, A, Q>,
         env: Env,
         features: Vec<T>,
-    ) -> StdResult<HandleResponse> {
+    ) -> HandleResult {
         if Self::get_pauser(&deps.storage, env.message.sender)?.is_none() {
             return Err(StdError::unauthorized());
         }
@@ -140,7 +140,7 @@ impl FeatureToggle {
         deps: &mut Extern<S, A, Q>,
         env: Env,
         features: Vec<T>,
-    ) -> StdResult<HandleResponse> {
+    ) -> HandleResult {
         if Self::get_pauser(&deps.storage, env.message.sender)?.is_none() {
             return Err(StdError::unauthorized());
         }
@@ -160,7 +160,7 @@ impl FeatureToggle {
         deps: &mut Extern<S, A, Q>,
         _env: Env,
         address: HumanAddr,
-    ) -> StdResult<HandleResponse> {
+    ) -> HandleResult {
         Self::set_pauser(&mut deps.storage, address)?;
 
         Ok(HandleResponse {
@@ -176,7 +176,7 @@ impl FeatureToggle {
         deps: &mut Extern<S, A, Q>,
         _env: Env,
         address: HumanAddr,
-    ) -> StdResult<HandleResponse> {
+    ) -> HandleResult {
         Self::remove_pauser(&mut deps.storage, address);
 
         Ok(HandleResponse {
@@ -271,8 +271,8 @@ enum FeatureToggleQueryAnswer<T: Serialize> {
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug)]
 pub struct FeatureStatus<T: Serialize> {
-    feature: T,
-    status: Status,
+    pub feature: T,
+    pub status: Status,
 }
 
 #[cfg(test)]
