@@ -1,22 +1,22 @@
 use cosmwasm_std::{
-    to_binary, Api, Env, Extern, HandleResponse, HandleResult, HumanAddr, Querier, QueryResult,
-    ReadonlyStorage, StdError, StdResult, Storage,
+    to_binary, to_vec, Api, Env, Extern, HandleResponse, HandleResult, HumanAddr, Querier,
+    QueryResult, ReadonlyStorage, StdError, StdResult, Storage,
 };
 use cosmwasm_storage::{Bucket, ReadonlyBucket};
 use schemars::JsonSchema;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
 
 const PREFIX_FEATURES: &[u8] = b"features";
 const PREFIX_PAUSERS: &[u8] = b"pausers";
 
 pub struct FeatureToggle;
 
-impl FeatureToggleStore for FeatureToggle {
+impl FeatureToggleTrait for FeatureToggle {
     const STORAGE_KEY: &'static [u8] = b"feature_toggle";
 }
 
-pub trait FeatureToggleStore {
+pub trait FeatureToggleTrait {
     const STORAGE_KEY: &'static [u8];
 
     fn init_features<S: Storage, T: Serialize>(
@@ -24,81 +24,28 @@ pub trait FeatureToggleStore {
         feature_statuses: Vec<FeatureStatus<T>>,
         pausers: Vec<HumanAddr>,
     ) -> StdResult<()> {
-        for feature_status in feature_statuses {
-            Self::set_feature_status(storage, feature_status.feature, feature_status.status)?;
+        for fs in feature_statuses {
+            Self::set_feature_status(storage, &fs.feature, fs.status)?;
         }
 
         for p in pausers {
-            Self::set_pauser(storage, p)?;
+            Self::set_pauser(storage, &p)?;
         }
 
         Ok(())
     }
 
-    fn pause<S: Storage, T: Serialize>(storage: &mut S, features: Vec<T>) -> StdResult<()> {
-        for f in features {
-            Self::set_feature_status(storage, f, Status::Paused)?;
-        }
-
-        Ok(())
-    }
-
-    fn unpause<S: Storage, T: Serialize>(storage: &mut S, features: Vec<T>) -> StdResult<()> {
-        for f in features {
-            Self::set_feature_status(storage, f, Status::NotPaused)?;
-        }
-
-        Ok(())
-    }
-
-    fn get_pauser<S: ReadonlyStorage>(storage: &S, key: HumanAddr) -> StdResult<Option<u8>> {
-        let feature_store =
-            ReadonlyBucket::multilevel(&[Self::STORAGE_KEY, PREFIX_PAUSERS], storage);
-        feature_store.may_load(key.0.as_bytes())
-    }
-
-    fn set_pauser<S: Storage>(storage: &mut S, key: HumanAddr) -> StdResult<()> {
-        let mut feature_store = Bucket::multilevel(&[Self::STORAGE_KEY, PREFIX_PAUSERS], storage);
-        feature_store.save(key.0.as_bytes(), &1_u8 /* value is insignificant */)
-    }
-
-    fn remove_pauser<S: Storage>(storage: &mut S, key: HumanAddr) {
-        let mut feature_store: Bucket<S, u8> =
-            Bucket::multilevel(&[Self::STORAGE_KEY, PREFIX_PAUSERS], storage);
-        feature_store.remove(key.0.as_bytes())
-    }
-
-    fn get_feature_status<S: ReadonlyStorage, T: Serialize>(
-        storage: &S,
-        key: T,
-    ) -> StdResult<Option<Status>> {
-        let feature_store =
-            ReadonlyBucket::multilevel(&[Self::STORAGE_KEY, PREFIX_FEATURES], storage);
-        feature_store.may_load(&cosmwasm_std::to_vec(&key)?)
-    }
-
-    fn set_feature_status<S: Storage, T: Serialize>(
-        storage: &mut S,
-        key: T,
-        item: Status,
-    ) -> StdResult<()> {
-        let mut feature_store = Bucket::multilevel(&[Self::STORAGE_KEY, PREFIX_FEATURES], storage);
-        feature_store.save(&cosmwasm_std::to_vec(&key)?, &item)
-    }
-}
-
-impl FeatureToggle {
-    pub fn require_not_paused<S: Storage, T: Serialize + Display + Clone>(
+    fn require_not_paused<S: Storage, T: Serialize>(
         storage: &S,
         features: Vec<T>,
     ) -> StdResult<()> {
         for feature in features {
-            let status = Self::get_feature_status(storage, feature.clone())?;
+            let status = Self::get_feature_status(storage, &feature)?;
             match status {
                 None => {
                     return Err(StdError::generic_err(format!(
                         "feature toggle: unknown feature '{}'",
-                        feature
+                        String::from_utf8_lossy(&to_vec(&feature)?)
                     )))
                 }
                 Some(s) => match s {
@@ -106,7 +53,7 @@ impl FeatureToggle {
                     Status::Paused => {
                         return Err(StdError::generic_err(format!(
                             "feature toggle: feature '{}' is paused",
-                            feature
+                            String::from_utf8_lossy(&to_vec(&feature)?)
                         )));
                     }
                 },
@@ -116,12 +63,65 @@ impl FeatureToggle {
         Ok(())
     }
 
-    pub fn handle_pause<S: Storage, A: Api, Q: Querier, T: Serialize>(
+    fn pause<S: Storage, T: Serialize>(storage: &mut S, features: Vec<T>) -> StdResult<()> {
+        for f in features {
+            Self::set_feature_status(storage, &f, Status::Paused)?;
+        }
+
+        Ok(())
+    }
+
+    fn unpause<S: Storage, T: Serialize>(storage: &mut S, features: Vec<T>) -> StdResult<()> {
+        for f in features {
+            Self::set_feature_status(storage, &f, Status::NotPaused)?;
+        }
+
+        Ok(())
+    }
+
+    fn is_pauser<S: ReadonlyStorage>(storage: &S, key: &HumanAddr) -> StdResult<bool> {
+        let feature_store: ReadonlyBucket<S, bool> =
+            ReadonlyBucket::multilevel(&[Self::STORAGE_KEY, PREFIX_PAUSERS], storage);
+        feature_store
+            .may_load(key.0.as_bytes())
+            .map(|p| p.is_some())
+    }
+
+    fn set_pauser<S: Storage>(storage: &mut S, key: &HumanAddr) -> StdResult<()> {
+        let mut feature_store = Bucket::multilevel(&[Self::STORAGE_KEY, PREFIX_PAUSERS], storage);
+        feature_store.save(key.0.as_bytes(), &true /* value is insignificant */)
+    }
+
+    fn remove_pauser<S: Storage>(storage: &mut S, key: &HumanAddr) {
+        let mut feature_store: Bucket<S, bool> =
+            Bucket::multilevel(&[Self::STORAGE_KEY, PREFIX_PAUSERS], storage);
+        feature_store.remove(key.0.as_bytes())
+    }
+
+    fn get_feature_status<S: ReadonlyStorage, T: Serialize>(
+        storage: &S,
+        key: &T,
+    ) -> StdResult<Option<Status>> {
+        let feature_store =
+            ReadonlyBucket::multilevel(&[Self::STORAGE_KEY, PREFIX_FEATURES], storage);
+        feature_store.may_load(&cosmwasm_std::to_vec(&key)?)
+    }
+
+    fn set_feature_status<S: Storage, T: Serialize>(
+        storage: &mut S,
+        key: &T,
+        item: Status,
+    ) -> StdResult<()> {
+        let mut feature_store = Bucket::multilevel(&[Self::STORAGE_KEY, PREFIX_FEATURES], storage);
+        feature_store.save(&cosmwasm_std::to_vec(&key)?, &item)
+    }
+
+    fn handle_pause<S: Storage, A: Api, Q: Querier, T: Serialize>(
         deps: &mut Extern<S, A, Q>,
-        env: Env,
+        env: &Env,
         features: Vec<T>,
     ) -> HandleResult {
-        if Self::get_pauser(&deps.storage, env.message.sender)?.is_none() {
+        if Self::is_pauser(&deps.storage, &env.message.sender)? {
             return Err(StdError::unauthorized());
         }
 
@@ -136,12 +136,12 @@ impl FeatureToggle {
         })
     }
 
-    pub fn handle_unpause<S: Storage, A: Api, Q: Querier, T: Serialize>(
+    fn handle_unpause<S: Storage, A: Api, Q: Querier, T: Serialize>(
         deps: &mut Extern<S, A, Q>,
-        env: Env,
+        env: &Env,
         features: Vec<T>,
     ) -> HandleResult {
-        if Self::get_pauser(&deps.storage, env.message.sender)?.is_none() {
+        if Self::is_pauser(&deps.storage, &env.message.sender)? {
             return Err(StdError::unauthorized());
         }
 
@@ -156,12 +156,12 @@ impl FeatureToggle {
         })
     }
 
-    pub fn handle_set_pauser<S: Storage, A: Api, Q: Querier>(
+    fn handle_set_pauser<S: Storage, A: Api, Q: Querier>(
         deps: &mut Extern<S, A, Q>,
-        _env: Env,
+        _env: &Env,
         address: HumanAddr,
     ) -> HandleResult {
-        Self::set_pauser(&mut deps.storage, address)?;
+        Self::set_pauser(&mut deps.storage, &address)?;
 
         Ok(HandleResponse {
             messages: vec![],
@@ -172,12 +172,12 @@ impl FeatureToggle {
         })
     }
 
-    pub fn handle_remove_pauser<S: Storage, A: Api, Q: Querier>(
+    fn handle_remove_pauser<S: Storage, A: Api, Q: Querier>(
         deps: &mut Extern<S, A, Q>,
-        _env: Env,
+        _env: &Env,
         address: HumanAddr,
     ) -> HandleResult {
-        Self::remove_pauser(&mut deps.storage, address);
+        Self::remove_pauser(&mut deps.storage, &address);
 
         Ok(HandleResponse {
             messages: vec![],
@@ -188,17 +188,17 @@ impl FeatureToggle {
         })
     }
 
-    pub fn query_status<S: Storage, A: Api, Q: Querier, T: Serialize + Display + Clone>(
+    fn query_status<S: Storage, A: Api, Q: Querier, T: Serialize>(
         deps: &Extern<S, A, Q>,
         features: Vec<T>,
     ) -> QueryResult {
         let mut status = Vec::with_capacity(features.len());
         for feature in features {
-            match Self::get_feature_status(&deps.storage, feature.clone())? {
+            match Self::get_feature_status(&deps.storage, &feature)? {
                 None => {
                     return Err(StdError::generic_err(format!(
                         "invalid feature: {} does not exist",
-                        feature
+                        String::from_utf8_lossy(&to_vec(&feature)?)
                     )))
                 }
                 Some(s) => status.push(FeatureStatus { feature, status: s }),
@@ -208,11 +208,11 @@ impl FeatureToggle {
         to_binary(&FeatureToggleQueryAnswer::Status { features: status })
     }
 
-    pub fn query_is_pauser<S: Storage, A: Api, Q: Querier>(
+    fn query_is_pauser<S: Storage, A: Api, Q: Querier>(
         deps: &Extern<S, A, Q>,
         address: HumanAddr,
     ) -> QueryResult {
-        let is_pauser = Self::get_pauser(&deps.storage, address)?.is_some();
+        let is_pauser = Self::is_pauser(&deps.storage, &address)?;
 
         to_binary(&FeatureToggleQueryAnswer::<()>::IsPauser { is_pauser })
     }
@@ -230,13 +230,23 @@ impl Default for Status {
     }
 }
 
-#[derive(Serialize, Debug, Deserialize, Clone, PartialEq, JsonSchema)]
+#[derive(Debug, Clone, Deserialize, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum FeatureToggleMsg {
-    Pause { features: Vec<String> },
-    Unpause { features: Vec<String> },
-    SetPauser { address: HumanAddr },
-    RemovePauser { address: HumanAddr },
+pub enum FeatureToggleHandleMsg<T: DeserializeOwned> {
+    #[serde(bound = "")]
+    Pause {
+        features: Vec<T>,
+    },
+    #[serde(bound = "")]
+    Unpause {
+        features: Vec<T>,
+    },
+    SetPauser {
+        address: HumanAddr,
+    },
+    RemovePauser {
+        address: HumanAddr,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -255,11 +265,16 @@ enum HandleAnswer {
     RemovePauser { status: ResponseStatus },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum FeatureToggleQueryMsg {
-    Status {},
-    IsPauser { address: HumanAddr },
+pub enum FeatureToggleQueryMsg<T: DeserializeOwned> {
+    #[serde(bound = "")]
+    Status {
+        features: Vec<T>,
+    },
+    IsPauser {
+        address: HumanAddr,
+    },
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug)]
@@ -277,7 +292,10 @@ pub struct FeatureStatus<T: Serialize> {
 
 #[cfg(test)]
 mod tests {
-    use crate::feature_toggle::{FeatureStatus, FeatureToggle, FeatureToggleStore, Status};
+    use crate::feature_toggle::{
+        FeatureStatus, FeatureToggle, FeatureToggleHandleMsg, FeatureToggleQueryMsg,
+        FeatureToggleTrait, Status,
+    };
     use cosmwasm_std::testing::MockStorage;
     use cosmwasm_std::{HumanAddr, MemoryStorage, StdResult};
 
@@ -308,29 +326,29 @@ mod tests {
         init_features(&mut storage)?;
 
         assert_eq!(
-            FeatureToggle::get_feature_status(&storage, "Feature1".to_string())?,
+            FeatureToggle::get_feature_status(&storage, &"Feature1".to_string())?,
             Some(Status::NotPaused)
         );
         assert_eq!(
-            FeatureToggle::get_feature_status(&storage, "Feature2".to_string())?,
+            FeatureToggle::get_feature_status(&storage, &"Feature2".to_string())?,
             Some(Status::NotPaused)
         );
         assert_eq!(
-            FeatureToggle::get_feature_status(&storage, "Feature3".to_string())?,
+            FeatureToggle::get_feature_status(&storage, &"Feature3".to_string())?,
             Some(Status::Paused)
         );
         assert_eq!(
-            FeatureToggle::get_feature_status(&storage, "Feature4".to_string())?,
+            FeatureToggle::get_feature_status(&storage, &"Feature4".to_string())?,
             None
         );
 
         assert_eq!(
-            FeatureToggle::get_pauser(&storage, HumanAddr("alice".to_string()))?,
-            Some(1_u8)
+            FeatureToggle::is_pauser(&storage, &HumanAddr("alice".to_string()))?,
+            true
         );
         assert_eq!(
-            FeatureToggle::get_pauser(&storage, HumanAddr("bob".to_string()))?,
-            None
+            FeatureToggle::is_pauser(&storage, &HumanAddr("bob".to_string()))?,
+            false
         );
 
         Ok(())
@@ -343,7 +361,7 @@ mod tests {
 
         FeatureToggle::unpause(&mut storage, vec!["Feature3".to_string()])?;
         assert_eq!(
-            FeatureToggle::get_feature_status(&storage, "Feature3".to_string())?,
+            FeatureToggle::get_feature_status(&storage, &"Feature3".to_string())?,
             Some(Status::NotPaused)
         );
 
@@ -357,7 +375,7 @@ mod tests {
 
         FeatureToggle::pause(&mut storage, vec!["Feature1".to_string()])?;
         assert_eq!(
-            FeatureToggle::get_feature_status(&storage, "Feature1".to_string())?,
+            FeatureToggle::get_feature_status(&storage, &"Feature1".to_string())?,
             Some(Status::Paused)
         );
 
@@ -369,8 +387,16 @@ mod tests {
         let mut storage = MockStorage::new();
         init_features(&mut storage)?;
 
-        assert!(FeatureToggle::require_not_paused(&storage, vec!["Feature1".to_string()]).is_ok());
-        assert!(FeatureToggle::require_not_paused(&storage, vec!["Feature3".to_string()]).is_err());
+        assert!(
+            FeatureToggle::require_not_paused(&storage, vec!["Feature1".to_string()]).is_ok(),
+            "{:?}",
+            FeatureToggle::require_not_paused(&storage, vec!["Feature1".to_string()])
+        );
+        assert!(
+            FeatureToggle::require_not_paused(&storage, vec!["Feature3".to_string()]).is_err(),
+            "{:?}",
+            FeatureToggle::require_not_paused(&storage, vec!["Feature3".to_string()])
+        );
 
         Ok(())
     }
@@ -382,12 +408,51 @@ mod tests {
 
         let bob = HumanAddr("bob".to_string());
 
-        FeatureToggle::set_pauser(&mut storage, bob.clone())?;
-        assert!(FeatureToggle::get_pauser(&storage, bob.clone())?.is_some());
+        FeatureToggle::set_pauser(&mut storage, &bob)?;
+        assert!(
+            FeatureToggle::is_pauser(&storage, &bob)?,
+            "{:?}",
+            FeatureToggle::is_pauser(&storage, &bob)
+        );
 
-        FeatureToggle::remove_pauser(&mut storage, bob.clone());
-        assert!(FeatureToggle::get_pauser(&storage, bob.clone())?.is_none());
+        FeatureToggle::remove_pauser(&mut storage, &bob);
+        assert!(
+            !FeatureToggle::is_pauser(&storage, &bob)?,
+            "{:?}",
+            FeatureToggle::is_pauser(&storage, &bob)
+        );
 
         Ok(())
+    }
+
+    #[test]
+    fn test_deserialize_messages() {
+        let handle_msg = b"{\"pause\":{\"features\":[\"var1\",\"var2\"]}}";
+        let query_msg = b"{\"status\":{\"features\": [\"var1\"]}}";
+
+        use serde::Deserialize;
+
+        #[derive(Deserialize, Debug, PartialEq)]
+        #[serde(rename_all = "snake_case")]
+        enum Features {
+            Var1,
+            Var2,
+        }
+
+        let parsed: FeatureToggleHandleMsg<Features> =
+            cosmwasm_std::from_slice(handle_msg).unwrap();
+        assert_eq!(
+            parsed,
+            FeatureToggleHandleMsg::Pause {
+                features: vec![Features::Var1, Features::Var2]
+            }
+        );
+        let parsed: FeatureToggleQueryMsg<Features> = cosmwasm_std::from_slice(query_msg).unwrap();
+        assert_eq!(
+            parsed,
+            FeatureToggleQueryMsg::Status {
+                features: vec![Features::Var1]
+            }
+        )
     }
 }
