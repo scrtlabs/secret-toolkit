@@ -10,9 +10,9 @@ pub fn validate<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     storage_prefix: &str,
     permit: &Permit,
-    current_token_address: HumanAddr,
+    current_token_address: &HumanAddr,
 ) -> StdResult<HumanAddr> {
-    if !permit.check_token(&current_token_address) {
+    if !permit.check_token(current_token_address) {
         return Err(StdError::generic_err(format!(
             "Permit doesn't apply to token {:?}, allowed tokens: {:?}",
             current_token_address.as_str(),
