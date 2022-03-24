@@ -14,10 +14,11 @@ keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 all-features = true
 
 [features]
-default = ["serialization", "snip20", "snip721", "storage", "utils"]
+default = ["mock", "serialization", "snip20", "snip721", "storage", "utils"]
 
 crypto = ["secret-toolkit-crypto"] # Not in default features because this is slow to compile
 incubator = ["secret-toolkit-incubator", "serialization"] # Should never be in default features!
+mock = ["secret-toolkit-mock"]
 permit = ["secret-toolkit-permit", "crypto", "utils"] # Not in default features because it requires "crypto"
 serialization = ["secret-toolkit-serialization"]
 snip20 = ["secret-toolkit-snip20", "utils"]
@@ -29,6 +30,7 @@ viewing-key = ["secret-toolkit-viewing-key"]
 [dependencies]
 secret-toolkit-crypto = { version = "0.2", path = "../crypto", optional = true }
 secret-toolkit-incubator = { version = "0.2", path = "../incubator", optional = true }
+secret-toolkit-mock = { version = "0.2", path = "../mock", optional = true }
 secret-toolkit-permit = { version = "0.2", path = "../permit", optional = true }
 secret-toolkit-serialization = { version = "0.2", path = "../serialization", optional = true }
 secret-toolkit-snip20 = { version = "0.2", path = "../snip20", optional = true }

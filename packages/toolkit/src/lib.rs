@@ -2,6 +2,8 @@
 pub use secret_toolkit_crypto as crypto;
 #[cfg(feature = "incubator")]
 pub use secret_toolkit_incubator as incubator;
+#[cfg(all(feature = "mock", not(target_arch = "wasm32")))]
+pub use secret_toolkit_mock as mock;
 #[cfg(feature = "permit")]
 pub use secret_toolkit_permit as permit;
 #[cfg(feature = "serialization")]

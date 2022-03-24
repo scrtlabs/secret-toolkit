@@ -1,0 +1,19 @@
+[package]
+name = "secret-toolkit-mock"
+version = "0.2.0"
+edition = "2018"
+authors = ["SCRT Labs <info@scrtlabs.com>"]
+license-file = "../../LICENSE"
+repository = "https://github.com/scrtlabs/secret-toolkit"
+readme = "Readme.md"
+description = "Tools for unit-testing Secret Contracts"
+categories = ["cryptography::cryptocurrencies", "wasm"]
+keywords = ["secret-network", "secret-contracts", "secret-toolkit", "testing"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+bech32 = "0.8.1"
+
+cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
