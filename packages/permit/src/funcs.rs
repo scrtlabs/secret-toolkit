@@ -4,12 +4,12 @@ use cosmwasm_std::{
 use ripemd160::{Digest, Ripemd160};
 use secp256k1::Secp256k1;
 
-use crate::{Permit, RevokedPermits, SignedPermit};
+use crate::{Permissions, Permit, RevokedPermits, SignedPermit};
 
-pub fn validate<S: Storage, A: Api, Q: Querier>(
+pub fn validate<Permission: Permissions, S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     storage_prefix: &str,
-    permit: &Permit,
+    permit: &Permit<Permission>,
     current_token_address: &HumanAddr,
 ) -> StdResult<HumanAddr> {
     if !permit.check_token(current_token_address) {
