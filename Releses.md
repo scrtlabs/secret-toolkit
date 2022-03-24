@@ -7,6 +7,7 @@
   It is now compatible with deployed SNIP-721 contracts.
 * Added `types` module under the `util` package, to standardize often used types.
 * Added `secret-toolkit::viewing_key`, which can be imported by enabling the `viewing-key` feature.
+* Added `secret-toolkit::mock` which includes some alternatives to `cosmwasm_std::testing`.
 
 ## v0.2.0
 This release includes a ton of new features, and a few breaking changes in various interfaces.
