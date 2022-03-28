@@ -230,9 +230,9 @@ impl Default for Status {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, PartialEq, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum FeatureToggleHandleMsg<T: DeserializeOwned> {
+pub enum FeatureToggleHandleMsg<T: Serialize + DeserializeOwned> {
     #[serde(bound = "")]
     Pause {
         features: Vec<T>,
@@ -265,9 +265,9 @@ enum HandleAnswer {
     RemovePauser { status: ResponseStatus },
 }
 
-#[derive(Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum FeatureToggleQueryMsg<T: DeserializeOwned> {
+pub enum FeatureToggleQueryMsg<T: Serialize + DeserializeOwned> {
     #[serde(bound = "")]
     Status {
         features: Vec<T>,
@@ -427,9 +427,6 @@ mod tests {
 
     #[test]
     fn test_deserialize_messages() {
-        let handle_msg = b"{\"pause\":{\"features\":[\"var1\",\"var2\"]}}";
-        let query_msg = b"{\"status\":{\"features\": [\"var1\"]}}";
-
         use serde::Deserialize;
 
         #[derive(Deserialize, Debug, PartialEq)]
@@ -438,6 +435,10 @@ mod tests {
             Var1,
             Var2,
         }
+
+        let handle_msg = b"{\"pause\":{\"features\":[\"var1\",\"var2\"]}}";
+        let query_msg = b"{\"status\":{\"features\": [\"var1\"]}}";
+        let query_msg_invalid = b"{\"status\":{\"features\": [\"var3\"]}}";
 
         let parsed: FeatureToggleHandleMsg<Features> =
             cosmwasm_std::from_slice(handle_msg).unwrap();
@@ -453,6 +454,9 @@ mod tests {
             FeatureToggleQueryMsg::Status {
                 features: vec![Features::Var1]
             }
-        )
+        );
+        let parsed: StdResult<FeatureToggleQueryMsg<Features>> =
+            cosmwasm_std::from_slice(query_msg_invalid);
+        assert!(parsed.is_err());
     }
 }
