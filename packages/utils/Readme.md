@@ -159,14 +159,13 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
                 status: Default::default(),
             },
         ],
-        Some(vec![FeatureStatus::Resumed, // `None` will default to `FeatureStatus::Resumed` for all features
-                  FeatureStatus::Resumed]),
         vec![env.message.sender], // Can put more than one pauser
     )?;
 }
 ```
 
-Where `Features` should be defined by you. In this example it's:
+The `feature` field in `FeatureStatus` can be anything, as long as it's implementing `serde::Serialize`.
+In this example it's:
 ```rust
 #[derive(Serialize)]
 pub enum Features {
@@ -174,8 +173,6 @@ pub enum Features {
     Feature2,
 }
 ```
-
-The `feature` field in `FeatureStatus` can be anything, as long as it's implementing `serde::Serialize`.
 
 For the `status` field, you should use the built-in `FeatureToggle::FeatureStatus` enum: 
 ```rust
@@ -196,7 +193,10 @@ fn redeem<S: Storage, A: Api, Q: Querier>(
     env: Env,
     amount: Option<u128>,
 ) -> StdResult<HandleResponse> {
-    FeatureToggle::require_not_paused(&deps.storage, vec![Features::Redeem])?;
+    FeatureToggle::require_not_paused(
+        &deps.storage,
+        vec![Features::Redeem] // You can specify more than one feature!
+    )?;
     
     // Continue with function's operation
 }
@@ -230,8 +230,8 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
         HandleMsg::Redeem { amount } => redeem(deps, env, amount),
         HandleMsg::Etc {} => etc(deps, env),
         HandleMsg::Features(m) => match m {
-            FeatureToggleHandleMsg::Pause { features } => FeatureToggle::handle_stop(deps, env, features),
-            FeatureToggleHandleMsg::Unpause { features } => FeatureToggle::handle_resume(deps, env, features),
+            FeatureToggleHandleMsg::Pause { features } => FeatureToggle::handle_pause(deps, env, features),
+            FeatureToggleHandleMsg::Unpause { features } => FeatureToggle::handle_unpause(deps, env, features),
         },
     }
 }
