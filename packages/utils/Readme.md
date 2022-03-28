@@ -166,7 +166,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
 }
 ```
 
-The feature field in FeatureStatus can be anything, as long as it's implementing `serde::Serialize`.
+The feature field in `FeatureStatus` can be anything, as long as it's implementing `serde::Serialize`.
 In this example it's:
 ```rust
 #[derive(Serialize)]
