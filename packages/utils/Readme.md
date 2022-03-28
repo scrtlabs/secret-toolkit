@@ -3,8 +3,12 @@
 ⚠️ This package is a sub-package of the `secret-toolkit` package. Please see its crate page for more context.
 
 This package contains various uncategorized tools. It should be thought of
-as the shed in your back yard where you put the stuff that doesn't belong
+as the shed in your backyard where you put the stuff that doesn't belong
 elsewhere. There isn't an overarching theme for the items in this package.
+
+# Table of Contents
+1. [Calls module](#calls-module)
+2. [Feature Toggle module](#feature-toggle)
 
 ## Calls module
 This module contains traits used to call another contract.  Do not forget to add the `use` statement for the traits you want.
@@ -127,3 +131,210 @@ let count_response: CountResponse = get_count.query(
 )?;
 ```
 You create an instance of the CounterQueryMsg::GetCount variant, and call its `query` function, returning its value to a variable of the response type.  If you were doing a token_info query, you would write `let token_info_resp: TokenInfoResponse = ...`.  You MUST use explicit type annotation here.
+
+## Feature Toggle
+
+This module implements feature toggles for your contract. The main motivation behind it is to enable pausing/resuming certain operations rather than stopping/resuming the contract entirely, while providing you with helper functions that will reduce your code to a minimum.
+
+The feature toggles are designed to be flexible, so you can choose whether to put entire messages under a toggle or just certain code sections, etc.
+
+### Initializing Features
+
+Normally you'd want to initialize the features in the `init()` function:
+```rust
+pub fn init<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    msg: InitMsg,
+) -> StdResult<InitResponse> {
+    FeatureToggle::init_features(
+        &mut deps.storage,
+        vec![
+            FeatureStatus {
+                feature: Features::Feature1,
+                status: Default::default(),
+            },
+            FeatureStatus {
+                feature: Features::Feature2,
+                status: Default::default(),
+            },
+        ],
+        Some(vec![FeatureStatus::Resumed, // `None` will default to `FeatureStatus::Resumed` for all features
+                  FeatureStatus::Resumed]),
+        vec![env.message.sender], // Can put more than one pauser
+    )?;
+}
+```
+
+Where `Features` should be defined by you. In this example it's:
+```rust
+#[derive(Serialize)]
+pub enum Features {
+    Feature1,
+    Feature2,
+}
+```
+
+The `feature` field in `FeatureStatus` can be anything, as long as it's implementing `serde::Serialize`.
+
+For the `status` field, you should use the built-in `FeatureToggle::FeatureStatus` enum: 
+```rust
+#[derive(Serialize, Debug, Deserialize, Clone, JsonSchema, PartialEq)]
+pub enum Status {
+    NotPaused,
+    Paused,
+}
+```
+The defult value of `Status` is `Status::NotPaused`.
+
+### Put a toggle on a message
+
+Putting a toggle on a message (or any code section of your choosing) is as easy as calling `FeatureToggle::require_not_paused()`. For example if we have a `Redeem` message in our contract, and we initialized the feature as `Features::Redeem`:
+```rust
+fn redeem<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    amount: Option<u128>,
+) -> StdResult<HandleResponse> {
+    FeatureToggle::require_not_paused(&deps.storage, vec![Features::Redeem])?;
+    
+    // Continue with function's operation
+}
+```
+If the status of the `Features::Redeem` feature is `Paused`, the contract will error out and stop operation.
+
+### Pause/unpause a feature
+
+Firstly, we will need to add `Pause` and `Unpause` messages in our `HandleMsg` enum. We can simply use `FeatureToggle::FeatureToggleHandleMsg` - it's an enum that contains default messages that `FeatureToggle` also has default implementation for:
+```rust
+pub enum HandleMsg {
+    // Contract messages
+    Redeem {
+        amount: Option<Uint128>,
+    },
+    Etc {}, //..
+
+    // Feature toggle
+    Features(FeatureToggleHandleMsg),
+}
+```
+
+The `FeatureToggle` struct contains a default implementation for triggering (pausing/unpausing) a feature, so you can just call it from your `handle()` function:
+```rust
+pub fn handle<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    msg: HandleMsg,
+) -> StdResult<HandleResponse> {
+    match msg {
+        HandleMsg::Redeem { amount } => redeem(deps, env, amount),
+        HandleMsg::Etc {} => etc(deps, env),
+        HandleMsg::Features(m) => match m {
+            FeatureToggleHandleMsg::Pause { features } => FeatureToggle::handle_stop(deps, env, features),
+            FeatureToggleHandleMsg::Unpause { features } => FeatureToggle::handle_resume(deps, env, features),
+        },
+    }
+}
+```
+
+Note: `FeatureToggle::pause()` and `FeatureToggle::unpause()` requires `env.message.sender` to be a pauser!
+
+### Adding/removing pausers
+
+Similarly to the section above, add `FeatureToggleHandleMsg` to your `HandleMsg`.
+
+Note: you should only add `Features(FeatureToggleHandleMsg)` to the `HandleMsg` enum once, and it'll add all the supported messages.
+
+`FeatureToggle` provides with default implementation for these too, but you can wrap it with your own logic like requiring the caller to be admin, etc.:
+```rust
+pub fn handle<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    msg: HandleMsg,
+) -> StdResult<HandleResponse> {
+    // This is the same `match` clause from the section above
+    match msg {
+        HandleMsg::Redeem { amount } => redeem(deps, env, amount),
+        HandleMsg::Features(m) => match m {
+            // `Stop` and `Resume` go here too
+            FeatureToggleHandleMsg::SetPauser { address } => set_pauser(deps, env, address),
+            FeatureToggleHandleMsg::RemovePauser { address } => remove_pauser(deps, env, address),
+        },
+    }
+}
+
+fn set_pauser<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    address: HumanAddr,
+) -> StdResult<HandleResponse> {
+    let admin = get_admin()?;
+    if admin != env.message.sender {
+        return Err(StdError::unauthorized());
+    }
+
+    FeatureToggle::handle_set_pauser(deps, env, address)
+}
+
+fn remove_pauser<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    address: HumanAddr,
+) -> StdResult<HandleResponse> {
+    let admin = get_admin()?;
+    if admin != env.message.sender {
+        return Err(StdError::unauthorized());
+    }
+
+    FeatureToggle::handle_remove_pauser(deps, env, address)
+}
+```
+
+### Overriding the default implementation
+
+If you don't like the default implementation or want to override it for any other reason (for example, using a different storage namespace), you can do that by defining your own struct and implement `FeatureToggleTrait` for it:
+```rust
+struct TrollFeatureToggle {}
+
+impl FeatureToggleTrait for TrollFeatureToggle {
+    // This is mandatory
+    const STORAGE_KEY: &'static [u8] = b"custom_and_super_cool_key";
+
+    // This is optional
+    fn pause<S: Storage, T: Serialize>(storage: &mut S, features: Vec<T>) -> StdResult<()> {
+        for f in features {
+            Self::set_feature_status(storage, &f, Status::NotPaused)?;
+        }
+
+        Ok(())
+    }
+
+    // This is optional
+    fn unpause<S: Storage, T: Serialize>(storage: &mut S, features: Vec<T>) -> StdResult<()> {
+        for f in features {
+            Self::set_feature_status(storage, &f, Status::Paused)?;
+        }
+
+        Ok(())
+    }
+}
+```
+
+### Queries
+
+Similarly to `FeatureToggleHandleMsg`, query messages (and default implementations) are also provided:
+```rust
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum FeatureToggleQueryMsg<T: Serialize + DeserializeOwned> {
+    #[serde(bound = "")] // don't ask
+    Status {
+        features: Vec<T>,
+    },
+    IsPauser {
+        address: HumanAddr,
+    },
+}
+```
+
+You can use them in your `query()` the same way you used `FeatureToggleHandleMsg`.

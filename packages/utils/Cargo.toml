@@ -14,3 +14,4 @@ keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 serde = "1.0"
 schemars = "0.7"
 cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
+cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "0.10"}
