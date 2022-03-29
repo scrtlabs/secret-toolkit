@@ -134,7 +134,7 @@ You create an instance of the CounterQueryMsg::GetCount variant, and call its `q
 
 ## Feature Toggle
 
-This module implements feature toggles for your contract. The main motivation behind it is to enable pausing/resuming certain operations rather than stopping/resuming the contract entirely, while providing you with helper functions that will reduce your code to a minimum.
+This module implements feature toggles for your contract. The main motivation behind it is to enable pausing/unpausing certain operations rather than pausing/unpausing the contract entirely, while providing you with helper functions that will reduce your code to a minimum.
 
 The feature toggles are designed to be flexible, so you can choose whether to put entire messages under a toggle or just certain code sections, etc.
 
@@ -159,8 +159,6 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
                 status: Default::default(),
             },
         ],
-        Some(vec![FeatureStatus::Resumed, // `None` will default to `FeatureStatus::Resumed` for all features
-                  FeatureStatus::Resumed]),
         vec![env.message.sender], // Can put more than one pauser
     )?;
 }
@@ -229,8 +227,8 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
         HandleMsg::Redeem { amount } => redeem(deps, env, amount),
         HandleMsg::Etc {} => etc(deps, env),
         HandleMsg::Features(m) => match m {
-            FeatureToggleHandleMsg::Pause { features } => FeatureToggle::handle_stop(deps, env, features),
-            FeatureToggleHandleMsg::Unpause { features } => FeatureToggle::handle_resume(deps, env, features),
+            FeatureToggleHandleMsg::Pause { features } => FeatureToggle::handle_pause(deps, env, features),
+            FeatureToggleHandleMsg::Unpause { features } => FeatureToggle::handle_unpause(deps, env, features),
         },
     }
 }
@@ -288,6 +286,8 @@ fn remove_pauser<S: Storage, A: Api, Q: Querier>(
     FeatureToggle::handle_remove_pauser(deps, env, address)
 }
 ```
+
+Note: `set_pauser` and `remove_pauser` are permissionless by default.
 
 ### Overriding the default implementation
 
