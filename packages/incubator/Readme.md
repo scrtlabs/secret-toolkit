@@ -54,7 +54,7 @@ Implementation based on https://algorithmtutor.com/Data-Structures/Tree/Binary-H
 
 ### Usage
 
-The usage of `MaxHeapStoreMut` and `MaxHeapStore` are modeled on `AppendStoreMut` and `AppendStore`, respectively. The add an item to the heap use `insert` and to take the top value off use `remove`, which also returns the item that was removed. Duplicate items can be added to the heap.
+The usage of `MaxHeapStoreMut` and `MaxHeapStore` are modeled on `AppendStoreMut` and `AppendStore`, respectively. To add an item to the heap use `insert` and to take the top value off use `remove`, which also returns the item that was removed. To peek at the max value without removing, use the `get_max` function. Duplicate items can be added to the heap.
 
 ```rust
 let mut storage = MockStorage::new();
@@ -128,6 +128,8 @@ assert_eq!(heap_store.remove(), Ok(Tx{
     amount: 50,
 }));
 ```
+
+`MaxHeapStore` is modeled on an `AppendStore` and stores the array representation of the heap in the same way, e.g. using `len` key to store the length. Therefore, you can attach an `AppendStore` to a max heap instead of `MaxHeapStore` if you want to iterate over all the values for some reason.
 
 ## Generational index storage
 
