@@ -14,8 +14,11 @@
 * Types in `secret-toolkit::permit::Permit` are now generic over the type of permissions they accept.
 
 ### Breaking
-* `secret-toolkit::permit::validate()` now takes a reference to the current token address instead of taking it by value.
-* Renamed `secret-toolkit::permit::Permission` to `secret-toolkit::permit::StandardPermission`.
+* `secret-toolkit::permit::validate()` Now supports validating any type of Cosmos address. 
+Interface changes: Now takes a reference to the current token address instead 
+of taking it by value and an optional hrp string.
+In addition, it returns a String and not HumanAddr.
+* Renamed `secret-toolkit::permit::Permission` to `secret-toolkit::permit::TokenPermission`.
 
 ## v0.2.0
 This release includes a ton of new features, and a few breaking changes in various interfaces.
