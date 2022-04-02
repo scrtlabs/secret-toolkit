@@ -30,9 +30,9 @@ viewing-key = ["secret-toolkit-viewing-key"]
 secret-toolkit-crypto = { version = "0.3.0", path = "../crypto", optional = true }
 secret-toolkit-incubator = { version = "0.3.0", path = "../incubator", optional = true }
 secret-toolkit-permit = { version = "0.3.0", path = "../permit", optional = true }
-secret-toolkit-serialization = { version = "0.2", path = "../serialization", optional = true }
-secret-toolkit-snip20 = { version = "0.2", path = "../snip20", optional = true }
-secret-toolkit-snip721 = { version = "0.2", path = "../snip721", optional = true }
-secret-toolkit-storage = { version = "0.2", path = "../storage", optional = true }
-secret-toolkit-utils = { version = "0.2", path = "../utils", optional = true }
-secret-toolkit-viewing-key = { version = "0.2", path = "../viewing_key", optional = true }
+secret-toolkit-serialization = { version = "0.3", path = "../serialization", optional = true }
+secret-toolkit-snip20 = { version = "0.3", path = "../snip20", optional = true }
+secret-toolkit-snip721 = { version = "0.3", path = "../snip721", optional = true }
+secret-toolkit-storage = { version = "0.3", path = "../storage", optional = true }
+secret-toolkit-utils = { version = "0.3", path = "../utils", optional = true }
+secret-toolkit-viewing-key = { version = "0.3", path = "../viewing_key", optional = true }
