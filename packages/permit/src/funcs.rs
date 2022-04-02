@@ -2,9 +2,8 @@ use cosmwasm_std::{
     to_binary, Api, Binary, CanonicalAddr, Extern, HumanAddr, Querier, StdError, StdResult, Storage,
 };
 use ripemd160::{Digest, Ripemd160};
-// use secp256k1::{PublicKey, Message, ecdsa::Signature as Signature, Secp256k1};
 
-use secret_toolkit_crypto::{sha_256, secp256k1::{PublicKey, Message, Signature}};
+use secret_toolkit_crypto::{sha_256, secp256k1::{PublicKey, Signature}};
 use bech32::{ToBase32, Variant};
 use crate::{Permissions, Permit, RevokedPermits, SignedPermit};
 
@@ -76,7 +75,7 @@ pub fn pubkey_to_account(pubkey: &Binary) -> CanonicalAddr {
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
-    use crate::{Permission, PermitParams, PermitSignature, PubKey};
+    use crate::{PermitParams, PermitSignature, PubKey, TokenPermissions};
 
     #[test]
     fn test_verify_permit() {
@@ -91,7 +90,7 @@ mod tests {
                 allowed_tokens: vec![token.clone()],
                 permit_name: "memo_secret1rf03820fp8gngzg2w02vd30ns78qkc8rg8dxaq".to_string(),
                 chain_id: "pulsar-2".to_string(),
-                permissions: vec![Permission::History]
+                permissions: vec![TokenPermissions::History]
             },
             signature: PermitSignature {
                 pub_key: PubKey {

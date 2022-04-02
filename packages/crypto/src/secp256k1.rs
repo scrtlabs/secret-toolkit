@@ -3,9 +3,9 @@ use secp256k1::{ecdsa::Signature as SecpSignature};
 
 use cosmwasm_std::StdError;
 
-pub const PRIVATE_KEY_SIZE: usize = secp256k1::util::SECRET_KEY_SIZE;
-pub const PUBLIC_KEY_SIZE: usize = secp256k1::util::FULL_PUBLIC_KEY_SIZE;
-pub const COMPRESSED_PUBLIC_KEY_SIZE: usize = secp256k1::util::COMPRESSED_PUBLIC_KEY_SIZE;
+pub const PRIVATE_KEY_SIZE: usize = secp256k1::constants::SECRET_KEY_SIZE;
+pub const PUBLIC_KEY_SIZE: usize = secp256k1::constants::UNCOMPRESSED_PUBLIC_KEY_SIZE;
+pub const COMPRESSED_PUBLIC_KEY_SIZE: usize = secp256k1::constants::PUBLIC_KEY_SIZE;
 
 pub struct PrivateKey {
     inner: secp256k1::SecretKey,
@@ -16,18 +16,18 @@ pub struct PublicKey {
 }
 
 pub struct Signature {
-    inner: secp256k1::ecdsa::Signature,
+    inner: SecpSignature,
 }
 
 impl PrivateKey {
     pub fn parse(raw: &[u8; PRIVATE_KEY_SIZE]) -> Result<Self, StdError> {
-        secp256k1::SecretKey::parse(raw)
+        secp256k1::SecretKey::from_slice(raw)
             .map(|key| PrivateKey { inner: key })
             .map_err(|err| StdError::generic_err(format!("Error parsing PrivateKey: {}", err)))
     }
 
     pub fn serialize(&self) -> [u8; PRIVATE_KEY_SIZE] {
-        self.inner.serialize()
+        self.inner.serialize_secret()
     }
 
     pub fn pubkey(&self) -> PublicKey {
@@ -38,49 +38,56 @@ impl PrivateKey {
     }
 
     pub fn sign(&self, data: &[u8; MESSAGE_SIZE]) -> Signature {
-        let msg = secp256k1::Message::parse(data);
-        let sig = secp256k1::sign(&msg, &self.inner);
+        // will never fail since `from_slice` only fails when a non 32 byte input is given
+        let msg = secp256k1::Message::from_slice(data).unwrap();
 
-        Signature { inner: sig.0 }
+        let sign = secp256k1::Secp256k1::signing_only();
+        let sig = sign.sign_ecdsa(&msg, &self.inner);
+
+        Signature { inner: sig }
     }
 }
 
 impl PublicKey {
     pub fn parse(p: &[u8]) -> Result<PublicKey, StdError> {
-        secp256k1::PublicKey::parse_slice(p, None)
+        secp256k1::PublicKey::from_slice(p)
             .map(|key| PublicKey { inner: key })
             .map_err(|err| StdError::generic_err(format!("Error parsing PublicKey: {}", err)))
     }
 
     pub fn serialize(&self) -> [u8; PUBLIC_KEY_SIZE] {
-        self.inner.serialize()
+        self.inner.serialize_uncompressed()
     }
 
     pub fn serialize_compressed(&self) -> [u8; COMPRESSED_PUBLIC_KEY_SIZE] {
-        self.inner.serialize_compressed()
+        self.inner.serialize()
     }
 
     pub fn verify(&self, data: &[u8; MESSAGE_SIZE], signature: Signature) -> bool {
-        let msg = secp256k1::Message::parse(data);
-        secp256k1::verify(&msg, &signature.inner, &self.inner)
+        // will never fail since `from_slice` only fails when a non 32 byte input is given
+        let msg = secp256k1::Message::from_slice(data).unwrap();
+
+        let verifier = secp256k1::Secp256k1::verification_only();
+
+        verifier.verify_ecdsa(&msg, &signature.inner, &self.inner).is_ok()
     }
 }
 
 impl Signature {
     pub fn parse(p: &[u8; SIGNATURE_SIZE]) -> Result<Signature, StdError> {
-        SecpSignature::parse_standard(p)
+        SecpSignature::from_compact(p)
             .map(|sig| Signature { inner: sig })
             .map_err(|err| StdError::generic_err(format!("Error parsing Signature: {}", err)))
     }
 
     pub fn parse_slice(p: &[u8]) -> Result<Signature, StdError> {
-        SecpSignature::parse_standard_slice(p)
+        SecpSignature::from_compact(p)
             .map(|sig| Signature { inner: sig })
             .map_err(|err| StdError::generic_err(format!("Error parsing Signature: {}", err)))
     }
 
     pub fn serialize(&self) -> [u8; SIGNATURE_SIZE] {
-        self.inner.serialize()
+        self.inner.serialize_compact()
     }
 }
 

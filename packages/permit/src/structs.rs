@@ -8,7 +8,7 @@ use cosmwasm_std::{Binary, CanonicalAddr, HumanAddr, Uint128};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct Permit<Permission: Permissions = StandardPermission> {
+pub struct Permit<Permission: Permissions = TokenPermissions> {
     #[serde(bound = "")]
     pub params: PermitParams<Permission>,
     pub signature: PermitSignature,
@@ -26,7 +26,7 @@ impl<Permission: Permissions> Permit<Permission> {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct PermitParams<Permission: Permissions = StandardPermission> {
+pub struct PermitParams<Permission: Permissions = TokenPermissions> {
     pub allowed_tokens: Vec<HumanAddr>,
     pub permit_name: String,
     pub chain_id: String,
@@ -60,7 +60,7 @@ impl PubKey {
 #[remain::sorted]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct SignedPermit<Permission: Permissions = StandardPermission> {
+pub struct SignedPermit<Permission: Permissions = TokenPermissions> {
     /// ignored
     pub account_number: Uint128,
     /// ignored, no Env in query
@@ -141,7 +141,7 @@ impl Default for Coin {
 #[remain::sorted]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct PermitMsg<Permission: Permissions = StandardPermission> {
+pub struct PermitMsg<Permission: Permissions = TokenPermissions> {
     pub r#type: String,
     #[serde(bound = "")]
     pub value: PermitContent<Permission>,
@@ -160,7 +160,7 @@ impl<Permission: Permissions> PermitMsg<Permission> {
 #[remain::sorted]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct PermitContent<Permission: Permissions = StandardPermission> {
+pub struct PermitContent<Permission: Permissions = TokenPermissions> {
     pub allowed_tokens: Vec<HumanAddr>,
     #[serde(bound = "")]
     pub permissions: Vec<Permission>,
@@ -192,7 +192,7 @@ impl<T> Permissions for T where
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum StandardPermission {
+pub enum TokenPermissions {
     /// Allowance for SNIP-20 - Permission to query allowance of the owner & spender
     Allowance,
     /// Balance for SNIP-20 - Permission to query balance
