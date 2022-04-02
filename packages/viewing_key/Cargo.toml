@@ -17,5 +17,5 @@ base64 = "0.11.0" # Same as used by cosmwas-std
 subtle = { version = "2.2.3", default-features = false }
 cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
 cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "0.10" }
-secret-toolkit-crypto = { version = "0.2", path = "../crypto", default-features = false, features = ["hash", "rand"] }
+secret-toolkit-crypto = { version = "0.3", path = "../crypto", default-features = false, features = ["hash", "rand"] }
 secret-toolkit-utils = { version = "0.2", path = "../utils" }

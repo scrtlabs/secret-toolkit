@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-permit"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2018"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -11,13 +11,12 @@ categories = ["cryptography::cryptocurrencies", "wasm"]
 keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 
 [dependencies]
+
+cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
+
 serde = "1.0"
 ripemd160 = { version = "0.9.1", default-features = false }
-# secp256k1 = { package = "libsecp256k1", version = "0.7.0", default-features = false, features = ["static-context", "hmac-drbg"]}
-secp256k1 = "0.21.2"
-# cosmwasm-std = { path = "../../../../GolandProjects/EnigmaBlockchain/cosmwasm/packages/std", package="secret-cosmwasm-std" }
-cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
 schemars = "0.7"
 bech32 = "0.8.1"
 remain = "0.2.2"
-sha2 = { version = "0.9", default-features = false }
+secret-toolkit-crypto = { version = "0.3.0", path = "../crypto", features=["hash", "ecc-secp256k1"] }

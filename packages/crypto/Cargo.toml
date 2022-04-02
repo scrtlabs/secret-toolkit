@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-crypto"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2018"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -13,7 +13,7 @@ keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 [features]
 hash = ["sha2"]
 rand = ["rand_chacha", "rand_core"]
-ecc = ["secp256k1"]
+ecc-secp256k1 = ["secp256k1"]
 
 [dependencies]
 rand_chacha = { version = "0.2.2", default-features = false, optional = true }

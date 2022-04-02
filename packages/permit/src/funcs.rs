@@ -2,22 +2,12 @@ use cosmwasm_std::{
     to_binary, Api, Binary, CanonicalAddr, Extern, HumanAddr, Querier, StdError, StdResult, Storage,
 };
 use ripemd160::{Digest, Ripemd160};
-use secp256k1::{PublicKey, Message, ecdsa::Signature as Signature, Secp256k1};
-use sha2::Sha256;
-// use secp256k1::{PublicKey, Message as SecpMessage, Signature, verify};
+// use secp256k1::{PublicKey, Message, ecdsa::Signature as Signature, Secp256k1};
+
+use secret_toolkit_crypto::{sha_256, secp256k1::{PublicKey, Message, Signature}};
 use bech32::{ToBase32, Variant};
 use crate::{Permit, RevokedPermits, SignedPermit};
 
-
-pub fn sha_256(data: &[u8]) -> [u8; 32] {
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    let hash = hasher.finalize();
-
-    let mut result = [0u8; 32];
-    result.copy_from_slice(hash.as_slice());
-    result
-}
 
 pub fn validate<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
@@ -44,7 +34,7 @@ pub fn validate<S: Storage, A: Api, Q: Querier>(
 
     // Derive account from pubkey
     let pubkey = &permit.signature.pub_key.value;
-    // let account = deps.api.human_address(&pubkey_to_account(pubkey))?.0;
+
     let account: String = bech32::encode(account_hrp, &pubkey_to_account(pubkey).0.as_slice().to_base32(), Variant::Bech32).unwrap();
     // Validate permit_name
     let permit_name = &permit.params.permit_name;
@@ -61,35 +51,17 @@ pub fn validate<S: Storage, A: Api, Q: Querier>(
     // Validate signature, reference: https://github.com/enigmampc/SecretNetwork/blob/f591ed0cb3af28608df3bf19d6cfb733cca48100/cosmwasm/packages/wasmi-runtime/src/crypto/secp256k1.rs#L49-L82
     let signed_bytes = to_binary(&SignedPermit::from_params(&permit.params))?;
     let signed_bytes_hash = sha_256(signed_bytes.as_slice());
-    //let secp256k1_msg = SecpMessage::parse_slice(&signed_bytes_hash).map_err(|err| {
-    let secp256k1_msg = Message::from_slice(&signed_bytes_hash).map_err(|err| {
-        StdError::generic_err(format!(
-            "Failed to create a secp256k1 message from signed_bytes: {:?}",
-            err
-        ))
-    })?;
 
-    let secp256k1_verifier = Secp256k1::verification_only();
-
-    //let secp256k1_signature = Signature::parse_standard_slice(&permit.signature.signature.0)
-    let secp256k1_signature = Signature::from_compact(&permit.signature.signature.0)
+    let secp256k1_signature = Signature::parse_slice(&permit.signature.signature.0)
         .map_err(|err| StdError::generic_err(format!("Malformed signature: {:?}", err)))?;
-    //let secp256k1_pubkey = PublicKey::parse_slice(pubkey.0.as_slice(), None)
-    let secp256k1_pubkey = PublicKey::from_slice(pubkey.0.as_slice())
+    let secp256k1_pubkey = PublicKey::parse(pubkey.0.as_slice())
         .map_err(|err| StdError::generic_err(format!("Malformed pubkey: {:?}", err)))?;
 
-    // if !verify(&secp256k1_msg, &secp256k1_signature, &secp256k1_pubkey) {
-    //     return Err(StdError::generic_err(format!(
-    //         "Failed to verify signatures for the given permit",
-    //     )));
-    // }
-    secp256k1_verifier.verify_ecdsa(&secp256k1_msg, &secp256k1_signature, &secp256k1_pubkey)
-        .map_err(|err| {
-            StdError::generic_err(format!(
-                "Failed to verify signatures for the given permit: {:?}",
-                err
-            ))
-        })?;
+    if !secp256k1_pubkey.verify(&signed_bytes_hash, secp256k1_signature) {
+        return Err(StdError::generic_err(format!(
+            "Failed to verify signatures for the given permit",
+        )));
+    }
 
     Ok(account)
 }

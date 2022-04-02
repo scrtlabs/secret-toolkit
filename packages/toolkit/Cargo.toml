@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2018"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -27,9 +27,9 @@ utils = ["secret-toolkit-utils"]
 viewing-key = ["secret-toolkit-viewing-key"]
 
 [dependencies]
-secret-toolkit-crypto = { version = "0.2", path = "../crypto", optional = true }
-secret-toolkit-incubator = { version = "0.2", path = "../incubator", optional = true }
-secret-toolkit-permit = { version = "0.2", path = "../permit", optional = true }
+secret-toolkit-crypto = { version = "0.3.0", path = "../crypto", optional = true }
+secret-toolkit-incubator = { version = "0.3.0", path = "../incubator", optional = true }
+secret-toolkit-permit = { version = "0.3.0", path = "../permit", optional = true }
 secret-toolkit-serialization = { version = "0.2", path = "../serialization", optional = true }
 secret-toolkit-snip20 = { version = "0.2", path = "../snip20", optional = true }
 secret-toolkit-snip721 = { version = "0.2", path = "../snip721", optional = true }

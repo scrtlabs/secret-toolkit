@@ -1,4 +1,5 @@
 pub use secp256k1::constants::{MESSAGE_SIZE, COMPACT_SIGNATURE_SIZE as SIGNATURE_SIZE};
+use secp256k1::{ecdsa::Signature as SecpSignature};
 
 use cosmwasm_std::StdError;
 
@@ -66,14 +67,14 @@ impl PublicKey {
 }
 
 impl Signature {
-    pub fn parse(p: &[u8; SIGNATURE_SIZE]) -> Signature {
-        Signature {
-            inner: secp256k1::Signature::parse_standard(p).unwrap(),
-        }
+    pub fn parse(p: &[u8; SIGNATURE_SIZE]) -> Result<Signature, StdError> {
+        SecpSignature::parse_standard(p)
+            .map(|sig| Signature { inner: sig })
+            .map_err(|err| StdError::generic_err(format!("Error parsing Signature: {}", err)))
     }
 
     pub fn parse_slice(p: &[u8]) -> Result<Signature, StdError> {
-        secp256k1::Signature::parse_standard_slice(p)
+        SecpSignature::parse_standard_slice(p)
             .map(|sig| Signature { inner: sig })
             .map_err(|err| StdError::generic_err(format!("Error parsing Signature: {}", err)))
     }

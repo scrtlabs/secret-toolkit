@@ -2,7 +2,7 @@
 mod hash;
 #[cfg(feature = "rand")]
 mod rng;
-#[cfg(feature = "ecc")]
+#[cfg(feature = "ecc-secp256k1")]
 pub mod secp256k1;
 
 #[cfg(feature = "hash")]
