@@ -3,16 +3,18 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Binary, HumanAddr, Uint128};
+use crate::pubkey_to_account;
+use cosmwasm_std::{Binary, CanonicalAddr, HumanAddr, Uint128};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct Permit {
-    pub params: PermitParams,
+pub struct Permit<Permission: Permissions = StandardPermission> {
+    #[serde(bound = "")]
+    pub params: PermitParams<Permission>,
     pub signature: PermitSignature,
 }
 
-impl Permit {
+impl<Permission: Permissions> Permit<Permission> {
     pub fn check_token(&self, token: &HumanAddr) -> bool {
         self.params.allowed_tokens.contains(token)
     }
@@ -24,10 +26,11 @@ impl Permit {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct PermitParams {
+pub struct PermitParams<Permission: Permissions = StandardPermission> {
     pub allowed_tokens: Vec<HumanAddr>,
     pub permit_name: String,
     pub chain_id: String,
+    #[serde(bound = "")]
     pub permissions: Vec<Permission>,
 }
 
@@ -47,11 +50,17 @@ pub struct PubKey {
     pub value: Binary,
 }
 
+impl PubKey {
+    pub fn canonical_address(&self) -> CanonicalAddr {
+        pubkey_to_account(&self.value)
+    }
+}
+
 // Note: The order of fields in this struct is important for the permit signature verification!
 #[remain::sorted]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct SignedPermit {
+pub struct SignedPermit<Permission: Permissions = StandardPermission> {
     /// ignored
     pub account_number: Uint128,
     /// ignored, no Env in query
@@ -61,13 +70,14 @@ pub struct SignedPermit {
     /// ignored
     pub memo: String,
     /// the signed message
-    pub msgs: Vec<PermitMsg>,
+    #[serde(bound = "")]
+    pub msgs: Vec<PermitMsg<Permission>>,
     /// ignored
     pub sequence: Uint128,
 }
 
-impl SignedPermit {
-    pub fn from_params(params: &PermitParams) -> Self {
+impl<Permission: Permissions> SignedPermit<Permission> {
+    pub fn from_params(params: &PermitParams<Permission>) -> Self {
         Self {
             account_number: Uint128::zero(),
             chain_id: params.chain_id.clone(),
@@ -131,13 +141,14 @@ impl Default for Coin {
 #[remain::sorted]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct PermitMsg {
+pub struct PermitMsg<Permission: Permissions = StandardPermission> {
     pub r#type: String,
-    pub value: PermitContent,
+    #[serde(bound = "")]
+    pub value: PermitContent<Permission>,
 }
 
-impl PermitMsg {
-    pub fn from_content(content: PermitContent) -> Self {
+impl<Permission: Permissions> PermitMsg<Permission> {
+    pub fn from_content(content: PermitContent<Permission>) -> Self {
         Self {
             r#type: "query_permit".to_string(),
             value: content,
@@ -149,14 +160,15 @@ impl PermitMsg {
 #[remain::sorted]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct PermitContent {
+pub struct PermitContent<Permission: Permissions = StandardPermission> {
     pub allowed_tokens: Vec<HumanAddr>,
+    #[serde(bound = "")]
     pub permissions: Vec<Permission>,
     pub permit_name: String,
 }
 
-impl PermitContent {
-    pub fn from_params(params: &PermitParams) -> Self {
+impl<Permission: Permissions> PermitContent<Permission> {
+    pub fn from_params(params: &PermitParams<Permission>) -> Self {
         Self {
             allowed_tokens: params.allowed_tokens.clone(),
             permit_name: params.permit_name.clone(),
@@ -165,9 +177,22 @@ impl PermitContent {
     }
 }
 
+/// This trait is an alias for all the other traits it inherits from.
+/// It does this by providing a blanket implementation for all types that
+/// implement the same set of traits
+pub trait Permissions:
+    Clone + PartialEq + Serialize + for<'d> Deserialize<'d> + JsonSchema
+{
+}
+
+impl<T> Permissions for T where
+    T: Clone + PartialEq + Serialize + for<'d> Deserialize<'d> + JsonSchema
+{
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum Permission {
+pub enum StandardPermission {
     /// Allowance for SNIP-20 - Permission to query allowance of the owner & spender
     Allowance,
     /// Balance for SNIP-20 - Permission to query balance

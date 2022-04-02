@@ -6,13 +6,12 @@ use ripemd160::{Digest, Ripemd160};
 
 use secret_toolkit_crypto::{sha_256, secp256k1::{PublicKey, Message, Signature}};
 use bech32::{ToBase32, Variant};
-use crate::{Permit, RevokedPermits, SignedPermit};
+use crate::{Permissions, Permit, RevokedPermits, SignedPermit};
 
-
-pub fn validate<S: Storage, A: Api, Q: Querier>(
+pub fn validate<Permission: Permissions, S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     storage_prefix: &str,
-    permit: &Permit,
+    permit: &Permit<Permission>,
     current_token_address: HumanAddr,
     hrp: Option<&str>,
 ) -> StdResult<String> {

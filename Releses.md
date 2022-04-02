@@ -10,7 +10,12 @@
 * `secret-toolkit-crypto::PublicKey::parse` now returns StdResult<Self>
 * `secret-toolkit-crypto` now has features `["hash", "rng" and "ecc-secp256k1"]` which are all off by default - enable those you need
 * `secret-toolkit-incubator` now has features `["cashmap", "generational-store"]` which are all off by default
-* 
+* Added `secret-toolkit::permit::PubKey::canonical_address()`
+* Types in `secret-toolkit::permit::Permit` are now generic over the type of permissions they accept.
+
+### Breaking
+* `secret-toolkit::permit::validate()` now takes a reference to the current token address instead of taking it by value.
+* Renamed `secret-toolkit::permit::Permission` to `secret-toolkit::permit::StandardPermission`.
 
 ## v0.2.0
 This release includes a ton of new features, and a few breaking changes in various interfaces.
