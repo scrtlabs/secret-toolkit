@@ -12,6 +12,6 @@ keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 
 [dependencies]
 serde = "1.0"
-cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
-cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "0.10" }
+cosmwasm-std = { git = "https://github.com/scrtlabs/SecretNetwork", branch = "backport-cw-crypto-apis-to-v0.10", package = "secret-cosmwasm-std" }
+cosmwasm-storage = { git = "https://github.com/scrtlabs/SecretNetwork", branch = "backport-cw-crypto-apis-to-v0.10", package = "secret-cosmwasm-storage" }
 secret-toolkit-serialization = { version = "0.2", path = "../serialization" }

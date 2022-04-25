@@ -19,7 +19,7 @@ base64 = ["schemars"]
 serde = "1.0"
 bincode2 = { version = "2.0", optional = true }
 schemars = { version = "0.7", optional = true }
-cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
+cosmwasm-std = { git = "https://github.com/scrtlabs/SecretNetwork", branch = "backport-cw-crypto-apis-to-v0.10", package = "secret-cosmwasm-std" }
 
 [dev-dependencies]
 serde_json = "1"

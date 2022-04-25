@@ -18,7 +18,7 @@ sha2 = { version = "0.9.1", default-features = false }
 libsecp256k1 = { version = "0.3.5", default-features = false, features = [
     "hmac"
 ] }
-cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
+cosmwasm-std = { git = "https://github.com/scrtlabs/SecretNetwork", branch = "backport-cw-crypto-apis-to-v0.10", package = "secret-cosmwasm-std" }
 
 [dev-dependencies]
 secp256k1-test = { package = "secp256k1", version = "0.17", features = [
