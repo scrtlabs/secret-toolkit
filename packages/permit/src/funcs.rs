@@ -43,7 +43,7 @@ pub fn validate<S: Storage, A: Api, Q: Querier>(
     // Verify signature
     let signed_bytes = to_binary(&SignedPermit::from_params(&permit.params))?;
     let signed_bytes_hash = secret_toolkit_crypto::sha_256(signed_bytes.as_slice());
-    let validated = deps.api.secp256k1_verify(
+    let verified = deps.api.secp256k1_verify(
         signed_bytes_hash.as_slice(),
         permit.signature.signature.0.as_slice(),
         pubkey.as_slice(),
@@ -51,8 +51,8 @@ pub fn validate<S: Storage, A: Api, Q: Querier>(
         StdError::generic_err(format!("{:?}", err))
     })?;
 
-    if !validated {
-        return Err(StdError::generic_err(format!("Permit {:?} was not validated", permit_name)));
+    if !verified {
+        return Err(StdError::generic_err(format!("Permit {:?} signature was not verified", permit_name)));
     }
     Ok(account)
 }
