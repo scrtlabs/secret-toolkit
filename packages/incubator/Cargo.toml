@@ -20,3 +20,4 @@ secret-toolkit-serialization = { version = "0.3", path = "../serialization", opt
 [features]
 cashmap = ["siphasher", "cosmwasm-storage", "serde", "secret-toolkit-serialization", "cosmwasm-std"]
 generational-store = ["secret-toolkit-serialization", "serde", "cosmwasm-std"]
+maxheap = ["secret-toolkit-serialization", "serde", "cosmwasm-std"]

@@ -43,6 +43,94 @@ cmap.remove(b"key1")?;
 
 Generalize keys to allow any hashable type, not just &[u8]
 
+## Max heap storage
+
+A "max heap store" is a storage wrapper that implements a binary tree maxheap data structure.
+https://en.wikipedia.org/wiki/Min-max_heap
+Implementation based on https://algorithmtutor.com/Data-Structures/Tree/Binary-Heaps/
+
+* Insertion O(log n)
+* Remove max O(log n)
+
+### Usage
+
+The usage of `MaxHeapStoreMut` and `MaxHeapStore` are modeled on `AppendStoreMut` and `AppendStore`, respectively. To add an item to the heap use `insert` and to take the top value off use `remove`, which also returns the item that was removed. To peek at the max value without removing, use the `get_max` function. Duplicate items can be added to the heap.
+
+```rust
+let mut storage = MockStorage::new();
+let mut heap_store = MaxHeapStoreMut::attach_or_create(&mut storage)?;
+heap_store.insert(&1234)?;
+heap_store.insert(&2143)?;
+heap_store.insert(&4321)?;
+heap_store.insert(&3412)?;
+heap_store.insert(&2143)?;
+
+assert_eq!(heap_store.remove(), Ok(4321));
+assert_eq!(heap_store.remove(), Ok(3412));
+assert_eq!(heap_store.remove(), Ok(2143));
+assert_eq!(heap_store.remove(), Ok(2143));
+assert_eq!(heap_store.remove(), Ok(1234));
+```
+
+In order to use a custom struct with `MaxHeapStore` you will need to implement the appropriate Ordering traits. The following is an example with a custom struct `Tx` that uses the `amount` field to determine order in the heap:
+
+```rust
+#[derive(Serialize, Deserialize, Clone, Debug, Eq)]
+pub struct Tx {
+    address: HumanAddr,
+    amount: u128,
+}
+
+impl PartialOrd for Tx {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+        
+impl Ord for Tx {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.amount.cmp(&other.amount)
+    }
+}
+        
+impl PartialEq for Tx {
+    fn eq(&self, other: &Self) -> bool {
+        self.amount == other.amount
+    }
+}
+
+let mut storage = MockStorage::new();
+let mut heap_store = MaxHeapStoreMut::attach_or_create(&mut storage)?;
+
+heap_store.insert(&Tx{
+    address: HumanAddr("address1".to_string()),
+    amount: 100,
+})?;
+heap_store.insert(&Tx{
+    address: HumanAddr("address2".to_string()),
+    amount: 200,
+})?;
+heap_store.insert(&Tx{
+    address: HumanAddr("address5".to_string()),
+    amount: 50,
+})?;
+
+assert_eq!(heap_store.remove(), Ok(Tx{
+    address: HumanAddr("address3".to_string()),
+    amount: 200,
+}));
+assert_eq!(heap_store.remove(), Ok(Tx{
+    address: HumanAddr("address4".to_string()),
+    amount: 100,
+}));
+assert_eq!(heap_store.remove(), Ok(Tx{
+    address: HumanAddr("address1".to_string()),
+    amount: 50,
+}));
+```
+
+`MaxHeapStore` is modeled on an `AppendStore` and stores the array representation of the heap in the same way, e.g. using `len` key to store the length. Therefore, you can attach an `AppendStore` to a max heap instead of `MaxHeapStore` if you want to iterate over all the values for some reason.
+
 ## Generational index storage
 
 Also known as a slot map, a generational index storage is an iterable data structure where each element in the list is identified by a unique key that is a pair (index, generation). Each time an item is removed from the list the generation of the storage increments by one. If a new item is placed at the same index as a previous item which had been removed previously, the old references will not point to the new element. This is because although the index matches, the generation does not. This ensures that each reference to an element in the list is stable and safe.
