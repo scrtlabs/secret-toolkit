@@ -1,10 +1,11 @@
-pub use secp256k1::util::{MESSAGE_SIZE, SIGNATURE_SIZE};
+pub use secp256k1::constants::{COMPACT_SIGNATURE_SIZE as SIGNATURE_SIZE, MESSAGE_SIZE};
+use secp256k1::ecdsa::Signature as SecpSignature;
 
-use cosmwasm_std::StdError;
+use cosmwasm_std::{Api, StdError};
 
-pub const PRIVATE_KEY_SIZE: usize = secp256k1::util::SECRET_KEY_SIZE;
-pub const PUBLIC_KEY_SIZE: usize = secp256k1::util::FULL_PUBLIC_KEY_SIZE;
-pub const COMPRESSED_PUBLIC_KEY_SIZE: usize = secp256k1::util::COMPRESSED_PUBLIC_KEY_SIZE;
+pub const PRIVATE_KEY_SIZE: usize = secp256k1::constants::SECRET_KEY_SIZE;
+pub const PUBLIC_KEY_SIZE: usize = secp256k1::constants::UNCOMPRESSED_PUBLIC_KEY_SIZE;
+pub const COMPRESSED_PUBLIC_KEY_SIZE: usize = secp256k1::constants::PUBLIC_KEY_SIZE;
 
 pub struct PrivateKey {
     inner: secp256k1::SecretKey,
@@ -15,70 +16,75 @@ pub struct PublicKey {
 }
 
 pub struct Signature {
-    inner: secp256k1::Signature,
+    inner: SecpSignature,
 }
 
 impl PrivateKey {
     pub fn parse(raw: &[u8; PRIVATE_KEY_SIZE]) -> Result<Self, StdError> {
-        secp256k1::SecretKey::parse(raw)
+        secp256k1::SecretKey::from_slice(raw)
             .map(|key| PrivateKey { inner: key })
             .map_err(|err| StdError::generic_err(format!("Error parsing PrivateKey: {}", err)))
     }
 
     pub fn serialize(&self) -> [u8; PRIVATE_KEY_SIZE] {
-        self.inner.serialize()
+        self.inner.serialize_secret()
     }
 
     pub fn pubkey(&self) -> PublicKey {
+        let secp = secp256k1::Secp256k1::new();
         PublicKey {
-            inner: secp256k1::PublicKey::from_secret_key(&self.inner),
+            inner: secp256k1::PublicKey::from_secret_key(&secp, &self.inner),
         }
     }
 
-    pub fn sign(&self, data: &[u8; MESSAGE_SIZE]) -> Signature {
-        let msg = secp256k1::Message::parse(data);
-        let sig = secp256k1::sign(&msg, &self.inner);
+    pub fn sign<A: Api>(&self, data: &[u8], api: A) -> Signature {
+        let serialized_key = &self.serialize();
+        // will never fail since we guarantee that the inputs are valid.
+        let sig_bytes = api.secp256k1_sign(data, serialized_key).unwrap();
+        let sig = SecpSignature::from_compact(&sig_bytes).unwrap();
 
-        Signature { inner: sig.0 }
+        Signature { inner: sig }
     }
 }
 
 impl PublicKey {
     pub fn parse(p: &[u8]) -> Result<PublicKey, StdError> {
-        secp256k1::PublicKey::parse_slice(p, None)
+        secp256k1::PublicKey::from_slice(p)
             .map(|key| PublicKey { inner: key })
             .map_err(|err| StdError::generic_err(format!("Error parsing PublicKey: {}", err)))
     }
 
     pub fn serialize(&self) -> [u8; PUBLIC_KEY_SIZE] {
-        self.inner.serialize()
+        self.inner.serialize_uncompressed()
     }
 
     pub fn serialize_compressed(&self) -> [u8; COMPRESSED_PUBLIC_KEY_SIZE] {
-        self.inner.serialize_compressed()
+        self.inner.serialize()
     }
 
-    pub fn verify(&self, data: &[u8; MESSAGE_SIZE], signature: Signature) -> bool {
-        let msg = secp256k1::Message::parse(data);
-        secp256k1::verify(&msg, &signature.inner, &self.inner)
+    pub fn verify<A: Api>(&self, data: &[u8; MESSAGE_SIZE], signature: Signature, api: A) -> bool {
+        let sig = &signature.serialize();
+        let pk = &self.serialize();
+        // will never fail since we guarantee that the inputs are valid.
+        api.secp256k1_verify(data, sig, pk).unwrap()
     }
 }
 
 impl Signature {
-    pub fn parse(p: &[u8; SIGNATURE_SIZE]) -> Signature {
-        Signature {
-            inner: secp256k1::Signature::parse(p),
-        }
+    pub fn parse(p: &[u8; SIGNATURE_SIZE]) -> Result<Signature, StdError> {
+        SecpSignature::from_compact(p)
+            .map(|sig| Signature { inner: sig })
+            .map_err(|err| StdError::generic_err(format!("Error parsing Signature: {}", err)))
     }
 
     pub fn parse_slice(p: &[u8]) -> Result<Signature, StdError> {
-        secp256k1::Signature::parse_slice(p)
+        SecpSignature::from_compact(p)
             .map(|sig| Signature { inner: sig })
             .map_err(|err| StdError::generic_err(format!("Error parsing Signature: {}", err)))
     }
 
     pub fn serialize(&self) -> [u8; SIGNATURE_SIZE] {
-        self.inner.serialize()
+        self.inner.serialize_compact()
     }
 }
 

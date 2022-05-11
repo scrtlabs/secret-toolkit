@@ -97,7 +97,7 @@ fn new_viewing_key(env: &Env, seed: &[u8], entropy: &[u8]) -> (String, [u8; 32])
     let mut rng_entropy = Vec::with_capacity(entropy_len);
     rng_entropy.extend_from_slice(&env.block.height.to_be_bytes());
     rng_entropy.extend_from_slice(&env.block.time.to_be_bytes());
-    rng_entropy.extend_from_slice(&env.message.sender.0.as_bytes());
+    rng_entropy.extend_from_slice(env.message.sender.0.as_bytes());
     rng_entropy.extend_from_slice(entropy);
 
     let mut rng = Prng::new(seed, &rng_entropy);

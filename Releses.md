@@ -1,12 +1,29 @@
 # Release notes for the Secret Toolkit
 
-## Next Release
+## Next Release (v0.3.0)
 * Added `clear` method to `AppendStore` and `DequeStore` to quickly reset the collections (#34)
 * docs.rs documentation now includes all sub-crates
 * BUGFIX: `secret-toolkit::snip721::Metadata` was severely out of date with the SNIP-721 specification, and not useful.
   It is now compatible with deployed SNIP-721 contracts.
 * Added `types` module under the `util` package, to standardize often used types.
 * Added `secret-toolkit::viewing_key`, which can be imported by enabling the `viewing-key` feature.
+* Added `secret-toolkit::permit::PubKey::canonical_address()`
+* Types in `secret-toolkit::permit::Permit` are now generic over the type of permissions they accept.
+
+### Breaking
+* `secret-toolkit::permit::validate()` Now supports validating any type of Cosmos address. 
+Interface changes: Now takes a reference to the current token address instead 
+of taking it by value and an optional hrp string.
+In addition, it returns a String and not HumanAddr.
+* Renamed `secret-toolkit::permit::Permission` to `secret-toolkit::permit::TokenPermission`.
+* `secret-toolkit-crypto` now has features `["hash", "rng" and "ecc-secp256k1"]` which are all off by default - enable those you need
+* `secret-toolkit-crypto::secp256k1::PublicKey::parse` now returns `StdResult<Self>`
+* Changes to `secret-toolkit::crypto::secp256k1::PrivateKey::sign`:
+  * The `data` argument is now any slice of bytes, and not the hash of a slice of data.
+  * the `Api` from `deps.api` is now required as the second argument as we now use the precompiled implementation.
+* Changes to `secret-toolkit::crypto::secp256k1::PublicKey::verify`:
+  * the `Api` from `deps.api` is now required as the third argument as we now use the precompiled implementation.
+* `secret-toolkit-incubator` now has features `["cashmap", "generational-store"]` which are all off by default
 
 ## v0.2.0
 This release includes a ton of new features, and a few breaking changes in various interfaces.
