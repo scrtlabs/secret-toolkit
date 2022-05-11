@@ -12,7 +12,7 @@ keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 
 [dependencies]
 
-cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
+cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10.1" }
 
 serde = "1.0"
 ripemd160 = { version = "0.9.1", default-features = false }

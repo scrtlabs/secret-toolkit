@@ -19,7 +19,7 @@ ecc-secp256k1 = ["secp256k1"]
 rand_chacha = { version = "0.2.2", default-features = false, optional = true }
 rand_core = { version = "0.5.1", default-features = false, optional = true }
 sha2 = { version = "0.9.1", default-features = false, optional = true }
-secp256k1 = { version = "0.21.2", optional = true }
+secp256k1 = { version = "0.21.3", optional = true }
 cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
 
 [dev-dependencies]

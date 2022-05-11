@@ -1,7 +1,7 @@
-pub use secp256k1::constants::{MESSAGE_SIZE, COMPACT_SIGNATURE_SIZE as SIGNATURE_SIZE};
-use secp256k1::{ecdsa::Signature as SecpSignature};
+pub use secp256k1::constants::{COMPACT_SIGNATURE_SIZE as SIGNATURE_SIZE, MESSAGE_SIZE};
+use secp256k1::ecdsa::Signature as SecpSignature;
 
-use cosmwasm_std::StdError;
+use cosmwasm_std::{Api, StdError};
 
 pub const PRIVATE_KEY_SIZE: usize = secp256k1::constants::SECRET_KEY_SIZE;
 pub const PUBLIC_KEY_SIZE: usize = secp256k1::constants::UNCOMPRESSED_PUBLIC_KEY_SIZE;
@@ -37,12 +37,11 @@ impl PrivateKey {
         }
     }
 
-    pub fn sign(&self, data: &[u8; MESSAGE_SIZE]) -> Signature {
-        // will never fail since `from_slice` only fails when a non 32 byte input is given
-        let msg = secp256k1::Message::from_slice(data).unwrap();
-
-        let sign = secp256k1::Secp256k1::signing_only();
-        let sig = sign.sign_ecdsa(&msg, &self.inner);
+    pub fn sign<A: Api>(&self, data: &[u8], api: A) -> Signature {
+        let serialized_key = &self.serialize();
+        // will never fail since we guarantee that the inputs are valid.
+        let sig_bytes = api.secp256k1_sign(data, serialized_key).unwrap();
+        let sig = SecpSignature::from_compact(&sig_bytes).unwrap();
 
         Signature { inner: sig }
     }
@@ -63,13 +62,11 @@ impl PublicKey {
         self.inner.serialize()
     }
 
-    pub fn verify(&self, data: &[u8; MESSAGE_SIZE], signature: Signature) -> bool {
-        // will never fail since `from_slice` only fails when a non 32 byte input is given
-        let msg = secp256k1::Message::from_slice(data).unwrap();
-
-        let verifier = secp256k1::Secp256k1::verification_only();
-
-        verifier.verify_ecdsa(&msg, &signature.inner, &self.inner).is_ok()
+    pub fn verify<A: Api>(&self, data: &[u8; MESSAGE_SIZE], signature: Signature, api: A) -> bool {
+        let sig = &signature.serialize();
+        let pk = &self.serialize();
+        // will never fail since we guarantee that the inputs are valid.
+        api.secp256k1_verify(data, sig, pk).unwrap()
     }
 }
 

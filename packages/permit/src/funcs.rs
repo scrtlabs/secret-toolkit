@@ -3,9 +3,9 @@ use cosmwasm_std::{
 };
 use ripemd160::{Digest, Ripemd160};
 
-use secret_toolkit_crypto::{sha_256, secp256k1::{PublicKey, Signature}};
-use bech32::{ToBase32, Variant};
 use crate::{Permissions, Permit, RevokedPermits, SignedPermit};
+use bech32::{ToBase32, Variant};
+use secret_toolkit_crypto::sha_256;
 
 pub fn validate<Permission: Permissions, S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
@@ -14,7 +14,6 @@ pub fn validate<Permission: Permissions, S: Storage, A: Api, Q: Querier>(
     current_token_address: HumanAddr,
     hrp: Option<&str>,
 ) -> StdResult<String> {
-
     let account_hrp = hrp.unwrap_or("secret");
 
     if !permit.check_token(&current_token_address) {
@@ -33,11 +32,17 @@ pub fn validate<Permission: Permissions, S: Storage, A: Api, Q: Querier>(
     // Derive account from pubkey
     let pubkey = &permit.signature.pub_key.value;
 
-    let account: String = bech32::encode(account_hrp, &pubkey_to_account(pubkey).0.as_slice().to_base32(), Variant::Bech32).unwrap();
+    let base32_addr = pubkey_to_account(pubkey).0.as_slice().to_base32();
+    let account: String = bech32::encode(account_hrp, &base32_addr, Variant::Bech32).unwrap();
+
     // Validate permit_name
     let permit_name = &permit.params.permit_name;
-    let is_permit_revoked =
-        RevokedPermits::is_permit_revoked(&deps.storage, storage_prefix, &HumanAddr(account.clone()), permit_name);
+    let is_permit_revoked = RevokedPermits::is_permit_revoked(
+        &deps.storage,
+        storage_prefix,
+        &HumanAddr(account.clone()),
+        permit_name,
+    );
     if is_permit_revoked {
         return Err(StdError::generic_err(format!(
             "Permit {:?} was revoked by account {:?}",
@@ -50,15 +55,15 @@ pub fn validate<Permission: Permissions, S: Storage, A: Api, Q: Querier>(
     let signed_bytes = to_binary(&SignedPermit::from_params(&permit.params))?;
     let signed_bytes_hash = sha_256(signed_bytes.as_slice());
 
-    let secp256k1_signature = Signature::parse_slice(&permit.signature.signature.0)
-        .map_err(|err| StdError::generic_err(format!("Malformed signature: {:?}", err)))?;
-    let secp256k1_pubkey = PublicKey::parse(pubkey.0.as_slice())
-        .map_err(|err| StdError::generic_err(format!("Malformed pubkey: {:?}", err)))?;
+    let verified = deps
+        .api
+        .secp256k1_verify(&signed_bytes_hash, &permit.signature.signature.0, &pubkey.0)
+        .map_err(|err| StdError::generic_err(err.to_string()))?;
 
-    if !secp256k1_pubkey.verify(&signed_bytes_hash, secp256k1_signature) {
-        return Err(StdError::generic_err(format!(
+    if !verified {
+        return Err(StdError::generic_err(
             "Failed to verify signatures for the given permit",
-        )));
+        ));
     }
 
     Ok(account)
@@ -70,12 +75,11 @@ pub fn pubkey_to_account(pubkey: &Binary) -> CanonicalAddr {
     CanonicalAddr(Binary(hasher.finalize().to_vec()))
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env};
     use crate::{PermitParams, PermitSignature, PubKey, TokenPermissions};
+    use cosmwasm_std::testing::mock_dependencies;
 
     #[test]
     fn test_verify_permit() {
@@ -101,22 +105,18 @@ mod tests {
             }
         };
 
-        let address = validate(
-            &deps,
-            "test",
-            &permit,
-            token.clone(),
-            Some("secret")).unwrap();
+        let address = validate(&deps, "test", &permit, token.clone(), Some("secret")).unwrap();
 
-        assert_eq!(address, "secret1399pyvvk3hvwgxwt3udkslsc5jl3rqv4yshfrl".to_string());
+        assert_eq!(
+            address,
+            "secret1399pyvvk3hvwgxwt3udkslsc5jl3rqv4yshfrl".to_string()
+        );
 
-        let address = validate(
-            &deps,
-            "test",
-            &permit,
-            token,
-            Some("cosmos")).unwrap();
+        let address = validate(&deps, "test", &permit, token, Some("cosmos")).unwrap();
 
-        assert_eq!(address, "cosmos1399pyvvk3hvwgxwt3udkslsc5jl3rqv4x4rq7r".to_string());
+        assert_eq!(
+            address,
+            "cosmos1399pyvvk3hvwgxwt3udkslsc5jl3rqv4x4rq7r".to_string()
+        );
     }
 }
