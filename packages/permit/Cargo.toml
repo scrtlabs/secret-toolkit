@@ -19,4 +19,4 @@ ripemd160 = { version = "0.9.1", default-features = false }
 schemars = "0.7"
 bech32 = "0.8.1"
 remain = "0.2.2"
-secret-toolkit-crypto = { version = "0.3.0", path = "../crypto", features=["hash", "ecc-secp256k1"] }
+secret-toolkit-crypto = { version = "0.3.0", path = "../crypto", features=["hash"] }

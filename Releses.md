@@ -2,6 +2,11 @@
 
 ## Next Release
 
+## v0.3.1
+### secret-toolkit-permit
+* Removed the `ecc-secp256k1` feature from `secret-toolkit-crypto` dependency of `secret-toolkit-permit`.
+    * This tiny change significantly reduces the size of binaries that only use the permit feature.
+
 ## v0.3.0
 * Added `clear` method to `AppendStore` and `DequeStore` to quickly reset the collections (#34)
 * docs.rs documentation now includes all sub-crates.
