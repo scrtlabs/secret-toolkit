@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::any::type_name;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
