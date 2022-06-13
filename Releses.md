@@ -1,6 +1,8 @@
 # Release notes for the Secret Toolkit
 
 ## Next Release
+* BUGFIX: `secret-toolkit::utils::FeatureToggle::handle_pause` had an inverse authorization check: only non-pausers
+  could pause features.
 
 ## v0.3.1
 ### secret-toolkit-permit

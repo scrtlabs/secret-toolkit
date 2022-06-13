@@ -121,7 +121,7 @@ pub trait FeatureToggleTrait {
         env: &Env,
         features: Vec<T>,
     ) -> HandleResult {
-        if Self::is_pauser(&deps.storage, &env.message.sender)? {
+        if !Self::is_pauser(&deps.storage, &env.message.sender)? {
             return Err(StdError::unauthorized());
         }
 
@@ -141,7 +141,7 @@ pub trait FeatureToggleTrait {
         env: &Env,
         features: Vec<T>,
     ) -> HandleResult {
-        if Self::is_pauser(&deps.storage, &env.message.sender)? {
+        if !Self::is_pauser(&deps.storage, &env.message.sender)? {
             return Err(StdError::unauthorized());
         }
 
