@@ -4,7 +4,7 @@
 //!
 //! Insertion O(log n)
 //! Remove max O(log n)
-//! 
+//!
 use std::convert::TryInto;
 use std::marker::PhantomData;
 
@@ -155,7 +155,7 @@ where
     }
 
     /// return index of the right child
-    fn right_child(&self, idx: u32) ->  u32 {
+    fn right_child(&self, idx: u32) -> u32 {
         return 2 * idx + 2;
     }
 
@@ -218,7 +218,7 @@ where
     pub fn remove(&mut self) -> StdResult<T> {
         if let Some(len) = self.len.checked_sub(1) {
             let max_item = self.get_max()?;
-            
+
             // replace the first item with the last item
             self.set_at_unchecked(0, &self.get_at_unchecked(len)?)?;
             self.set_length(len);
@@ -356,9 +356,9 @@ mod tests {
     use cosmwasm_std::testing::MockStorage;
     use serde::Deserialize;
 
-    use secret_toolkit_serialization::Json;
     use cosmwasm_std::HumanAddr;
-    use std::cmp::{Ordering};
+    use secret_toolkit_serialization::Json;
+    use std::cmp::Ordering;
 
     use super::*;
 
@@ -398,13 +398,13 @@ mod tests {
                 Some(self.cmp(other))
             }
         }
-        
+
         impl Ord for Tx {
             fn cmp(&self, other: &Self) -> Ordering {
                 self.amount.cmp(&other.amount)
             }
         }
-        
+
         impl PartialEq for Tx {
             fn eq(&self, other: &Self) -> bool {
                 self.amount == other.amount
@@ -414,47 +414,62 @@ mod tests {
         let mut storage = MockStorage::new();
         let mut heap_store = MaxHeapStoreMut::attach_or_create(&mut storage)?;
 
-        heap_store.insert(&Tx{
+        heap_store.insert(&Tx {
             address: HumanAddr("address1".to_string()),
             amount: 200,
         })?;
-        heap_store.insert(&Tx{
+        heap_store.insert(&Tx {
             address: HumanAddr("address2".to_string()),
             amount: 100,
         })?;
-        heap_store.insert(&Tx{
+        heap_store.insert(&Tx {
             address: HumanAddr("address3".to_string()),
             amount: 400,
         })?;
-        heap_store.insert(&Tx{
+        heap_store.insert(&Tx {
             address: HumanAddr("address4".to_string()),
             amount: 300,
         })?;
-        heap_store.insert(&Tx{
+        heap_store.insert(&Tx {
             address: HumanAddr("address5".to_string()),
             amount: 50,
         })?;
 
-        assert_eq!(heap_store.remove(), Ok(Tx{
-            address: HumanAddr("address3".to_string()),
-            amount: 400,
-        }));
-        assert_eq!(heap_store.remove(), Ok(Tx{
-            address: HumanAddr("address4".to_string()),
-            amount: 300,
-        }));
-        assert_eq!(heap_store.remove(), Ok(Tx{
-            address: HumanAddr("address1".to_string()),
-            amount: 200,
-        }));
-        assert_eq!(heap_store.remove(), Ok(Tx{
-            address: HumanAddr("address2".to_string()),
-            amount: 100,
-        }));
-        assert_eq!(heap_store.remove(), Ok(Tx{
-            address: HumanAddr("address5".to_string()),
-            amount: 50,
-        }));
+        assert_eq!(
+            heap_store.remove(),
+            Ok(Tx {
+                address: HumanAddr("address3".to_string()),
+                amount: 400,
+            })
+        );
+        assert_eq!(
+            heap_store.remove(),
+            Ok(Tx {
+                address: HumanAddr("address4".to_string()),
+                amount: 300,
+            })
+        );
+        assert_eq!(
+            heap_store.remove(),
+            Ok(Tx {
+                address: HumanAddr("address1".to_string()),
+                amount: 200,
+            })
+        );
+        assert_eq!(
+            heap_store.remove(),
+            Ok(Tx {
+                address: HumanAddr("address2".to_string()),
+                amount: 100,
+            })
+        );
+        assert_eq!(
+            heap_store.remove(),
+            Ok(Tx {
+                address: HumanAddr("address5".to_string()),
+                amount: 50,
+            })
+        );
         Ok(())
     }
 

@@ -294,7 +294,7 @@ pub struct FeatureStatus<T: Serialize> {
 mod tests {
     use crate::feature_toggle::{
         FeatureStatus, FeatureToggle, FeatureToggleHandleMsg, FeatureToggleQueryMsg,
-        FeatureToggleTrait, HandleAnswer, ResponseStatus, Status
+        FeatureToggleTrait, HandleAnswer, ResponseStatus, Status,
     };
     use cosmwasm_std::testing::{mock_dependencies, mock_env, MockStorage};
     use cosmwasm_std::{from_binary, HumanAddr, MemoryStorage, StdError, StdResult};
@@ -472,7 +472,7 @@ mod tests {
 
     #[test]
     fn test_deserialize_messages() {
-        use serde::{Serialize, Deserialize};
+        use serde::{Deserialize, Serialize};
 
         #[derive(Serialize, Deserialize, Debug, PartialEq)]
         #[serde(rename_all = "snake_case")]
