@@ -427,9 +427,9 @@ mod tests {
 
     #[test]
     fn test_deserialize_messages() {
-        use serde::Deserialize;
+        use serde::{Serialize, Deserialize};
 
-        #[derive(Deserialize, Debug, PartialEq)]
+        #[derive(Serialize, Deserialize, Debug, PartialEq)]
         #[serde(rename_all = "snake_case")]
         enum Features {
             Var1,
