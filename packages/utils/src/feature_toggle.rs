@@ -121,7 +121,7 @@ pub trait FeatureToggleTrait {
         env: &Env,
         features: Vec<T>,
     ) -> HandleResult {
-        if Self::is_pauser(&deps.storage, &env.message.sender)? {
+        if !Self::is_pauser(&deps.storage, &env.message.sender)? {
             return Err(StdError::unauthorized());
         }
 
@@ -141,7 +141,7 @@ pub trait FeatureToggleTrait {
         env: &Env,
         features: Vec<T>,
     ) -> HandleResult {
-        if Self::is_pauser(&deps.storage, &env.message.sender)? {
+        if !Self::is_pauser(&deps.storage, &env.message.sender)? {
             return Err(StdError::unauthorized());
         }
 
@@ -294,10 +294,10 @@ pub struct FeatureStatus<T: Serialize> {
 mod tests {
     use crate::feature_toggle::{
         FeatureStatus, FeatureToggle, FeatureToggleHandleMsg, FeatureToggleQueryMsg,
-        FeatureToggleTrait, Status,
+        FeatureToggleTrait, HandleAnswer, ResponseStatus, Status,
     };
-    use cosmwasm_std::testing::MockStorage;
-    use cosmwasm_std::{HumanAddr, MemoryStorage, StdResult};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, MockStorage};
+    use cosmwasm_std::{from_binary, HumanAddr, MemoryStorage, StdError, StdResult};
 
     fn init_features(storage: &mut MemoryStorage) -> StdResult<()> {
         FeatureToggle::init_features(
@@ -369,6 +369,29 @@ mod tests {
     }
 
     #[test]
+    fn test_handle_unpause() -> StdResult<()> {
+        let mut deps = mock_dependencies(20, &[]);
+        init_features(&mut deps.storage)?;
+
+        let env = mock_env("non-pauser", &[]);
+        let error = FeatureToggle::handle_unpause(&mut deps, &env, vec!["Feature3".to_string()]);
+        assert_eq!(error, Err(StdError::unauthorized()));
+
+        let env = mock_env("alice", &[]);
+        let response =
+            FeatureToggle::handle_unpause(&mut deps, &env, vec!["Feature3".to_string()])?;
+        let answer: HandleAnswer = from_binary(&response.data.unwrap())?;
+
+        assert_eq!(
+            answer,
+            HandleAnswer::Unpause {
+                status: ResponseStatus::Success,
+            }
+        );
+        Ok(())
+    }
+
+    #[test]
     fn test_pause() -> StdResult<()> {
         let mut storage = MockStorage::new();
         init_features(&mut storage)?;
@@ -379,6 +402,28 @@ mod tests {
             Some(Status::Paused)
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_handle_pause() -> StdResult<()> {
+        let mut deps = mock_dependencies(20, &[]);
+        init_features(&mut deps.storage)?;
+
+        let env = mock_env("non-pauser", &[]);
+        let error = FeatureToggle::handle_pause(&mut deps, &env, vec!["Feature2".to_string()]);
+        assert_eq!(error, Err(StdError::unauthorized()));
+
+        let env = mock_env("alice", &[]);
+        let response = FeatureToggle::handle_pause(&mut deps, &env, vec!["Feature2".to_string()])?;
+        let answer: HandleAnswer = from_binary(&response.data.unwrap())?;
+
+        assert_eq!(
+            answer,
+            HandleAnswer::Pause {
+                status: ResponseStatus::Success,
+            }
+        );
         Ok(())
     }
 
@@ -427,9 +472,9 @@ mod tests {
 
     #[test]
     fn test_deserialize_messages() {
-        use serde::Deserialize;
+        use serde::{Deserialize, Serialize};
 
-        #[derive(Deserialize, Debug, PartialEq)]
+        #[derive(Serialize, Deserialize, Debug, PartialEq)]
         #[serde(rename_all = "snake_case")]
         enum Features {
             Var1,
