@@ -146,17 +146,17 @@ where
 
     /// return index of the parent node
     fn parent(&self, idx: u32) -> u32 {
-        return (idx - 1) / 2;
+        (idx - 1) / 2
     }
 
     /// return index of the left child
     fn left_child(&self, idx: u32) -> u32 {
-        return 2 * idx + 1;
+        2 * idx + 1
     }
 
     /// return index of the right child
-    fn right_child(&self, idx: u32) ->  u32 {
-        return 2 * idx + 2;
+    fn right_child(&self, idx: u32) -> u32 {
+        2 * idx + 2
     }
 
     /// inserts an item into the heap at the correct position O(log n)
