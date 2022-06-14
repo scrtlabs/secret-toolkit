@@ -12,12 +12,11 @@ keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 
 [dependencies]
 serde = { version = "1.0", optional = true }
-siphasher = { version = "0.3.0", optional = true }
 cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10", optional = true }
 cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "0.10", optional = true }
 secret-toolkit-serialization = { version = "0.3", path = "../serialization", optional = true }
 
 [features]
-cashmap = ["siphasher", "cosmwasm-storage", "serde", "secret-toolkit-serialization", "cosmwasm-std"]
+cashmap = ["cosmwasm-storage", "serde", "secret-toolkit-serialization", "cosmwasm-std"]
 generational-store = ["secret-toolkit-serialization", "serde", "cosmwasm-std"]
 maxheap = ["secret-toolkit-serialization", "serde", "cosmwasm-std"]
