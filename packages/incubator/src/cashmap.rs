@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 use std::any::type_name;
+use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use siphasher::sip::SipHasher13;
 
 use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
 
@@ -16,9 +16,6 @@ const INDEXES: &[u8] = b"indexes";
 const MAP_LENGTH: &[u8] = b"length";
 
 const PAGE_SIZE: u32 = 5;
-
-const HASH_KEY_0: u64 = 0;
-const HASH_KEY_1: u64 = 1;
 
 #[derive(PartialEq)]
 enum KeyInMap {
@@ -236,7 +233,7 @@ where
             }
             (KeyInMap::Collision, _, None) => {
                 // Key not in map, hash position is taken
-                if pos >= u32::max_value() {
+                if pos == u32::MAX {
                     return Err(StdError::generic_err(
                         "Map is full. How the hell did you get here?",
                     ));
@@ -427,7 +424,7 @@ where
 
     // returns the slot and the displacement
     fn _get_next_empty_slot(&self, hash: u64) -> StdResult<(u64, u64)> {
-        for i in 0..u32::max_value() {
+        for i in 0..u32::MAX {
             let testing_value = hash.overflowing_add(i as u64).0;
             let item = self.get_no_hash(&testing_value);
             if item.is_none() || item.unwrap().meta_data.deleted {
@@ -443,7 +440,7 @@ where
     pub fn contains_key(&self, key: &[u8]) -> Option<u64> {
         let hash = self.key_to_hash(key);
         let vec_key = key.to_vec();
-        for i in 0..u32::max_value() {
+        for i in 0..u32::MAX {
             let testing_value = hash.overflowing_add(i as u64).0;
             let item = self.get_no_hash(&testing_value);
             if let Some(val) = item {
@@ -640,9 +637,7 @@ where
     }
 
     fn key_to_hash(&self, key: &[u8]) -> u64 {
-        #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
-        #[allow(deprecated)]
-        let mut hasher = SipHasher13::new_with_keys(HASH_KEY_0, HASH_KEY_1);
+        let mut hasher = DefaultHasher::default();
         key.hash(&mut hasher);
         hasher.finish()
     }
