@@ -2,6 +2,10 @@
 
 ## Next Release
 
+## secret-toolkit-incubator v0.3.1
+* Fixed compilation issue with Rust v1.61 (#46, #48)
+* Removed Siphasher dependency (#46, #48)
+
 ## secret-toolkit-utils v0.3.1
 
 ### Security
