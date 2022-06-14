@@ -1,11 +1,14 @@
 # Release notes for the Secret Toolkit
 
 ## Next Release
+
+## secret-toolkit-utils v0.3.1
+
+### Security
 * BUGFIX: `secret-toolkit::utils::FeatureToggle::handle_pause` had an inverse authorization check: only non-pausers
   could pause features.
 
-## v0.3.1
-### secret-toolkit-permit
+## secret-toolkit-permit v0.3.1
 * Removed the `ecc-secp256k1` feature from `secret-toolkit-crypto` dependency of `secret-toolkit-permit`.
     * This tiny change significantly reduces the size of binaries that only use the permit feature.
 
