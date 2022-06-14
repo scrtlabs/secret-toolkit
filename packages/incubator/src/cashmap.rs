@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use std::any::type_name;
-use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -233,7 +233,7 @@ where
             }
             (KeyInMap::Collision, _, None) => {
                 // Key not in map, hash position is taken
-                if pos >= u32::MAX {
+                if pos == u32::MAX {
                     return Err(StdError::generic_err(
                         "Map is full. How the hell did you get here?",
                     ));
