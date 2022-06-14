@@ -10,6 +10,9 @@ description = "General utilities for Secret Contracts"
 categories = ["cryptography::cryptocurrencies", "wasm"]
 keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 serde = "1.0"
 schemars = "0.7"

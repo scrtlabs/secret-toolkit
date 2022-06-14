@@ -10,6 +10,9 @@ description = "Cryptographic tools for writing Secret Contracts"
 categories = ["cryptography::cryptocurrencies", "wasm"]
 keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [features]
 hash = ["sha2"]
 rand = ["rand_chacha", "rand_core"]

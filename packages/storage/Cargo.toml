@@ -10,6 +10,9 @@ description = "Abstractions over storage in Secret Contracts"
 categories = ["cryptography::cryptocurrencies", "wasm"]
 keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 serde = "1.0"
 cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
