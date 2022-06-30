@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! An "append store" is a storage wrapper that guarantees constant-cost appending to and popping
 //! from a list of items in storage.
 //!
@@ -6,6 +7,7 @@
 use std::convert::TryInto;
 use std::marker::PhantomData;
 
+use cosmwasm_storage::{PrefixedStorage, to_length_prefixed_nested, ReadonlyPrefixedStorage};
 use serde::{de::DeserializeOwned, Serialize};
 
 use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
@@ -28,6 +30,7 @@ where
     item_type: PhantomData<*const T>,
     serialization_type: PhantomData<*const Ser>,
     len: u32,
+    prefix: Option<Vec<u8>>,
 }
 
 impl<'a, T, S> AppendStoreMut<'a, T, S, Bincode2>
@@ -35,12 +38,27 @@ where
     T: Serialize + DeserializeOwned,
     S: Storage,
 {
+    /// Try to use the provided storage as a prefixed AppendStore. If it doesn't seem to be one, then
+    /// initialize it as one.
+    /// 
+    /// Returns Err if the contents of the storage can not be parsed.
+    pub fn prefixed(namespace: &[u8], storage: &'a mut S) -> StdResult<Self> {
+        AppendStoreMut::attach_or_create_with_serialization(storage, Some(namespace.to_vec()), Bincode2)
+    }
+    /// Try to use the provided storage as a multilevel prefixed AppendStore. If it doesn't seem to be one, then
+    /// initialize it as one.
+    /// 
+    /// Returns Err if the contents of the storage can not be parsed.
+    pub fn multilevel(namespaces: &[&[u8]], storage: &'a mut S) -> StdResult<Self> {
+        let namespace = to_length_prefixed_nested(namespaces);
+        AppendStoreMut::attach_or_create_with_serialization(storage, Some(namespace), Bincode2)
+    }
     /// Try to use the provided storage as an AppendStore. If it doesn't seem to be one, then
     /// initialize it as one.
     ///
     /// Returns Err if the contents of the storage can not be parsed.
     pub fn attach_or_create(storage: &'a mut S) -> StdResult<Self> {
-        AppendStoreMut::attach_or_create_with_serialization(storage, Bincode2)
+        AppendStoreMut::attach_or_create_with_serialization(storage, None, Bincode2)
     }
 
     /// Try to use the provided storage as an AppendStore.
@@ -48,7 +66,7 @@ where
     /// Returns None if the provided storage doesn't seem like an AppendStore.
     /// Returns Err if the contents of the storage can not be parsed.
     pub fn attach(storage: &'a mut S) -> Option<StdResult<Self>> {
-        AppendStoreMut::attach_with_serialization(storage, Bincode2)
+        AppendStoreMut::attach_with_serialization(storage, None, Bincode2)
     }
 }
 
@@ -62,13 +80,27 @@ where
     /// initialize it as one. This method allows choosing the serialization format you want to use.
     ///
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_or_create_with_serialization(storage: &'a mut S, _ser: Ser) -> StdResult<Self> {
-        if let Some(len_vec) = storage.get(LEN_KEY) {
-            Self::new(storage, &len_vec)
-        } else {
-            let len_vec = 0_u32.to_be_bytes();
-            storage.set(LEN_KEY, &len_vec);
-            Self::new(storage, &len_vec)
+    pub fn attach_or_create_with_serialization(storage: &'a mut S, prefix: Option<Vec<u8>>, _ser: Ser) -> StdResult<Self> {
+        match &prefix {
+            Some(namespace) => {
+                let mut prefixed_storage = PrefixedStorage::new(namespace, storage);
+                if let Some(len_vec) = prefixed_storage.get(LEN_KEY) {
+                    Self::new(storage, &len_vec, prefix)
+                } else {
+                    let len_vec = 0_u32.to_be_bytes();
+                    prefixed_storage.set(LEN_KEY, &len_vec);
+                    Self::new(storage, &len_vec, prefix)
+                }
+            },
+            None => {
+                if let Some(len_vec) = storage.get(LEN_KEY) {
+                    Self::new(storage, &len_vec, None)
+                } else {
+                    let len_vec = 0_u32.to_be_bytes();
+                    storage.set(LEN_KEY, &len_vec);
+                    Self::new(storage, &len_vec, None)
+                }
+            }
         }
     }
 
@@ -77,12 +109,17 @@ where
     ///
     /// Returns None if the provided storage doesn't seem like an AppendStore.
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_with_serialization(storage: &'a mut S, _ser: Ser) -> Option<StdResult<Self>> {
-        let len_vec = storage.get(LEN_KEY)?;
-        Some(Self::new(storage, &len_vec))
+    pub fn attach_with_serialization(storage: &'a mut S, prefix: Option<Vec<u8>>, _ser: Ser) -> Option<StdResult<Self>> {
+        let len_vec = if let Some(namespace) = &prefix {
+            let prefixed_storage = PrefixedStorage::new(namespace, storage);
+            prefixed_storage.get(LEN_KEY)?
+        } else {
+            storage.get(LEN_KEY)?
+        };
+        Some(Self::new(storage, &len_vec, prefix))
     }
 
-    fn new(storage: &'a mut S, len_vec: &[u8]) -> StdResult<Self> {
+    fn new(storage: &'a mut S, len_vec: &[u8], prefix: Option<Vec<u8>>) -> StdResult<Self> {
         let len_array = len_vec
             .try_into()
             .map_err(|err| StdError::parse_err("u32", err))?;
@@ -93,6 +130,7 @@ where
             item_type: PhantomData,
             serialization_type: PhantomData,
             len,
+            prefix,
         })
     }
 
@@ -104,17 +142,22 @@ where
         self.len == 0
     }
 
-    pub fn storage(&mut self) -> &mut S {
+    // these don't make sense after implementing prefixed storage
+    fn storage(&mut self) -> &mut S {
         self.storage
     }
 
-    pub fn readonly_storage(&self) -> &S {
+    fn readonly_storage(&self) -> &S {
         self.storage
     }
 
     /// Return an iterator over the items in the collection
     pub fn iter(&self) -> Iter<T, S, Ser> {
         self.as_readonly().iter()
+    }
+
+    pub fn paging(&self, start_page: u32, size: u32) -> StdResult<Vec<T>> {
+        self.as_readonly().paging(start_page, size)
     }
 
     /// Get the value stored at a given position.
@@ -142,7 +185,13 @@ where
 
     fn set_at_unchecked(&mut self, pos: u32, item: &T) -> StdResult<()> {
         let serialized = Ser::serialize(item)?;
-        self.storage.set(&pos.to_be_bytes(), &serialized);
+        match &self.prefix {
+            Some(namespace) => {
+                let mut prefixed_storage = PrefixedStorage::new(namespace, self.storage);
+                prefixed_storage.set(&pos.to_be_bytes(), &serialized);
+            },
+            None => { self.storage.set(&pos.to_be_bytes(), &serialized); },
+        }
         Ok(())
     }
 
@@ -173,7 +222,13 @@ where
 
     /// Set the length of the collection
     fn set_length(&mut self, len: u32) {
-        self.storage.set(LEN_KEY, &len.to_be_bytes());
+        match &self.prefix {
+            Some(namespace) => {
+                let mut prefixed_storage = PrefixedStorage::new(namespace, self.storage);
+                prefixed_storage.set(LEN_KEY, &len.to_be_bytes());
+            },
+            None => { self.storage.set(LEN_KEY, &len.to_be_bytes()); }
+        }
         self.len = len;
     }
 
@@ -184,6 +239,7 @@ where
             item_type: self.item_type,
             serialization_type: self.serialization_type,
             len: self.len,
+            prefix: self.prefix.clone(),
         }
     }
 }
@@ -224,6 +280,7 @@ where
     item_type: PhantomData<*const T>,
     serialization_type: PhantomData<*const Ser>,
     len: u32,
+    prefix: Option<Vec<u8>>,
 }
 
 impl<'a, T, S> AppendStore<'a, T, S, Bincode2>
@@ -236,7 +293,7 @@ where
     /// Returns None if the provided storage doesn't seem like an AppendStore.
     /// Returns Err if the contents of the storage can not be parsed.
     pub fn attach(storage: &'a S) -> Option<StdResult<Self>> {
-        AppendStore::attach_with_serialization(storage, Bincode2)
+        AppendStore::attach_with_serialization(storage, None, Bincode2)
     }
 }
 
@@ -251,12 +308,15 @@ where
     ///
     /// Returns None if the provided storage doesn't seem like an AppendStore.
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_with_serialization(storage: &'a S, _ser: Ser) -> Option<StdResult<Self>> {
-        let len_vec = storage.get(LEN_KEY)?;
-        Some(AppendStore::new(storage, len_vec))
+    pub fn attach_with_serialization(storage: &'a S, prefix: Option<Vec<u8>>, _ser: Ser) -> Option<StdResult<Self>> {
+        let len_vec = if let Some(namespace) = &prefix {
+            let prefixed_storage = ReadonlyPrefixedStorage::new(namespace, storage);
+            prefixed_storage.get(LEN_KEY)?
+        } else { storage.get(LEN_KEY)? };
+        Some(AppendStore::new(storage, len_vec, prefix))
     }
 
-    fn new(storage: &'a S, len_vec: Vec<u8>) -> StdResult<Self> {
+    fn new(storage: &'a S, len_vec: Vec<u8>, prefix: Option<Vec<u8>>) -> StdResult<Self> {
         let len_array = len_vec
             .as_slice()
             .try_into()
@@ -268,6 +328,7 @@ where
             item_type: PhantomData,
             serialization_type: PhantomData,
             len,
+            prefix,
         })
     }
 
@@ -279,7 +340,7 @@ where
         self.len == 0
     }
 
-    pub fn readonly_storage(&self) -> &S {
+    fn readonly_storage(&self) -> &S {
         self.storage
     }
 
@@ -304,10 +365,25 @@ where
     }
 
     fn get_at_unchecked(&self, pos: u32) -> StdResult<T> {
-        let serialized = self.storage.get(&pos.to_be_bytes()).ok_or_else(|| {
-            StdError::generic_err(format!("No item in AppendStorage at position {}", pos))
-        })?;
-        Ser::deserialize(&serialized)
+        match &self.prefix {
+            Some(namespace) => {
+                let prefixed_storage = ReadonlyPrefixedStorage::new(namespace, self.storage);
+                let serialized = prefixed_storage.get(&pos.to_be_bytes()).ok_or_else(|| {
+                    StdError::generic_err(format!("No item in AppendStorage at position {}", pos))
+                })?;
+                Ser::deserialize(&serialized)
+            },
+            None => {
+                let serialized = self.storage.get(&pos.to_be_bytes()).ok_or_else(|| {
+                    StdError::generic_err(format!("No item in AppendStorage at position {}", pos))
+                })?;
+                Ser::deserialize(&serialized)
+            }
+        }
+    }
+
+    pub fn paging(&self, start_page: u32, size: u32) -> StdResult<Vec<T>> {
+        self.iter().skip((start_page as usize)*(size as usize)).take(size as usize).collect()
     }
 }
 
@@ -343,6 +419,7 @@ where
             item_type: self.item_type,
             serialization_type: self.serialization_type,
             len: self.len,
+            prefix: self.prefix.clone(),
         }
     }
 }
@@ -552,10 +629,130 @@ mod tests {
         // Check that overriding the serializer with Json works
         let mut storage = MockStorage::new();
         let mut append_store =
-            AppendStoreMut::attach_or_create_with_serialization(&mut storage, Json)?;
+            AppendStoreMut::attach_or_create_with_serialization(&mut storage, None, Json)?;
         append_store.push(&1234)?;
         let bytes = append_store.readonly_storage().get(&0_u32.to_be_bytes());
         assert_eq!(bytes, Some(b"1234".to_vec()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_prefixed_pop() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let prefix: &[u8] = b"test_prefix";
+        let mut append_store = AppendStoreMut::prefixed(prefix, &mut storage)?;
+        append_store.push(&1234)?;
+        append_store.push(&2143)?;
+        append_store.push(&3412)?;
+        append_store.push(&4321)?;
+
+        assert_eq!(append_store.pop(), Ok(4321));
+        assert_eq!(append_store.pop(), Ok(3412));
+        assert_eq!(append_store.pop(), Ok(2143));
+        assert_eq!(append_store.pop(), Ok(1234));
+        assert!(append_store.pop().is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_multilevel_iter() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let prefixes: &[&[u8]] = &[b"test_prefix", b"random_prefix"];
+        let mut append_store = AppendStoreMut::multilevel(prefixes, &mut storage)?;
+
+        append_store.push(&1234)?;
+        append_store.push(&2143)?;
+        append_store.push(&3412)?;
+        append_store.push(&4321)?;
+
+        // iterate twice to make sure nothing changed
+        let mut iter = append_store.iter();
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), None);
+
+        let mut iter = append_store.iter();
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), None);
+
+        // make sure our implementation of `nth` doesn't break anything
+        let mut iter = append_store.iter().skip(2);
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), None);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_prefixed_reverse_iter() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let prefix: &[u8] = b"test_prefix";
+        let mut append_store = AppendStoreMut::prefixed(prefix, &mut storage)?;
+        append_store.push(&1234)?;
+        append_store.push(&2143)?;
+        append_store.push(&3412)?;
+        append_store.push(&4321)?;
+
+        let mut iter = append_store.iter().rev();
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), None);
+
+        // iterate twice to make sure nothing changed
+        let mut iter = append_store.iter().rev();
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), None);
+
+        // make sure our implementation of `nth_back` doesn't break anything
+        let mut iter = append_store.iter().rev().skip(2);
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), None);
+
+        // make sure our implementation of `ExactSizeIterator` works well
+        let mut iter = append_store.iter().skip(2).rev();
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), None);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_multilevel_paging() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let prefixes: &[&[u8]] = &[b"test_prefix", b"random_prefix"];
+        let mut append_store = AppendStoreMut::multilevel(prefixes, &mut storage)?;
+
+        let page_size = 5;
+        let total_items = 50;
+
+        for i in 0..total_items {
+            append_store.push(&i)?;
+        }
+
+        for i in 0..((total_items / page_size) - 1) {
+            let start_page = i;
+
+            let values = append_store.paging(start_page, page_size)?;
+
+            for (index, value) in values.iter().enumerate() {
+                assert_eq!(value, &(page_size * start_page + index as u32))
+            }
+        }
 
         Ok(())
     }

@@ -141,8 +141,7 @@ where
             }
 
             // find the index of our item
-            // todo: replace this since we know the absolute position from the internalitem
-            let pos_in_indexes = indexes.iter().position(|index| index == &hash).unwrap();
+            let pos_in_indexes = (unwrapped_item.meta_data.position % PAGE_SIZE) as usize;
 
             // replace the last item with our new item
             let max_page = _page_from_position(len);
@@ -795,7 +794,7 @@ mod tests {
     fn test_hashmap_paging() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let page_size = 50;
+        let page_size = 5;
         let total_items = 50;
         let mut cashmap = CashMap::attach(&mut storage);
 
@@ -822,7 +821,7 @@ mod tests {
         let mut prefixed = PrefixedStorage::new(b"test", &mut storage);
         let mut cashmap = CashMap::init(b"yo", &mut prefixed);
 
-        let page_size = 50;
+        let page_size = 10;
         let total_items = 50;
         //let mut cashmap = CashMap::attach(&mut storage);
 
