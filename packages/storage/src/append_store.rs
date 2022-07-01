@@ -288,6 +288,21 @@ where
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
 {
+    /// Try to use the provided storage as a prefixed AppendStore.
+    /// 
+    /// Returns None if the provided storage doesn't seem like an AppendStore.
+    /// Returns Err if the contents of the storage can not be parsed.
+    pub fn prefixed(namespace: &[u8], storage: &'a S) -> Option<StdResult<Self>> {
+        AppendStore::attach_with_serialization(storage, Some(namespace.to_vec()), Bincode2)
+    }
+    /// Try to use the provided storage as a multilevel prefixed AppendStore.
+    /// 
+    /// Returns None if the provided storage doesn't seem like an AppendStore.
+    /// Returns Err if the contents of the storage can not be parsed.
+    pub fn multilevel(namespaces: &[&[u8]], storage: &'a S) -> Option<StdResult<Self>> {
+        let namespace = to_length_prefixed_nested(namespaces);
+        AppendStore::attach_with_serialization(storage, Some(namespace), Bincode2)
+    }
     /// Try to use the provided storage as an AppendStore.
     ///
     /// Returns None if the provided storage doesn't seem like an AppendStore.
