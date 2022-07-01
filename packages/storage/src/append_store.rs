@@ -527,7 +527,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::testing::MockStorage;
+    use cosmwasm_std::{testing::MockStorage};
 
     use secret_toolkit_serialization::Json;
 
@@ -768,6 +768,43 @@ mod tests {
                 assert_eq!(value, &(page_size * start_page + index as u32))
             }
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_prefixed_readonly_iter() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let prefix: &[u8] = b"test_prefix";
+        let mut append_store = AppendStoreMut::prefixed(prefix, &mut storage)?;
+
+        append_store.push(&1234)?;
+        append_store.push(&2143)?;
+        append_store.push(&3412)?;
+        append_store.push(&4321)?;
+
+        let readonly_store: AppendStore<i32, _, Bincode2> = AppendStore::prefixed(prefix, &storage).unwrap()?;
+
+        // iterate twice to make sure nothing changed
+        let mut iter = readonly_store.iter();
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), None);
+
+        let mut iter = readonly_store.iter();
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), None);
+
+        // make sure our implementation of `nth` doesn't break anything
+        let mut iter = readonly_store.iter().skip(2);
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), None);
 
         Ok(())
     }
