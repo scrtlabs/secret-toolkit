@@ -15,6 +15,6 @@ all-features = true
 
 [dependencies]
 serde = "1.0"
-cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
-cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "0.10" }
+cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10", git = "https://github.com/scrtlabs/SecretNetwork.git", branch = "cosmwasm-std-storage-references" }
+cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "0.10", git = "https://github.com/scrtlabs/SecretNetwork.git", branch = "cosmwasm-std-storage-references" }
 secret-toolkit-serialization = { version = "0.3", path = "../serialization" }
