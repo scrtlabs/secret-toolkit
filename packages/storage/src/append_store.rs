@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
+use cosmwasm_std::{StdError, StdResult, Storage};
 
 use secret_toolkit_serialization::{Bincode2, Serde};
 
@@ -217,7 +217,7 @@ where
 pub struct AppendStore<'a, T, S, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
     Ser: Serde,
 {
     storage: &'a S,
@@ -229,7 +229,7 @@ where
 impl<'a, T, S> AppendStore<'a, T, S, Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
 {
     /// Try to use the provided storage as an AppendStore.
     ///
@@ -243,7 +243,7 @@ where
 impl<'a, T, S, Ser> AppendStore<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
     Ser: Serde,
 {
     /// Try to use the provided storage as an AppendStore.
@@ -314,7 +314,7 @@ where
 impl<'a, T, S, Ser> IntoIterator for AppendStore<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
     Ser: Serde,
 {
     type Item = StdResult<T>;
@@ -334,7 +334,7 @@ where
 impl<'a, T, S, Ser> Clone for AppendStore<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
     Ser: Serde,
 {
     fn clone(&self) -> Self {
@@ -354,7 +354,7 @@ where
 pub struct Iter<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
     Ser: Serde,
 {
     storage: AppendStore<'a, T, S, Ser>,
@@ -365,7 +365,7 @@ where
 impl<'a, T, S, Ser> Iterator for Iter<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
     Ser: Serde,
 {
     type Item = StdResult<T>;
@@ -400,7 +400,7 @@ where
 impl<'a, T, S, Ser> DoubleEndedIterator for Iter<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
     Ser: Serde,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -428,7 +428,7 @@ where
 impl<'a, T, S, Ser> ExactSizeIterator for Iter<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
     Ser: Serde,
 {
 }
