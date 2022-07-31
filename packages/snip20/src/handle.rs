@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use cosmwasm_std::{to_binary, Binary, Coin, CosmosMsg, HumanAddr, StdResult, Uint128, WasmMsg};
+use cosmwasm_std::{to_binary, Binary, Coin, CosmosMsg, StdResult, Uint128, WasmMsg};
 
 use crate::batch::{
     BurnFromAction, MintAction, SendAction, SendFromAction, TransferAction, TransferFromAction,
@@ -25,13 +25,13 @@ pub enum HandleMsg {
 
     // Basic SNIP20 functions
     Transfer {
-        recipient: HumanAddr,
+        recipient: String,
         amount: Uint128,
         memo: Option<String>,
         padding: Option<String>,
     },
     Send {
-        recipient: HumanAddr,
+        recipient: String,
         recipient_code_hash: Option<String>,
         amount: Uint128,
         msg: Option<Binary>,
@@ -66,27 +66,27 @@ pub enum HandleMsg {
 
     // Allowance functions
     IncreaseAllowance {
-        spender: HumanAddr,
+        spender: String,
         amount: Uint128,
         expiration: Option<u64>,
         padding: Option<String>,
     },
     DecreaseAllowance {
-        spender: HumanAddr,
+        spender: String,
         amount: Uint128,
         expiration: Option<u64>,
         padding: Option<String>,
     },
     TransferFrom {
-        owner: HumanAddr,
-        recipient: HumanAddr,
+        owner: String,
+        recipient: String,
         amount: Uint128,
         memo: Option<String>,
         padding: Option<String>,
     },
     SendFrom {
-        owner: HumanAddr,
-        recipient: HumanAddr,
+        owner: String,
+        recipient: String,
         recipient_code_hash: Option<String>,
         amount: Uint128,
         msg: Option<Binary>,
@@ -102,7 +102,7 @@ pub enum HandleMsg {
         padding: Option<String>,
     },
     BurnFrom {
-        owner: HumanAddr,
+        owner: String,
         amount: Uint128,
         memo: Option<String>,
         padding: Option<String>,
@@ -114,7 +114,7 @@ pub enum HandleMsg {
 
     // Mint
     Mint {
-        recipient: HumanAddr,
+        recipient: String,
         amount: Uint128,
         memo: Option<String>,
         padding: Option<String>,
@@ -124,15 +124,15 @@ pub enum HandleMsg {
         padding: Option<String>,
     },
     AddMinters {
-        minters: Vec<HumanAddr>,
+        minters: Vec<String>,
         padding: Option<String>,
     },
     RemoveMinters {
-        minters: Vec<HumanAddr>,
+        minters: Vec<String>,
         padding: Option<String>,
     },
     SetMinters {
-        minters: Vec<HumanAddr>,
+        minters: Vec<String>,
         padding: Option<String>,
     },
 }
@@ -150,8 +150,8 @@ impl HandleMsg {
     pub fn to_cosmos_msg(
         &self,
         mut block_size: usize,
-        callback_code_hash: String,
-        contract_addr: HumanAddr,
+        code_hash: String,
+        contract_addr: String,
         send_amount: Option<Uint128>,
     ) -> StdResult<CosmosMsg> {
         // can not have block size of 0
@@ -160,18 +160,18 @@ impl HandleMsg {
         }
         let mut msg = to_binary(self)?;
         space_pad(&mut msg.0, block_size);
-        let mut send = Vec::new();
+        let mut funds = Vec::new();
         if let Some(amount) = send_amount {
-            send.push(Coin {
+            funds.push(Coin {
                 amount,
                 denom: String::from("uscrt"),
             });
         }
         let execute = WasmMsg::Execute {
-            msg,
             contract_addr,
-            callback_code_hash,
-            send,
+            code_hash,
+            msg,
+            funds,
         };
         Ok(execute.into())
     }
@@ -193,7 +193,7 @@ pub fn redeem_msg(
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::Redeem {
         amount,
@@ -217,7 +217,7 @@ pub fn deposit_msg(
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::Deposit { padding }.to_cosmos_msg(
         block_size,
@@ -239,13 +239,13 @@ pub fn deposit_msg(
 /// * `callback_code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn transfer_msg(
-    recipient: HumanAddr,
+    recipient: String,
     amount: Uint128,
     memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::Transfer {
         recipient,
@@ -271,14 +271,14 @@ pub fn transfer_msg(
 /// * `contract_addr` - address of the contract being called
 #[allow(clippy::too_many_arguments)]
 pub fn send_msg(
-    recipient: HumanAddr,
+    recipient: String,
     amount: Uint128,
     msg: Option<Binary>,
     memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::Send {
         recipient,
@@ -307,7 +307,7 @@ pub fn send_msg(
 /// * `contract_addr` - address of the contract being called
 #[allow(clippy::too_many_arguments)]
 pub fn send_msg_with_code_hash(
-    recipient: HumanAddr,
+    recipient: String,
     recipient_code_hash: Option<String>,
     amount: Uint128,
     msg: Option<Binary>,
@@ -315,7 +315,7 @@ pub fn send_msg_with_code_hash(
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::Send {
         recipient,
@@ -341,7 +341,7 @@ pub fn batch_transfer_msg(
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::BatchTransfer { actions, padding }.to_cosmos_msg(
         block_size,
@@ -364,7 +364,7 @@ pub fn batch_send_msg(
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::BatchSend { actions, padding }.to_cosmos_msg(
         block_size,
@@ -390,7 +390,7 @@ pub fn burn_msg(
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::Burn {
         amount,
@@ -413,7 +413,7 @@ pub fn create_viewing_key_msg(
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::CreateViewingKey { entropy, padding }.to_cosmos_msg(
         block_size,
@@ -437,7 +437,7 @@ pub fn register_receive_msg(
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::RegisterReceive {
         code_hash: your_contracts_code_hash,
@@ -460,7 +460,7 @@ pub fn set_viewing_key_msg(
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::SetViewingKey { key, padding }.to_cosmos_msg(
         block_size,
@@ -482,13 +482,13 @@ pub fn set_viewing_key_msg(
 /// * `callback_code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn increase_allowance_msg(
-    spender: HumanAddr,
+    spender: String,
     amount: Uint128,
     expiration: Option<u64>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::IncreaseAllowance {
         spender,
@@ -511,13 +511,13 @@ pub fn increase_allowance_msg(
 /// * `callback_code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn decrease_allowance_msg(
-    spender: HumanAddr,
+    spender: String,
     amount: Uint128,
     expiration: Option<u64>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::DecreaseAllowance {
         spender,
@@ -542,14 +542,14 @@ pub fn decrease_allowance_msg(
 /// * `contract_addr` - address of the contract being called
 #[allow(clippy::too_many_arguments)]
 pub fn transfer_from_msg(
-    owner: HumanAddr,
-    recipient: HumanAddr,
+    owner: String,
+    recipient: String,
     amount: Uint128,
     memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::TransferFrom {
         owner,
@@ -577,15 +577,15 @@ pub fn transfer_from_msg(
 /// * `contract_addr` - address of the contract being called
 #[allow(clippy::too_many_arguments)]
 pub fn send_from_msg(
-    owner: HumanAddr,
-    recipient: HumanAddr,
+    owner: String,
+    recipient: String,
     amount: Uint128,
     msg: Option<Binary>,
     memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::SendFrom {
         owner,
@@ -616,8 +616,8 @@ pub fn send_from_msg(
 /// * `contract_addr` - address of the contract being called
 #[allow(clippy::too_many_arguments)]
 pub fn send_from_msg_with_code_hash(
-    owner: HumanAddr,
-    recipient: HumanAddr,
+    owner: String,
+    recipient: String,
     recipient_code_hash: Option<String>,
     amount: Uint128,
     msg: Option<Binary>,
@@ -625,7 +625,7 @@ pub fn send_from_msg_with_code_hash(
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::SendFrom {
         owner,
@@ -652,7 +652,7 @@ pub fn batch_transfer_from_msg(
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::BatchTransferFrom { actions, padding }.to_cosmos_msg(
         block_size,
@@ -675,7 +675,7 @@ pub fn batch_send_from_msg(
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::BatchSendFrom { actions, padding }.to_cosmos_msg(
         block_size,
@@ -697,13 +697,13 @@ pub fn batch_send_from_msg(
 /// * `callback_code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn burn_from_msg(
-    owner: HumanAddr,
+    owner: String,
     amount: Uint128,
     memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::BurnFrom {
         owner,
@@ -727,7 +727,7 @@ pub fn batch_burn_from_msg(
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::BatchBurnFrom { actions, padding }.to_cosmos_msg(
         block_size,
@@ -749,13 +749,13 @@ pub fn batch_burn_from_msg(
 /// * `callback_code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn mint_msg(
-    recipient: HumanAddr,
+    recipient: String,
     amount: Uint128,
     memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::Mint {
         recipient,
@@ -779,7 +779,7 @@ pub fn batch_mint_msg(
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::BatchMint { actions, padding }.to_cosmos_msg(
         block_size,
@@ -799,11 +799,11 @@ pub fn batch_mint_msg(
 /// * `callback_code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn add_minters_msg(
-    minters: Vec<HumanAddr>,
+    minters: Vec<String>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::AddMinters { minters, padding }.to_cosmos_msg(
         block_size,
@@ -823,11 +823,11 @@ pub fn add_minters_msg(
 /// * `callback_code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn remove_minters_msg(
-    minters: Vec<HumanAddr>,
+    minters: Vec<String>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::RemoveMinters { minters, padding }.to_cosmos_msg(
         block_size,
@@ -847,11 +847,11 @@ pub fn remove_minters_msg(
 /// * `callback_code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn set_minters_msg(
-    minters: Vec<HumanAddr>,
+    minters: Vec<String>,
     padding: Option<String>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::SetMinters { minters, padding }.to_cosmos_msg(
         block_size,

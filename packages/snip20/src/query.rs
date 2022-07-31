@@ -3,7 +3,8 @@ use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use cosmwasm_std::{
-    to_binary, Coin, HumanAddr, Querier, QueryRequest, StdError, StdResult, Uint128, WasmQuery,
+    to_binary, Coin, CustomQuery, QuerierWrapper, QueryRequest, StdError, StdResult, Uint128,
+    WasmQuery,
 };
 
 use secret_toolkit_utils::space_pad;
@@ -52,8 +53,8 @@ pub struct ExchangeRate {
 /// Allowance response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Allowance {
-    pub spender: HumanAddr,
-    pub owner: HumanAddr,
+    pub spender: String,
+    pub owner: String,
     pub allowance: Uint128,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expiration: Option<u64>,
@@ -69,9 +70,9 @@ pub struct Balance {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Tx {
     pub id: u64,
-    pub from: HumanAddr,
-    pub sender: HumanAddr,
-    pub receiver: HumanAddr,
+    pub from: String,
+    pub sender: String,
+    pub receiver: String,
     pub coins: Coin,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memo: Option<String>,
@@ -93,17 +94,17 @@ pub struct TransferHistory {
 #[serde(rename_all = "snake_case")]
 pub enum TxAction {
     Transfer {
-        from: HumanAddr,
-        sender: HumanAddr,
-        recipient: HumanAddr,
+        from: String,
+        sender: String,
+        recipient: String,
     },
     Mint {
-        minter: HumanAddr,
-        recipient: HumanAddr,
+        minter: String,
+        recipient: String,
     },
     Burn {
-        burner: HumanAddr,
-        owner: HumanAddr,
+        burner: String,
+        owner: String,
     },
     Deposit {},
     Redeem {},
@@ -131,7 +132,7 @@ pub struct TransactionHistory {
 /// Minters response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Minters {
-    pub minters: Vec<HumanAddr>,
+    pub minters: Vec<String>,
 }
 
 /// SNIP20 queries
@@ -143,22 +144,22 @@ pub enum QueryMsg {
     ContractStatus {},
     ExchangeRate {},
     Allowance {
-        owner: HumanAddr,
-        spender: HumanAddr,
+        owner: String,
+        spender: String,
         key: String,
     },
     Balance {
-        address: HumanAddr,
+        address: String,
         key: String,
     },
     TransferHistory {
-        address: HumanAddr,
+        address: String,
         key: String,
         page: Option<u32>,
         page_size: u32,
     },
     TransactionHistory {
-        address: HumanAddr,
+        address: String,
         key: String,
         page: Option<u32>,
         page_size: u32,
@@ -191,12 +192,12 @@ impl QueryMsg {
     /// * `block_size` - pad the message to blocks of this size
     /// * `callback_code_hash` - String holding the code hash of the contract being queried
     /// * `contract_addr` - address of the contract being queried
-    pub fn query<Q: Querier, T: DeserializeOwned>(
+    pub fn query<'a, C: CustomQuery, T: DeserializeOwned>(
         &self,
-        querier: &Q,
+        querier: QuerierWrapper<'a, C>,
         mut block_size: usize,
-        callback_code_hash: String,
-        contract_addr: HumanAddr,
+        code_hash: String,
+        contract_addr: String,
     ) -> StdResult<T> {
         // can not have block size of 0
         if block_size == 0 {
@@ -207,7 +208,7 @@ impl QueryMsg {
         querier
             .query(&QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr,
-                callback_code_hash,
+                code_hash,
                 msg,
             }))
             .map_err(|err| {
@@ -221,8 +222,8 @@ impl QueryMsg {
 #[serde(rename_all = "snake_case")]
 pub enum AuthenticatedQueryResponse {
     Allowance {
-        spender: HumanAddr,
-        owner: HumanAddr,
+        spender: String,
+        owner: String,
         allowance: Uint128,
         expiration: Option<u64>,
     },
@@ -279,11 +280,11 @@ pub struct MintersResponse {
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn token_info_query<Q: Querier>(
-    querier: &Q,
+pub fn token_info_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<TokenInfo> {
     let answer: TokenInfoResponse =
         QueryMsg::TokenInfo {}.query(querier, block_size, callback_code_hash, contract_addr)?;
@@ -298,11 +299,11 @@ pub fn token_info_query<Q: Querier>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn token_config_query<Q: Querier>(
-    querier: &Q,
+pub fn token_config_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<TokenConfig> {
     let answer: TokenConfigResponse =
         QueryMsg::TokenConfig {}.query(querier, block_size, callback_code_hash, contract_addr)?;
@@ -317,11 +318,11 @@ pub fn token_config_query<Q: Querier>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn contract_status_query<Q: Querier>(
-    querier: &Q,
+pub fn contract_status_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<ContractStatus> {
     let answer: ContractStatusResponse = QueryMsg::ContractStatus {}.query(
         querier,
@@ -340,11 +341,11 @@ pub fn contract_status_query<Q: Querier>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn exchange_rate_query<Q: Querier>(
-    querier: &Q,
+pub fn exchange_rate_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<ExchangeRate> {
     let answer: ExchangeRateResponse =
         QueryMsg::ExchangeRate {}.query(querier, block_size, callback_code_hash, contract_addr)?;
@@ -363,14 +364,14 @@ pub fn exchange_rate_query<Q: Querier>(
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
 #[allow(clippy::too_many_arguments)]
-pub fn allowance_query<Q: Querier>(
-    querier: &Q,
-    owner: HumanAddr,
-    spender: HumanAddr,
+pub fn allowance_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
+    owner: String,
+    spender: String,
     key: String,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<Allowance> {
     let answer: AuthenticatedQueryResponse = QueryMsg::Allowance {
         owner,
@@ -390,7 +391,9 @@ pub fn allowance_query<Q: Querier>(
             allowance,
             expiration,
         }),
-        AuthenticatedQueryResponse::ViewingKeyError { .. } => Err(StdError::unauthorized()),
+        AuthenticatedQueryResponse::ViewingKeyError { .. } => {
+            Err(StdError::generic_err("unaithorized"))
+        }
         _ => Err(StdError::generic_err("Invalid Allowance query response")),
     }
 }
@@ -405,13 +408,13 @@ pub fn allowance_query<Q: Querier>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn balance_query<Q: Querier>(
-    querier: &Q,
-    address: HumanAddr,
+pub fn balance_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
+    address: String,
     key: String,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<Balance> {
     let answer: AuthenticatedQueryResponse = QueryMsg::Balance { address, key }.query(
         querier,
@@ -421,7 +424,9 @@ pub fn balance_query<Q: Querier>(
     )?;
     match answer {
         AuthenticatedQueryResponse::Balance { amount } => Ok(Balance { amount }),
-        AuthenticatedQueryResponse::ViewingKeyError { .. } => Err(StdError::unauthorized()),
+        AuthenticatedQueryResponse::ViewingKeyError { .. } => {
+            Err(StdError::generic_err("unaithorized"))
+        }
         _ => Err(StdError::generic_err("Invalid Balance query response")),
     }
 }
@@ -439,15 +444,15 @@ pub fn balance_query<Q: Querier>(
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
 #[allow(clippy::too_many_arguments)]
-pub fn transfer_history_query<Q: Querier>(
-    querier: &Q,
-    address: HumanAddr,
+pub fn transfer_history_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
+    address: String,
     key: String,
     page: Option<u32>,
     page_size: u32,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<TransferHistory> {
     let answer: AuthenticatedQueryResponse = QueryMsg::TransferHistory {
         address,
@@ -460,7 +465,9 @@ pub fn transfer_history_query<Q: Querier>(
         AuthenticatedQueryResponse::TransferHistory { txs, total } => {
             Ok(TransferHistory { txs, total })
         }
-        AuthenticatedQueryResponse::ViewingKeyError { .. } => Err(StdError::unauthorized()),
+        AuthenticatedQueryResponse::ViewingKeyError { .. } => {
+            Err(StdError::generic_err("unaithorized"))
+        }
         _ => Err(StdError::generic_err(
             "Invalid TransferHistory query response",
         )),
@@ -480,15 +487,15 @@ pub fn transfer_history_query<Q: Querier>(
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
 #[allow(clippy::too_many_arguments)]
-pub fn transaction_history_query<Q: Querier>(
-    querier: &Q,
-    address: HumanAddr,
+pub fn transaction_history_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
+    address: String,
     key: String,
     page: Option<u32>,
     page_size: u32,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<TransactionHistory> {
     let answer: AuthenticatedQueryResponse = QueryMsg::TransactionHistory {
         address,
@@ -501,7 +508,9 @@ pub fn transaction_history_query<Q: Querier>(
         AuthenticatedQueryResponse::TransactionHistory { txs, total } => {
             Ok(TransactionHistory { txs, total })
         }
-        AuthenticatedQueryResponse::ViewingKeyError { .. } => Err(StdError::unauthorized()),
+        AuthenticatedQueryResponse::ViewingKeyError { .. } => {
+            Err(StdError::generic_err("unaithorized"))
+        }
         _ => Err(StdError::generic_err(
             "Invalid TransactionHistory query response",
         )),
@@ -516,11 +525,11 @@ pub fn transaction_history_query<Q: Querier>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn minters_query<Q: Querier>(
-    querier: &Q,
+pub fn minters_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     block_size: usize,
     callback_code_hash: String,
-    contract_addr: HumanAddr,
+    contract_addr: String,
 ) -> StdResult<Minters> {
     let answer: MintersResponse =
         QueryMsg::Minters {}.query(querier, block_size, callback_code_hash, contract_addr)?;
