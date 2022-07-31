@@ -1019,6 +1019,8 @@ pub fn verify_transfer_approval_query<Q: Querier>(
 
 #[cfg(test)]
 mod tests {
+    use crate::{Extension, Trait};
+
     use super::*;
     use cosmwasm_std::{to_vec, QuerierResult, SystemError};
 
@@ -1292,9 +1294,25 @@ mod tests {
 
                 let response = NftInfoResponse {
                     nft_info: Metadata {
-                        name: Some("NFT1".to_string()),
-                        description: Some("description".to_string()),
-                        image: Some("image".to_string()),
+                        token_uri: Some("token uri2".to_string()),
+                        extension: Some(Extension {
+                            image: Some("public_image2".to_string()),
+                            image_data: None,
+                            external_url: None,
+                            description: None,
+                            name: None,
+                            attributes: Some(vec![Trait {
+                                display_type: None,
+                                trait_type: Some("public trait2".to_string()),
+                                value: "value2".to_string(),
+                                max_value: None,
+                            }]),
+                            background_color: None,
+                            animation_url: None,
+                            youtube_url: None,
+                            media: None,
+                            protected_attributes: None,
+                        }),
                     },
                 };
                 Ok(to_binary(&response))
@@ -1308,9 +1326,25 @@ mod tests {
         let token_id = "NFT1".to_string();
 
         let expected_response = Metadata {
-            name: Some("NFT1".to_string()),
-            description: Some("description".to_string()),
-            image: Some("image".to_string()),
+            token_uri: Some("token uri2".to_string()),
+            extension: Some(Extension {
+                image: Some("public_image2".to_string()),
+                image_data: None,
+                external_url: None,
+                description: None,
+                name: None,
+                attributes: Some(vec![Trait {
+                    display_type: None,
+                    trait_type: Some("public trait2".to_string()),
+                    value: "value2".to_string(),
+                    max_value: None,
+                }]),
+                background_color: None,
+                animation_url: None,
+                youtube_url: None,
+                media: None,
+                protected_attributes: None,
+            }),
         };
 
         let response = nft_info_query(&querier, token_id, 256usize, hash, address)?;
@@ -1365,9 +1399,25 @@ mod tests {
                             ],
                         },
                         info: Some(Metadata {
-                            name: Some("NFT1".to_string()),
-                            description: Some("description".to_string()),
-                            image: Some("image".to_string()),
+                            token_uri: Some("token uri2".to_string()),
+                            extension: Some(Extension {
+                                image: Some("public_image2".to_string()),
+                                image_data: None,
+                                external_url: None,
+                                description: None,
+                                name: None,
+                                attributes: Some(vec![Trait {
+                                    display_type: None,
+                                    trait_type: Some("public trait2".to_string()),
+                                    value: "value2".to_string(),
+                                    max_value: None,
+                                }]),
+                                background_color: None,
+                                animation_url: None,
+                                youtube_url: None,
+                                media: None,
+                                protected_attributes: None,
+                            }),
                         }),
                     },
                 };
@@ -1401,9 +1451,25 @@ mod tests {
                 ],
             },
             info: Some(Metadata {
-                name: Some("NFT1".to_string()),
-                description: Some("description".to_string()),
-                image: Some("image".to_string()),
+                token_uri: Some("token uri2".to_string()),
+                extension: Some(Extension {
+                    image: Some("public_image2".to_string()),
+                    image_data: None,
+                    external_url: None,
+                    description: None,
+                    name: None,
+                    attributes: Some(vec![Trait {
+                        display_type: None,
+                        trait_type: Some("public trait2".to_string()),
+                        value: "value2".to_string(),
+                        max_value: None,
+                    }]),
+                    background_color: None,
+                    animation_url: None,
+                    youtube_url: None,
+                    media: None,
+                    protected_attributes: None,
+                }),
             }),
         };
 
@@ -1448,9 +1514,25 @@ mod tests {
 
                 let response = PrivateMetadataResponse {
                     private_metadata: Metadata {
-                        name: Some("NFT1".to_string()),
-                        description: Some("description".to_string()),
-                        image: Some("image".to_string()),
+                        token_uri: Some("token uri2".to_string()),
+                        extension: Some(Extension {
+                            image: Some("private_image2".to_string()),
+                            image_data: None,
+                            external_url: None,
+                            description: None,
+                            name: None,
+                            attributes: Some(vec![Trait {
+                                display_type: None,
+                                trait_type: Some("private trait2".to_string()),
+                                value: "value2".to_string(),
+                                max_value: None,
+                            }]),
+                            background_color: None,
+                            animation_url: None,
+                            youtube_url: None,
+                            media: None,
+                            protected_attributes: None,
+                        }),
                     },
                 };
                 Ok(to_binary(&response))
@@ -1468,9 +1550,25 @@ mod tests {
         });
 
         let expected_response = Metadata {
-            name: Some("NFT1".to_string()),
-            description: Some("description".to_string()),
-            image: Some("image".to_string()),
+            token_uri: Some("token uri2".to_string()),
+            extension: Some(Extension {
+                image: Some("private_image2".to_string()),
+                image_data: None,
+                external_url: None,
+                description: None,
+                name: None,
+                attributes: Some(vec![Trait {
+                    display_type: None,
+                    trait_type: Some("private trait2".to_string()),
+                    value: "value2".to_string(),
+                    max_value: None,
+                }]),
+                background_color: None,
+                animation_url: None,
+                youtube_url: None,
+                media: None,
+                protected_attributes: None,
+            }),
         };
 
         let response = private_metadata_query(&querier, token_id, viewer, 256usize, hash, address)?;
@@ -1513,9 +1611,25 @@ mod tests {
                     nft_dossier: NftDossier {
                         owner: Some(HumanAddr("alice".to_string())),
                         public_metadata: Some(Metadata {
-                            name: Some("NFT1".to_string()),
-                            description: Some("description".to_string()),
-                            image: Some("image".to_string()),
+                            token_uri: Some("token uri2".to_string()),
+                            extension: Some(Extension {
+                                image: Some("public_image2".to_string()),
+                                image_data: None,
+                                external_url: None,
+                                description: None,
+                                name: None,
+                                attributes: Some(vec![Trait {
+                                    display_type: None,
+                                    trait_type: Some("public trait2".to_string()),
+                                    value: "value2".to_string(),
+                                    max_value: None,
+                                }]),
+                                background_color: None,
+                                animation_url: None,
+                                youtube_url: None,
+                                media: None,
+                                protected_attributes: None,
+                            }),
                         }),
                         private_metadata: None,
                         display_private_metadata_error: Some("pretend it is sealed".to_string()),
@@ -1558,9 +1672,25 @@ mod tests {
         let expected_response = NftDossier {
             owner: Some(HumanAddr("alice".to_string())),
             public_metadata: Some(Metadata {
-                name: Some("NFT1".to_string()),
-                description: Some("description".to_string()),
-                image: Some("image".to_string()),
+                token_uri: Some("token uri2".to_string()),
+                extension: Some(Extension {
+                    image: Some("public_image2".to_string()),
+                    image_data: None,
+                    external_url: None,
+                    description: None,
+                    name: None,
+                    attributes: Some(vec![Trait {
+                        display_type: None,
+                        trait_type: Some("public trait2".to_string()),
+                        value: "value2".to_string(),
+                        max_value: None,
+                    }]),
+                    background_color: None,
+                    animation_url: None,
+                    youtube_url: None,
+                    media: None,
+                    protected_attributes: None,
+                }),
             }),
             private_metadata: None,
             display_private_metadata_error: Some("pretend it is sealed".to_string()),
