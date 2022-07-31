@@ -1,7 +1,7 @@
 #[cfg(feature = "cashmap")]
 pub mod cashmap;
 #[cfg(feature = "cashmap")]
-pub use cashmap::{CashMap as CashmapMut, ReadOnlyCashMap as Cashmap};
+pub use cashmap::{CashmapMut, Cashmap};
 
 #[cfg(feature = "generational-store")]
 pub mod generational_store;

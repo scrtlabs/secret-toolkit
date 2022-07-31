@@ -46,7 +46,7 @@ pub struct InternalItem<T>
     meta_data: MetaData,
 }
 
-pub struct CashMap<'a, T, S, Ser = Bincode2>
+pub struct CashmapMut<'a, T, S, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned,
     S: Storage,
@@ -58,7 +58,7 @@ where
     prefix: Option<Vec<u8>>,
 }
 
-impl<'a, T, S> CashMap<'a, T, S, Bincode2>
+impl<'a, T, S> CashmapMut<'a, T, S, Bincode2>
 where
     T: Serialize + DeserializeOwned,
     S: Storage,
@@ -72,7 +72,7 @@ where
     }
 }
 
-impl<'a, T, S, Ser> CashMap<'a, T, S, Ser>
+impl<'a, T, S, Ser> CashmapMut<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
     // K: Hash + Eq + ?Sized,
@@ -328,8 +328,8 @@ where
         Ok(())
     }
 
-    fn as_readonly(&self) -> ReadOnlyCashMap<T, S, Ser> {
-        ReadOnlyCashMap {
+    fn as_readonly(&self) -> Cashmap<T, S, Ser> {
+        Cashmap {
             storage: self.storage,
             item_type: self.item_type,
             serialization_type: self.serialization_type,
@@ -355,7 +355,7 @@ where
 }
 
 /// basically this is used in queries
-pub struct ReadOnlyCashMap<'a, T, S, Ser = Bincode2>
+pub struct Cashmap<'a, T, S, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
@@ -367,7 +367,7 @@ where
     prefix: Option<Vec<u8>>,
 }
 
-impl<'a, T, S> ReadOnlyCashMap<'a, T, S, Bincode2>
+impl<'a, T, S> Cashmap<'a, T, S, Bincode2>
 where
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
@@ -381,7 +381,7 @@ where
     }
 }
 
-impl<'a, T, S, Ser> ReadOnlyCashMap<'a, T, S, Ser>
+impl<'a, T, S, Ser> Cashmap<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
@@ -657,7 +657,7 @@ where
     S: ReadonlyStorage,
     Ser: Serde,
 {
-    storage: ReadOnlyCashMap<'a, T, S, Ser>,
+    storage: Cashmap<'a, T, S, Ser>,
     start: u32,
     end: u32,
 }
@@ -701,7 +701,7 @@ where
     }
 }
 
-impl<'a, T, S, Ser> IntoIterator for ReadOnlyCashMap<'a, T, S, Ser>
+impl<'a, T, S, Ser> IntoIterator for Cashmap<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
@@ -721,7 +721,7 @@ where
 }
 
 // Manual `Clone` implementation because the default one tries to clone the Storage??
-impl<'a, T, S, Ser> Clone for ReadOnlyCashMap<'a, T, S, Ser>
+impl<'a, T, S, Ser> Clone for Cashmap<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
@@ -758,7 +758,7 @@ mod tests {
 
         let total_items = 1000;
 
-        let mut cashmap = CashMap::attach(&mut storage);
+        let mut cashmap = CashmapMut::attach(&mut storage);
 
         for i in 0..total_items {
             cashmap.insert(&(i as i32).to_be_bytes(), i)?;
@@ -775,7 +775,7 @@ mod tests {
 
         let total_items = 100;
 
-        let mut cashmap = CashMap::attach(&mut storage);
+        let mut cashmap = CashmapMut::attach(&mut storage);
 
         for i in 0..total_items {
             cashmap.insert(&(i as i32).to_be_bytes(), i)?;
@@ -796,7 +796,7 @@ mod tests {
 
         let page_size = 5;
         let total_items = 50;
-        let mut cashmap = CashMap::attach(&mut storage);
+        let mut cashmap = CashmapMut::attach(&mut storage);
 
         for i in 0..total_items {
             cashmap.insert(&(i as i32).to_be_bytes(), i)?;
@@ -819,11 +819,11 @@ mod tests {
     fn test_hashmap_paging_prefixed() -> StdResult<()> {
         let mut storage = MockStorage::new();
         let mut prefixed = PrefixedStorage::new(b"test", &mut storage);
-        let mut cashmap = CashMap::init(b"yo", &mut prefixed);
+        let mut cashmap = CashmapMut::init(b"yo", &mut prefixed);
 
         let page_size = 10;
         let total_items = 50;
-        //let mut cashmap = CashMap::attach(&mut storage);
+        //let mut cashmap = CashmapMut::attach(&mut storage);
 
         for i in 0..total_items {
             cashmap.insert(&(i as i32).to_be_bytes(), i)?;
@@ -848,7 +848,7 @@ mod tests {
 
         let page_size = 50;
         let total_items = 10;
-        let mut cashmap = CashMap::attach(&mut storage);
+        let mut cashmap = CashmapMut::attach(&mut storage);
 
         for i in 0..total_items {
             cashmap.insert(&(i as i32).to_be_bytes(), i)?;
@@ -869,7 +869,7 @@ mod tests {
     fn test_hashmap_insert_multiple() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let mut typed_store_mut = CashMap::attach(&mut storage);
+        let mut typed_store_mut = CashmapMut::attach(&mut storage);
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -894,7 +894,7 @@ mod tests {
     fn test_hashmap_insert_get() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let mut typed_store_mut = CashMap::attach(&mut storage);
+        let mut typed_store_mut = CashmapMut::attach(&mut storage);
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -911,7 +911,7 @@ mod tests {
     fn test_hashmap_insert_contains() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let mut typed_store_mut = CashMap::attach(&mut storage);
+        let mut typed_store_mut = CashmapMut::attach(&mut storage);
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -929,7 +929,7 @@ mod tests {
     fn test_hashmap_insert_remove() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let mut typed_store_mut = CashMap::attach(&mut storage);
+        let mut typed_store_mut = CashmapMut::attach(&mut storage);
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -953,7 +953,7 @@ mod tests {
     fn test_hashmap_iter() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let mut hashmap = CashMap::attach(&mut storage);
+        let mut hashmap = CashmapMut::attach(&mut storage);
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -981,7 +981,7 @@ mod tests {
     fn test_hashmap_overwrite() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let mut hashmap = CashMap::attach(&mut storage);
+        let mut hashmap = CashmapMut::attach(&mut storage);
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -1005,7 +1005,7 @@ mod tests {
     fn test_hashmap_overwrite_prefixed() -> StdResult<()> {
         let mut storage = MockStorage::new();
         let mut prefixed = PrefixedStorage::new(b"test", &mut storage);
-        let mut hashmap = CashMap::init(b"yo", &mut prefixed);
+        let mut hashmap = CashmapMut::init(b"yo", &mut prefixed);
 
         let foo1 = Foo {
             string: "string one".to_string(),
@@ -1031,7 +1031,7 @@ mod tests {
     fn test_cashmap_basics() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let mut typed_store_mut = CashMap::attach(&mut storage);
+        let mut typed_store_mut = CashmapMut::attach(&mut storage);
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -1063,7 +1063,7 @@ mod tests {
 
         // Try to load it with the wrong format
         let typed_store =
-            ReadOnlyCashMap::<i32, _, _>::attach_with_serialization(&storage, Json, None);
+            Cashmap::<i32, _, _>::attach_with_serialization(&storage, Json, None);
         match typed_store.load(b"key2") {
             Err(StdError::ParseErr { target, msg, .. })
                 if target == "secret_toolkit_incubator::cashmap::InternalItem<i32>"
@@ -1078,7 +1078,7 @@ mod tests {
     fn test_cashmap_basics_prefixed() -> StdResult<()> {
         let mut storage = MockStorage::new();
         //let mut prefixed = PrefixedStorage::new(b"test", &mut storage);
-        let mut cmap = CashMap::init(b"yo", &mut storage);
+        let mut cmap = CashmapMut::init(b"yo", &mut storage);
 
         let foo1 = Foo {
             string: "string one".to_string(),
@@ -1110,7 +1110,7 @@ mod tests {
         assert!(cmap.get(b"key3").is_none());
 
         // Try to load it with the wrong format
-        let typed_store = ReadOnlyCashMap::<i32, _, _>::attach_with_serialization(
+        let typed_store = Cashmap::<i32, _, _>::attach_with_serialization(
             &storage,
             Json,
             Some(b"yo".to_vec()),
@@ -1129,7 +1129,7 @@ mod tests {
     fn test_cashmap_length() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let mut cmap = CashMap::attach(&mut storage);
+        let mut cmap = CashmapMut::attach(&mut storage);
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -1167,7 +1167,7 @@ mod tests {
     fn test_cashmap_length_prefixed() -> StdResult<()> {
         let mut storage = MockStorage::new();
         let mut prefixed = PrefixedStorage::new(b"test", &mut storage);
-        let mut cmap = CashMap::init(b"yo", &mut prefixed);
+        let mut cmap = CashmapMut::init(b"yo", &mut prefixed);
 
         let foo1 = Foo {
             string: "string one".to_string(),

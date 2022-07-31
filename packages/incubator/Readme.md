@@ -21,7 +21,7 @@ You can open/initialize the cashmap directly using
 
 ```rust
 let mut storage = MockStorage::new();
-let mut cmap = CashMap::init(b"cashmap-name", &mut storage);
+let mut cmap = CashmapMut::init(b"cashmap-name", &mut storage);
 ```
 
 #### Access pattern
