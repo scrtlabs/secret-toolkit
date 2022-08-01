@@ -42,7 +42,8 @@ impl Expiration {
     pub fn is_expired(&self, block: &BlockInfo) -> bool {
         match self {
             Expiration::AtHeight(height) => block.height >= *height,
-            Expiration::AtTime(time) => block.time >= *time,
+            // When snip721 will be migrated, `time` might be a Timestamp. For now, just keeping it compatible
+            Expiration::AtTime(time) => block.time.seconds() >= *time,
             Expiration::Never => false,
         }
     }
@@ -50,19 +51,21 @@ impl Expiration {
 
 #[cfg(test)]
 mod test {
+    use cosmwasm_std::Timestamp;
+
     use super::*;
 
     #[test]
     fn test_expiration() {
         let block_h1000_t1000000 = BlockInfo {
             height: 1000,
-            time: 1000000,
+            time: Timestamp::from_seconds(1000000),
             chain_id: "test".to_string(),
         };
 
         let block_h2000_t2000000 = BlockInfo {
             height: 2000,
-            time: 2000000,
+            time: Timestamp::from_seconds(2000000),
             chain_id: "test".to_string(),
         };
         let exp_h1000 = Expiration::AtHeight(1000);

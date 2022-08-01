@@ -2,7 +2,9 @@ use core::fmt;
 use schemars::JsonSchema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use cosmwasm_std::{to_binary, HumanAddr, Querier, QueryRequest, StdError, StdResult, WasmQuery};
+use cosmwasm_std::{
+    to_binary, CustomQuery, QuerierWrapper, QueryRequest, StdError, StdResult, WasmQuery,
+};
 
 use crate::expiration::Expiration;
 use crate::metadata::Metadata;
@@ -16,7 +18,7 @@ use secret_toolkit_utils::space_pad;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ViewerInfo {
     /// querying address
-    pub address: HumanAddr,
+    pub address: String,
     /// authentication key string
     pub viewing_key: String,
 }
@@ -61,7 +63,7 @@ pub struct TokenList {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Cw721Approval {
     /// address that can transfer the token
-    pub spender: HumanAddr,
+    pub spender: String,
     /// expiration of this approval
     pub expires: Expiration,
 }
@@ -75,7 +77,7 @@ pub struct Cw721Approval {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OwnerOf {
     /// Owner of the token if permitted to view it
-    pub owner: Option<HumanAddr>,
+    pub owner: Option<String>,
     /// list of addresses approved to transfer this token
     pub approvals: Vec<Cw721Approval>,
 }
@@ -95,7 +97,7 @@ pub struct AllNftInfo {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Snip721Approval {
     /// whitelisted address
-    pub address: HumanAddr,
+    pub address: String,
     /// optional expiration if the address has view owner permission
     pub view_owner_expiration: Option<Expiration>,
     /// optional expiration if the address has view private metadata permission
@@ -112,7 +114,7 @@ pub struct Snip721Approval {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct NftDossier {
     /// owner of the token if permitted to view it
-    pub owner: Option<HumanAddr>,
+    pub owner: Option<String>,
     /// the token's public metadata
     pub public_metadata: Option<Metadata>,
     /// the token's private metadata if permitted to view it
@@ -188,25 +190,25 @@ pub enum TxAction {
     /// transferred token ownership
     Transfer {
         /// previous owner
-        from: HumanAddr,
+        from: String,
         /// optional sender if not owner
-        sender: Option<HumanAddr>,
+        sender: Option<String>,
         /// new owner
-        recipient: HumanAddr,
+        recipient: String,
     },
     /// minted new token
     Mint {
         /// minter's address
-        minter: HumanAddr,
+        minter: String,
         /// token's first owner
-        recipient: HumanAddr,
+        recipient: String,
     },
     /// burned a token
     Burn {
         /// previous owner
-        owner: HumanAddr,
+        owner: String,
         /// burner's address if not owner
-        burner: Option<HumanAddr>,
+        burner: Option<String>,
     },
 }
 
@@ -249,7 +251,7 @@ pub struct TransactionHistory {
 /// display the list of authorized minters
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Minters {
-    pub minters: Vec<HumanAddr>,
+    pub minters: Vec<String>,
 }
 
 /// response of [`IsUnwrapped`](QueryMsg::IsUnwrapped)
@@ -352,7 +354,7 @@ pub enum QueryMsg {
     /// CW-721 compliance, however, approvals are private on secret network, so only the
     /// owner's viewing key will authorize the ability to see the list of operators
     ApprovedForAll {
-        owner: HumanAddr,
+        owner: String,
         /// optional viewing key to authenticate this query.  It is "optional" only in the
         /// sense that a CW721 query does not have this field.  However, not providing the
         /// key will always result in an empty list
@@ -364,7 +366,7 @@ pub enum QueryMsg {
     /// list all the inventory-wide [`Approvals`](Snip721Approval) in place for the specified address if given the
     /// the correct viewing key for the address
     InventoryApprovals {
-        address: HumanAddr,
+        address: String,
         /// the viewing key
         viewing_key: String,
         /// optionally include expired [`Approvals`](Snip721Approval) in the response list.  If ommitted or
@@ -374,9 +376,9 @@ pub enum QueryMsg {
     /// displays a list of all the tokens belonging to the input owner in which the viewer
     /// has view_owner permission
     Tokens {
-        owner: HumanAddr,
+        owner: String,
         /// optional address of the querier if different from the owner
-        viewer: Option<HumanAddr>,
+        viewer: Option<String>,
         /// optional viewing key
         viewing_key: Option<String>,
         /// optionally display only token ids that come after the input String in
@@ -388,7 +390,7 @@ pub enum QueryMsg {
     /// display the transaction history for the specified address in reverse
     /// chronological order
     TransactionHistory {
-        address: HumanAddr,
+        address: String,
         /// viewing key
         viewing_key: String,
         /// optional page to display
@@ -409,7 +411,7 @@ pub enum QueryMsg {
         /// list of tokens to verify approval for
         token_ids: Vec<String>,
         /// address that has approval
-        address: HumanAddr,
+        address: String,
         /// viewing key
         viewing_key: String,
     },
@@ -445,14 +447,14 @@ impl QueryMsg {
     ///
     /// * `querier` - a reference to the Querier dependency of the querying contract
     /// * `block_size` - pad the message to blocks of this size
-    /// * `callback_code_hash` - String holding the code hash of the contract being queried
+    /// * `code_hash` - String holding the code hash of the contract being queried
     /// * `contract_addr` - address of the contract being queried
-    pub fn query<Q: Querier, T: DeserializeOwned>(
+    pub fn query<'a, C: CustomQuery, T: DeserializeOwned>(
         &self,
-        querier: &Q,
+        querier: QuerierWrapper<'a, C>,
         mut block_size: usize,
-        callback_code_hash: String,
-        contract_addr: HumanAddr,
+        code_hash: String,
+        contract_addr: String,
     ) -> StdResult<T> {
         // can not have block size of 0
         if block_size == 0 {
@@ -463,7 +465,7 @@ impl QueryMsg {
         querier
             .query(&QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr,
-                callback_code_hash,
+                code_hash,
                 msg,
             }))
             .map_err(|err| {
@@ -568,16 +570,16 @@ pub struct VerifyTransferApprovalResponse {
 ///
 /// * `querier` - a reference to the Querier dependency of the querying contract
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn contract_info_query<Q: Querier>(
-    querier: &Q,
+pub fn contract_info_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<ContractInfo> {
     let answer: ContractInfoResponse =
-        QueryMsg::ContractInfo {}.query(querier, block_size, callback_code_hash, contract_addr)?;
+        QueryMsg::ContractInfo {}.query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.contract_info)
 }
 
@@ -588,21 +590,17 @@ pub fn contract_info_query<Q: Querier>(
 /// * `querier` - a reference to the Querier dependency of the querying contract
 /// * `viewer` - Optional ViewerInfo holding the address and viewing key of the querier
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn num_tokens_query<Q: Querier>(
-    querier: &Q,
+pub fn num_tokens_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     viewer: Option<ViewerInfo>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<NumTokens> {
-    let answer: NumTokensResponse = QueryMsg::NumTokens { viewer }.query(
-        querier,
-        block_size,
-        callback_code_hash,
-        contract_addr,
-    )?;
+    let answer: NumTokensResponse =
+        QueryMsg::NumTokens { viewer }.query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.num_tokens)
 }
 
@@ -616,23 +614,23 @@ pub fn num_tokens_query<Q: Querier>(
 ///                   lexicographical order
 /// * `limit` - Optional u32 number of token ids to display
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn all_tokens_query<Q: Querier>(
-    querier: &Q,
+pub fn all_tokens_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     viewer: Option<ViewerInfo>,
     start_after: Option<String>,
     limit: Option<u32>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<TokenList> {
     let answer: TokenListResponse = QueryMsg::AllTokens {
         viewer,
         start_after,
         limit,
     }
-    .query(querier, block_size, callback_code_hash, contract_addr)?;
+    .query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.token_list)
 }
 
@@ -647,23 +645,23 @@ pub fn all_tokens_query<Q: Querier>(
 ///                       ommitted or false, expired Approvals will be filtered out of
 ///                       the response
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn owner_of_query<Q: Querier>(
-    querier: &Q,
+pub fn owner_of_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     token_id: String,
     viewer: Option<ViewerInfo>,
     include_expired: Option<bool>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<OwnerOf> {
     let answer: OwnerOfResponse = QueryMsg::OwnerOf {
         token_id,
         viewer,
         include_expired,
     }
-    .query(querier, block_size, callback_code_hash, contract_addr)?;
+    .query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.owner_of)
 }
 
@@ -674,21 +672,17 @@ pub fn owner_of_query<Q: Querier>(
 /// * `querier` - a reference to the Querier dependency of the querying contract
 /// * `token_id` - ID of the token whose info is being requested
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn nft_info_query<Q: Querier>(
-    querier: &Q,
+pub fn nft_info_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     token_id: String,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<Metadata> {
-    let answer: NftInfoResponse = QueryMsg::NftInfo { token_id }.query(
-        querier,
-        block_size,
-        callback_code_hash,
-        contract_addr,
-    )?;
+    let answer: NftInfoResponse =
+        QueryMsg::NftInfo { token_id }.query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.nft_info)
 }
 
@@ -703,23 +697,23 @@ pub fn nft_info_query<Q: Querier>(
 ///                       ommitted or false, expired Approvals will be filtered out of
 ///                       the response
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn all_nft_info_query<Q: Querier>(
-    querier: &Q,
+pub fn all_nft_info_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     token_id: String,
     viewer: Option<ViewerInfo>,
     include_expired: Option<bool>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<AllNftInfo> {
     let answer: AllNftInfoResponse = QueryMsg::AllNftInfo {
         token_id,
         viewer,
         include_expired,
     }
-    .query(querier, block_size, callback_code_hash, contract_addr)?;
+    .query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.all_nft_info)
 }
 
@@ -731,20 +725,20 @@ pub fn all_nft_info_query<Q: Querier>(
 /// * `token_id` - ID of the token whose info is being requested
 /// * `viewer` - Optional ViewerInfo holding the address and viewing key of the querier
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn private_metadata_query<Q: Querier>(
-    querier: &Q,
+pub fn private_metadata_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     token_id: String,
     viewer: Option<ViewerInfo>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<Metadata> {
     let answer: PrivateMetadataResponse = QueryMsg::PrivateMetadata { token_id, viewer }.query(
         querier,
         block_size,
-        callback_code_hash,
+        code_hash,
         contract_addr,
     )?;
     Ok(answer.private_metadata)
@@ -761,23 +755,23 @@ pub fn private_metadata_query<Q: Querier>(
 ///                       ommitted or false, expired Approvals will be filtered out of
 ///                       the response
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn nft_dossier_query<Q: Querier>(
-    querier: &Q,
+pub fn nft_dossier_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     token_id: String,
     viewer: Option<ViewerInfo>,
     include_expired: Option<bool>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<NftDossier> {
     let answer: NftDossierResponse = QueryMsg::NftDossier {
         token_id,
         viewer,
         include_expired,
     }
-    .query(querier, block_size, callback_code_hash, contract_addr)?;
+    .query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.nft_dossier)
 }
 
@@ -792,23 +786,23 @@ pub fn nft_dossier_query<Q: Querier>(
 ///                       ommitted or false, expired Approvals will be filtered out of
 ///                       the response
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn token_approvals_query<Q: Querier>(
-    querier: &Q,
+pub fn token_approvals_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     token_id: String,
     viewing_key: String,
     include_expired: Option<bool>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<TokenApprovals> {
     let answer: TokenApprovalsResponse = QueryMsg::TokenApprovals {
         token_id,
         viewing_key,
         include_expired,
     }
-    .query(querier, block_size, callback_code_hash, contract_addr)?;
+    .query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.token_approvals)
 }
 
@@ -823,23 +817,23 @@ pub fn token_approvals_query<Q: Querier>(
 ///                       ommitted or false, expired Approvals will be filtered out of
 ///                       the response
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn approved_for_all_query<Q: Querier>(
-    querier: &Q,
-    owner: HumanAddr,
+pub fn approved_for_all_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
+    owner: String,
     viewing_key: Option<String>,
     include_expired: Option<bool>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<ApprovedForAll> {
     let answer: ApprovedForAllResponse = QueryMsg::ApprovedForAll {
         owner,
         viewing_key,
         include_expired,
     }
-    .query(querier, block_size, callback_code_hash, contract_addr)?;
+    .query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.approved_for_all)
 }
 
@@ -854,23 +848,23 @@ pub fn approved_for_all_query<Q: Querier>(
 ///                       ommitted or false, expired Approvals will be filtered out of
 ///                       the response
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn inventory_approvals_query<Q: Querier>(
-    querier: &Q,
-    address: HumanAddr,
+pub fn inventory_approvals_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
+    address: String,
     viewing_key: String,
     include_expired: Option<bool>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<InventoryApprovals> {
     let answer: InventoryApprovalsResponse = QueryMsg::InventoryApprovals {
         address,
         viewing_key,
         include_expired,
     }
-    .query(querier, block_size, callback_code_hash, contract_addr)?;
+    .query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.inventory_approvals)
 }
 
@@ -886,19 +880,19 @@ pub fn inventory_approvals_query<Q: Querier>(
 ///                   lexicographical order
 /// * `limit` - Optional u32 number of token ids to display
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
 #[allow(clippy::too_many_arguments)]
-pub fn tokens_query<Q: Querier>(
-    querier: &Q,
-    owner: HumanAddr,
-    viewer: Option<HumanAddr>,
+pub fn tokens_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
+    owner: String,
+    viewer: Option<String>,
     viewing_key: Option<String>,
     start_after: Option<String>,
     limit: Option<u32>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<TokenList> {
     let answer: TokenListResponse = QueryMsg::Tokens {
         owner,
@@ -907,7 +901,7 @@ pub fn tokens_query<Q: Querier>(
         start_after,
         limit,
     }
-    .query(querier, block_size, callback_code_hash, contract_addr)?;
+    .query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.token_list)
 }
 
@@ -921,18 +915,18 @@ pub fn tokens_query<Q: Querier>(
 /// * `page` - Optional u32 representing the page number of transactions to display
 /// * `page_size` - Optional u32 number of transactions to return
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
 #[allow(clippy::too_many_arguments)]
-pub fn transaction_history_query<Q: Querier>(
-    querier: &Q,
-    address: HumanAddr,
+pub fn transaction_history_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
+    address: String,
     viewing_key: String,
     page: Option<u32>,
     page_size: Option<u32>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<TransactionHistory> {
     let answer: TransactionHistoryResponse = QueryMsg::TransactionHistory {
         address,
@@ -940,7 +934,7 @@ pub fn transaction_history_query<Q: Querier>(
         page,
         page_size,
     }
-    .query(querier, block_size, callback_code_hash, contract_addr)?;
+    .query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.transaction_history)
 }
 
@@ -950,16 +944,16 @@ pub fn transaction_history_query<Q: Querier>(
 ///
 /// * `querier` - a reference to the Querier dependency of the querying contract
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn minters_query<Q: Querier>(
-    querier: &Q,
+pub fn minters_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<Minters> {
     let answer: MintersResponse =
-        QueryMsg::Minters {}.query(querier, block_size, callback_code_hash, contract_addr)?;
+        QueryMsg::Minters {}.query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.minters)
 }
 
@@ -970,21 +964,17 @@ pub fn minters_query<Q: Querier>(
 /// * `querier` - a reference to the Querier dependency of the querying contract
 /// * `token_id` - ID of the token whose info is being requested
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn is_unwrapped_query<Q: Querier>(
-    querier: &Q,
+pub fn is_unwrapped_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     token_id: String,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<IsUnwrapped> {
-    let answer: IsUnwrappedResponse = QueryMsg::IsUnwrapped { token_id }.query(
-        querier,
-        block_size,
-        callback_code_hash,
-        contract_addr,
-    )?;
+    let answer: IsUnwrappedResponse =
+        QueryMsg::IsUnwrapped { token_id }.query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.is_unwrapped)
 }
 
@@ -997,23 +987,23 @@ pub fn is_unwrapped_query<Q: Querier>(
 /// * `address` - address that has transfer approval
 /// * `viewing_key` - String holding the address' viewing key
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being queried
+/// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn verify_transfer_approval_query<Q: Querier>(
-    querier: &Q,
+pub fn verify_transfer_approval_query<'a, C: CustomQuery>(
+    querier: QuerierWrapper<'a, C>,
     token_ids: Vec<String>,
-    address: HumanAddr,
+    address: String,
     viewing_key: String,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<VerifyTransferApproval> {
     let answer: VerifyTransferApprovalResponse = QueryMsg::VerifyTransferApproval {
         token_ids,
         address,
         viewing_key,
     }
-    .query(querier, block_size, callback_code_hash, contract_addr)?;
+    .query(querier, block_size, code_hash, contract_addr)?;
     Ok(answer.verify_transfer_approval)
 }
 
@@ -1022,7 +1012,18 @@ mod tests {
     use crate::{Extension, Trait};
 
     use super::*;
-    use cosmwasm_std::{to_vec, QuerierResult, SystemError};
+    use cosmwasm_std::{
+        to_vec, ContractResult, Empty, Querier, QuerierResult, SystemError, SystemResult,
+    };
+
+    macro_rules! try_querier_result {
+        ($result: expr) => {
+            match $result {
+                std::result::Result::Ok(ok) => ok,
+                std::result::Result::Err(err) => return cosmwasm_std::QuerierResult::Err(err),
+            }
+        };
+    }
 
     #[test]
     fn test_contract_info_query() -> StdResult<()> {
@@ -1030,17 +1031,20 @@ mod tests {
 
         impl Querier for MyMockQuerier {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
-                let mut expected_msg =
-                    to_binary(&QueryMsg::ContractInfo {}).map_err(|_e| SystemError::Unknown {})?;
+                let mut expected_msg = try_querier_result!(
+                    to_binary(&QueryMsg::ContractInfo {}).map_err(|_e| SystemError::Unknown {})
+                );
+
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
                 let response = ContractInfoResponse {
                     contract_info: ContractInfo {
@@ -1048,12 +1052,14 @@ mod tests {
                         symbol: "NFTS".to_string(),
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let address = "contract".to_string();
         let hash = "code hash".to_string();
 
         let expected_response = ContractInfo {
@@ -1061,7 +1067,7 @@ mod tests {
             symbol: "NFTS".to_string(),
         };
 
-        let response = contract_info_query(&querier, 256usize, hash, address)?;
+        let response = contract_info_query(querier, 256usize, hash, address)?;
         assert_eq!(response, expected_response);
 
         Ok(())
@@ -1074,42 +1080,46 @@ mod tests {
         impl Querier for MyMockQuerier {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
                 let viewer = Some(ViewerInfo {
-                    address: HumanAddr("alice".to_string()),
+                    address: "alice".to_string(),
                     viewing_key: "key".to_string(),
                 });
-                let mut expected_msg = to_binary(&QueryMsg::NumTokens { viewer })
-                    .map_err(|_e| SystemError::Unknown {})?;
+                let mut expected_msg =
+                    try_querier_result!(to_binary(&QueryMsg::NumTokens { viewer })
+                        .map_err(|_e| SystemError::Unknown {}));
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = NumTokensResponse {
                     num_tokens: NumTokens { count: 32 },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let address = "contract".to_string();
         let hash = "code hash".to_string();
 
         let viewer = Some(ViewerInfo {
-            address: HumanAddr("alice".to_string()),
+            address: "alice".to_string(),
             viewing_key: "key".to_string(),
         });
 
         let expected_response = NumTokens { count: 32 };
 
-        let response = num_tokens_query(&querier, viewer, 256usize, hash, address)?;
+        let response = num_tokens_query(querier, viewer, 256usize, hash, address)?;
         assert_eq!(response, expected_response);
 
         Ok(())
@@ -1122,27 +1132,28 @@ mod tests {
         impl Querier for MyMockQuerier {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
                 let viewer = Some(ViewerInfo {
-                    address: HumanAddr("alice".to_string()),
+                    address: "alice".to_string(),
                     viewing_key: "key".to_string(),
                 });
                 let start_after = Some("NFT1".to_string());
                 let limit = None;
-                let mut expected_msg = to_binary(&QueryMsg::AllTokens {
+                let mut expected_msg = try_querier_result!(to_binary(&QueryMsg::AllTokens {
                     viewer,
                     start_after,
                     limit,
                 })
-                .map_err(|_e| SystemError::Unknown {})?;
+                .map_err(|_e| SystemError::Unknown {}));
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = TokenListResponse {
@@ -1150,16 +1161,18 @@ mod tests {
                         tokens: vec!["NFT2".to_string(), "NFT3".to_string(), "NFT4".to_string()],
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let address = "contract".to_string();
         let hash = "code hash".to_string();
 
         let viewer = Some(ViewerInfo {
-            address: HumanAddr("alice".to_string()),
+            address: "alice".to_string(),
             viewing_key: "key".to_string(),
         });
         let start_after = Some("NFT1".to_string());
@@ -1169,15 +1182,8 @@ mod tests {
             tokens: vec!["NFT2".to_string(), "NFT3".to_string(), "NFT4".to_string()],
         };
 
-        let response = all_tokens_query(
-            &querier,
-            viewer,
-            start_after,
-            limit,
-            256usize,
-            hash,
-            address,
-        )?;
+        let response =
+            all_tokens_query(querier, viewer, start_after, limit, 256usize, hash, address)?;
         assert_eq!(response, expected_response);
 
         Ok(())
@@ -1190,75 +1196,78 @@ mod tests {
         impl Querier for MyMockQuerier {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
                 let viewer = Some(ViewerInfo {
-                    address: HumanAddr("alice".to_string()),
+                    address: "alice".to_string(),
                     viewing_key: "key".to_string(),
                 });
                 let token_id = "NFT1".to_string();
                 let include_expired = Some(true);
-                let mut expected_msg = to_binary(&QueryMsg::OwnerOf {
+                let mut expected_msg = try_querier_result!(to_binary(&QueryMsg::OwnerOf {
                     token_id,
                     viewer,
                     include_expired,
                 })
-                .map_err(|_e| SystemError::Unknown {})?;
+                .map_err(|_e| SystemError::Unknown {}));
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = OwnerOfResponse {
                     owner_of: OwnerOf {
-                        owner: Some(HumanAddr("alice".to_string())),
+                        owner: Some("alice".to_string()),
                         approvals: vec![
                             Cw721Approval {
-                                spender: HumanAddr("bob".to_string()),
+                                spender: "bob".to_string(),
                                 expires: Expiration::Never,
                             },
                             Cw721Approval {
-                                spender: HumanAddr("charlie".to_string()),
+                                spender: "charlie".to_string(),
                                 expires: Expiration::AtHeight(1000000),
                             },
                         ],
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let address = "contract".to_string();
         let hash = "code hash".to_string();
 
         let viewer = Some(ViewerInfo {
-            address: HumanAddr("alice".to_string()),
+            address: "alice".to_string(),
             viewing_key: "key".to_string(),
         });
         let token_id = "NFT1".to_string();
         let include_expired = Some(true);
 
         let expected_response = OwnerOf {
-            owner: Some(HumanAddr("alice".to_string())),
+            owner: Some("alice".to_string()),
             approvals: vec![
                 Cw721Approval {
-                    spender: HumanAddr("bob".to_string()),
+                    spender: "bob".to_string(),
                     expires: Expiration::Never,
                 },
                 Cw721Approval {
-                    spender: HumanAddr("charlie".to_string()),
+                    spender: "charlie".to_string(),
                     expires: Expiration::AtHeight(1000000),
                 },
             ],
         };
 
         let response = owner_of_query(
-            &querier,
+            querier,
             token_id,
             viewer,
             include_expired,
@@ -1278,18 +1287,20 @@ mod tests {
         impl Querier for MyMockQuerier {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
                 let token_id = "NFT1".to_string();
-                let mut expected_msg = to_binary(&QueryMsg::NftInfo { token_id })
-                    .map_err(|_e| SystemError::Unknown {})?;
+                let mut expected_msg =
+                    try_querier_result!(to_binary(&QueryMsg::NftInfo { token_id })
+                        .map_err(|_e| SystemError::Unknown {}));
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = NftInfoResponse {
@@ -1315,12 +1326,14 @@ mod tests {
                         }),
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let address = "contract".to_string();
         let hash = "code hash".to_string();
 
         let token_id = "NFT1".to_string();
@@ -1347,7 +1360,7 @@ mod tests {
             }),
         };
 
-        let response = nft_info_query(&querier, token_id, 256usize, hash, address)?;
+        let response = nft_info_query(querier, token_id, 256usize, hash, address)?;
         assert_eq!(response, expected_response);
 
         Ok(())
@@ -1360,40 +1373,41 @@ mod tests {
         impl Querier for MyMockQuerier {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
                 let viewer = Some(ViewerInfo {
-                    address: HumanAddr("alice".to_string()),
+                    address: "alice".to_string(),
                     viewing_key: "key".to_string(),
                 });
                 let token_id = "NFT1".to_string();
                 let include_expired = Some(true);
-                let mut expected_msg = to_binary(&QueryMsg::AllNftInfo {
+                let mut expected_msg = try_querier_result!(to_binary(&QueryMsg::AllNftInfo {
                     token_id,
                     viewer,
                     include_expired,
                 })
-                .map_err(|_e| SystemError::Unknown {})?;
+                .map_err(|_e| SystemError::Unknown {}));
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = AllNftInfoResponse {
                     all_nft_info: AllNftInfo {
                         access: OwnerOf {
-                            owner: Some(HumanAddr("alice".to_string())),
+                            owner: Some("alice".to_string()),
                             approvals: vec![
                                 Cw721Approval {
-                                    spender: HumanAddr("bob".to_string()),
+                                    spender: "bob".to_string(),
                                     expires: Expiration::Never,
                                 },
                                 Cw721Approval {
-                                    spender: HumanAddr("charlie".to_string()),
+                                    spender: "charlie".to_string(),
                                     expires: Expiration::AtHeight(1000000),
                                 },
                             ],
@@ -1421,16 +1435,18 @@ mod tests {
                         }),
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let address = "contract".to_string();
         let hash = "code hash".to_string();
 
         let viewer = Some(ViewerInfo {
-            address: HumanAddr("alice".to_string()),
+            address: "alice".to_string(),
             viewing_key: "key".to_string(),
         });
         let token_id = "NFT1".to_string();
@@ -1438,14 +1454,14 @@ mod tests {
 
         let expected_response = AllNftInfo {
             access: OwnerOf {
-                owner: Some(HumanAddr("alice".to_string())),
+                owner: Some("alice".to_string()),
                 approvals: vec![
                     Cw721Approval {
-                        spender: HumanAddr("bob".to_string()),
+                        spender: "bob".to_string(),
                         expires: Expiration::Never,
                     },
                     Cw721Approval {
-                        spender: HumanAddr("charlie".to_string()),
+                        spender: "charlie".to_string(),
                         expires: Expiration::AtHeight(1000000),
                     },
                 ],
@@ -1474,7 +1490,7 @@ mod tests {
         };
 
         let response = all_nft_info_query(
-            &querier,
+            querier,
             token_id,
             viewer,
             include_expired,
@@ -1495,21 +1511,23 @@ mod tests {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
                 let token_id = "NFT1".to_string();
                 let viewer = Some(ViewerInfo {
-                    address: HumanAddr("alice".to_string()),
+                    address: "alice".to_string(),
                     viewing_key: "key".to_string(),
                 });
-                let mut expected_msg = to_binary(&QueryMsg::PrivateMetadata { token_id, viewer })
-                    .map_err(|_e| SystemError::Unknown {})?;
+                let mut expected_msg =
+                    try_querier_result!(to_binary(&QueryMsg::PrivateMetadata { token_id, viewer })
+                        .map_err(|_e| SystemError::Unknown {}));
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = PrivateMetadataResponse {
@@ -1535,17 +1553,19 @@ mod tests {
                         }),
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let address = "contract".to_string();
         let hash = "code hash".to_string();
 
         let token_id = "NFT1".to_string();
         let viewer = Some(ViewerInfo {
-            address: HumanAddr("alice".to_string()),
+            address: "alice".to_string(),
             viewing_key: "key".to_string(),
         });
 
@@ -1571,7 +1591,7 @@ mod tests {
             }),
         };
 
-        let response = private_metadata_query(&querier, token_id, viewer, 256usize, hash, address)?;
+        let response = private_metadata_query(querier, token_id, viewer, 256usize, hash, address)?;
         assert_eq!(response, expected_response);
 
         Ok(())
@@ -1584,32 +1604,33 @@ mod tests {
         impl Querier for MyMockQuerier {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
                 let viewer = Some(ViewerInfo {
-                    address: HumanAddr("alice".to_string()),
+                    address: "alice".to_string(),
                     viewing_key: "key".to_string(),
                 });
                 let token_id = "NFT1".to_string();
                 let include_expired = Some(true);
-                let mut expected_msg = to_binary(&QueryMsg::NftDossier {
+                let mut expected_msg = try_querier_result!(to_binary(&QueryMsg::NftDossier {
                     token_id,
                     viewer,
                     include_expired,
                 })
-                .map_err(|_e| SystemError::Unknown {})?;
+                .map_err(|_e| SystemError::Unknown {}));
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = NftDossierResponse {
                     nft_dossier: NftDossier {
-                        owner: Some(HumanAddr("alice".to_string())),
+                        owner: Some("alice".to_string()),
                         public_metadata: Some(Metadata {
                             token_uri: Some("token uri2".to_string()),
                             extension: Some(Extension {
@@ -1639,13 +1660,13 @@ mod tests {
                         private_metadata_is_public_expiration: None,
                         token_approvals: Some(vec![
                             Snip721Approval {
-                                address: HumanAddr("bob".to_string()),
+                                address: "bob".to_string(),
                                 view_owner_expiration: None,
                                 view_private_metadata_expiration: Some(Expiration::AtTime(1000000)),
                                 transfer_expiration: Some(Expiration::AtHeight(10000)),
                             },
                             Snip721Approval {
-                                address: HumanAddr("charlie".to_string()),
+                                address: "charlie".to_string(),
                                 view_owner_expiration: Some(Expiration::Never),
                                 view_private_metadata_expiration: None,
                                 transfer_expiration: None,
@@ -1654,23 +1675,25 @@ mod tests {
                         inventory_approvals: None,
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let address = "contract".to_string();
         let hash = "code hash".to_string();
 
         let viewer = Some(ViewerInfo {
-            address: HumanAddr("alice".to_string()),
+            address: "alice".to_string(),
             viewing_key: "key".to_string(),
         });
         let token_id = "NFT1".to_string();
         let include_expired = Some(true);
 
         let expected_response = NftDossier {
-            owner: Some(HumanAddr("alice".to_string())),
+            owner: Some("alice".to_string()),
             public_metadata: Some(Metadata {
                 token_uri: Some("token uri2".to_string()),
                 extension: Some(Extension {
@@ -1700,13 +1723,13 @@ mod tests {
             private_metadata_is_public_expiration: None,
             token_approvals: Some(vec![
                 Snip721Approval {
-                    address: HumanAddr("bob".to_string()),
+                    address: "bob".to_string(),
                     view_owner_expiration: None,
                     view_private_metadata_expiration: Some(Expiration::AtTime(1000000)),
                     transfer_expiration: Some(Expiration::AtHeight(10000)),
                 },
                 Snip721Approval {
-                    address: HumanAddr("charlie".to_string()),
+                    address: "charlie".to_string(),
                     view_owner_expiration: Some(Expiration::Never),
                     view_private_metadata_expiration: None,
                     transfer_expiration: None,
@@ -1716,7 +1739,7 @@ mod tests {
         };
 
         let response = nft_dossier_query(
-            &querier,
+            querier,
             token_id,
             viewer,
             include_expired,
@@ -1738,22 +1761,23 @@ mod tests {
                 let viewing_key = "key".to_string();
                 let token_id = "NFT1".to_string();
                 let include_expired = None;
-                let mut expected_msg = to_binary(&QueryMsg::TokenApprovals {
+                let mut expected_msg = try_querier_result!(to_binary(&QueryMsg::TokenApprovals {
                     token_id,
                     viewing_key,
                     include_expired,
                 })
-                .map_err(|_e| SystemError::Unknown {})?;
+                .map_err(|_e| SystemError::Unknown {}));
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = TokenApprovalsResponse {
@@ -1764,13 +1788,13 @@ mod tests {
                         private_metadata_is_public_expiration: None,
                         token_approvals: vec![
                             Snip721Approval {
-                                address: HumanAddr("bob".to_string()),
+                                address: "bob".to_string(),
                                 view_owner_expiration: None,
                                 view_private_metadata_expiration: Some(Expiration::AtTime(1000000)),
                                 transfer_expiration: Some(Expiration::AtHeight(10000)),
                             },
                             Snip721Approval {
-                                address: HumanAddr("charlie".to_string()),
+                                address: "charlie".to_string(),
                                 view_owner_expiration: Some(Expiration::Never),
                                 view_private_metadata_expiration: None,
                                 transfer_expiration: None,
@@ -1778,12 +1802,14 @@ mod tests {
                         ],
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let address = "contract".to_string();
         let hash = "code hash".to_string();
 
         let viewing_key = "key".to_string();
@@ -1797,13 +1823,13 @@ mod tests {
             private_metadata_is_public_expiration: None,
             token_approvals: vec![
                 Snip721Approval {
-                    address: HumanAddr("bob".to_string()),
+                    address: "bob".to_string(),
                     view_owner_expiration: None,
                     view_private_metadata_expiration: Some(Expiration::AtTime(1000000)),
                     transfer_expiration: Some(Expiration::AtHeight(10000)),
                 },
                 Snip721Approval {
-                    address: HumanAddr("charlie".to_string()),
+                    address: "charlie".to_string(),
                     view_owner_expiration: Some(Expiration::Never),
                     view_private_metadata_expiration: None,
                     transfer_expiration: None,
@@ -1812,7 +1838,7 @@ mod tests {
         };
 
         let response = token_approvals_query(
-            &querier,
+            querier,
             token_id,
             viewing_key,
             include_expired,
@@ -1832,67 +1858,70 @@ mod tests {
         impl Querier for MyMockQuerier {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
                 let viewing_key = Some("key".to_string());
-                let owner = HumanAddr("alice".to_string());
+                let owner = "alice".to_string();
                 let include_expired = None;
-                let mut expected_msg = to_binary(&QueryMsg::ApprovedForAll {
+                let mut expected_msg = try_querier_result!(to_binary(&QueryMsg::ApprovedForAll {
                     owner,
                     viewing_key,
                     include_expired,
                 })
-                .map_err(|_e| SystemError::Unknown {})?;
+                .map_err(|_e| SystemError::Unknown {}));
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = ApprovedForAllResponse {
                     approved_for_all: ApprovedForAll {
                         operators: vec![
                             Cw721Approval {
-                                spender: HumanAddr("bob".to_string()),
+                                spender: "bob".to_string(),
                                 expires: Expiration::Never,
                             },
                             Cw721Approval {
-                                spender: HumanAddr("charlie".to_string()),
+                                spender: "charlie".to_string(),
                                 expires: Expiration::AtHeight(1000000),
                             },
                         ],
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let address = "contract".to_string();
         let hash = "code hash".to_string();
 
         let viewing_key = Some("key".to_string());
-        let owner = HumanAddr("alice".to_string());
+        let owner = "alice".to_string();
         let include_expired = None;
 
         let expected_response = ApprovedForAll {
             operators: vec![
                 Cw721Approval {
-                    spender: HumanAddr("bob".to_string()),
+                    spender: "bob".to_string(),
                     expires: Expiration::Never,
                 },
                 Cw721Approval {
-                    spender: HumanAddr("charlie".to_string()),
+                    spender: "charlie".to_string(),
                     expires: Expiration::AtHeight(1000000),
                 },
             ],
         };
 
         let response = approved_for_all_query(
-            &querier,
+            querier,
             owner,
             viewing_key,
             include_expired,
@@ -1912,24 +1941,26 @@ mod tests {
         impl Querier for MyMockQuerier {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
                 let viewing_key = "key".to_string();
-                let address = HumanAddr("alice".to_string());
+                let address = "alice".to_string();
                 let include_expired = None;
-                let mut expected_msg = to_binary(&QueryMsg::InventoryApprovals {
-                    address,
-                    viewing_key,
-                    include_expired,
-                })
-                .map_err(|_e| SystemError::Unknown {})?;
+                let mut expected_msg =
+                    try_querier_result!(to_binary(&QueryMsg::InventoryApprovals {
+                        address,
+                        viewing_key,
+                        include_expired,
+                    })
+                    .map_err(|_e| SystemError::Unknown {}));
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = InventoryApprovalsResponse {
@@ -1940,13 +1971,13 @@ mod tests {
                         private_metadata_is_public_expiration: None,
                         inventory_approvals: vec![
                             Snip721Approval {
-                                address: HumanAddr("bob".to_string()),
+                                address: "bob".to_string(),
                                 view_owner_expiration: None,
                                 view_private_metadata_expiration: Some(Expiration::AtTime(1000000)),
                                 transfer_expiration: Some(Expiration::AtHeight(10000)),
                             },
                             Snip721Approval {
-                                address: HumanAddr("charlie".to_string()),
+                                address: "charlie".to_string(),
                                 view_owner_expiration: Some(Expiration::Never),
                                 view_private_metadata_expiration: None,
                                 transfer_expiration: None,
@@ -1954,16 +1985,18 @@ mod tests {
                         ],
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let contract_address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let contract_address = "contract".to_string();
         let hash = "code hash".to_string();
 
         let viewing_key = "key".to_string();
-        let address = HumanAddr("alice".to_string());
+        let address = "alice".to_string();
         let include_expired = None;
 
         let expected_response = InventoryApprovals {
@@ -1973,13 +2006,13 @@ mod tests {
             private_metadata_is_public_expiration: None,
             inventory_approvals: vec![
                 Snip721Approval {
-                    address: HumanAddr("bob".to_string()),
+                    address: "bob".to_string(),
                     view_owner_expiration: None,
                     view_private_metadata_expiration: Some(Expiration::AtTime(1000000)),
                     transfer_expiration: Some(Expiration::AtHeight(10000)),
                 },
                 Snip721Approval {
-                    address: HumanAddr("charlie".to_string()),
+                    address: "charlie".to_string(),
                     view_owner_expiration: Some(Expiration::Never),
                     view_private_metadata_expiration: None,
                     transfer_expiration: None,
@@ -1988,7 +2021,7 @@ mod tests {
         };
 
         let response = inventory_approvals_query(
-            &querier,
+            querier,
             address,
             viewing_key,
             include_expired,
@@ -2007,29 +2040,30 @@ mod tests {
 
         impl Querier for MyMockQuerier {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
-                let owner = HumanAddr("alice".to_string());
-                let viewer = Some(HumanAddr("bob".to_string()));
+                let owner = "alice".to_string();
+                let viewer = Some("bob".to_string());
                 let viewing_key = Some("key".to_string());
                 let start_after = Some("NFT1".to_string());
                 let limit = Some(33);
-                let mut expected_msg = to_binary(&QueryMsg::Tokens {
+                let mut expected_msg = try_querier_result!(to_binary(&QueryMsg::Tokens {
                     owner,
                     viewer,
                     viewing_key,
                     start_after,
                     limit,
                 })
-                .map_err(|_e| SystemError::Unknown {})?;
+                .map_err(|_e| SystemError::Unknown {}));
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = TokenListResponse {
@@ -2037,16 +2071,18 @@ mod tests {
                         tokens: vec!["NFT2".to_string(), "NFT3".to_string(), "NFT4".to_string()],
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let address = "contract".to_string();
         let hash = "code hash".to_string();
 
-        let owner = HumanAddr("alice".to_string());
-        let viewer = Some(HumanAddr("bob".to_string()));
+        let owner = "alice".to_string();
+        let viewer = Some("bob".to_string());
         let viewing_key = Some("key".to_string());
         let start_after = Some("NFT1".to_string());
         let limit = Some(33);
@@ -2056,7 +2092,7 @@ mod tests {
         };
 
         let response = tokens_query(
-            &querier,
+            querier,
             owner,
             viewer,
             viewing_key,
@@ -2077,27 +2113,29 @@ mod tests {
 
         impl Querier for MyMockQuerier {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
-                let address = HumanAddr("alice".to_string());
+                let address = "alice".to_string();
                 let viewing_key = "key".to_string();
                 let page = Some(2);
                 let page_size = None;
-                let mut expected_msg = to_binary(&QueryMsg::TransactionHistory {
-                    address,
-                    viewing_key,
-                    page,
-                    page_size,
-                })
-                .map_err(|_e| SystemError::Unknown {})?;
+                let mut expected_msg =
+                    try_querier_result!(to_binary(&QueryMsg::TransactionHistory {
+                        address,
+                        viewing_key,
+                        page,
+                        page_size,
+                    })
+                    .map_err(|_e| SystemError::Unknown {}));
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = TransactionHistoryResponse {
@@ -2110,8 +2148,8 @@ mod tests {
                                 block_time: 2000000000,
                                 token_id: "NFT3".to_string(),
                                 action: TxAction::Burn {
-                                    owner: HumanAddr("alice".to_string()),
-                                    burner: Some(HumanAddr("bob".to_string())),
+                                    owner: "alice".to_string(),
+                                    burner: Some("bob".to_string()),
                                 },
                                 memo: None,
                             },
@@ -2121,9 +2159,9 @@ mod tests {
                                 block_time: 1900000000,
                                 token_id: "NFT2".to_string(),
                                 action: TxAction::Transfer {
-                                    from: HumanAddr("alice".to_string()),
+                                    from: "alice".to_string(),
                                     sender: None,
-                                    recipient: HumanAddr("bob".to_string()),
+                                    recipient: "bob".to_string(),
                                 },
                                 memo: Some("xfer memo".to_string()),
                             },
@@ -2133,23 +2171,25 @@ mod tests {
                                 block_time: 1800000000,
                                 token_id: "NFT1".to_string(),
                                 action: TxAction::Mint {
-                                    minter: HumanAddr("admin".to_string()),
-                                    recipient: HumanAddr("alice".to_string()),
+                                    minter: "admin".to_string(),
+                                    recipient: "alice".to_string(),
                                 },
                                 memo: None,
                             },
                         ],
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let contract_address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let contract_address = "contract".to_string();
         let hash = "code hash".to_string();
 
-        let address = HumanAddr("alice".to_string());
+        let address = "alice".to_string();
         let viewing_key = "key".to_string();
         let page = Some(2);
         let page_size = None;
@@ -2163,8 +2203,8 @@ mod tests {
                     block_time: 2000000000,
                     token_id: "NFT3".to_string(),
                     action: TxAction::Burn {
-                        owner: HumanAddr("alice".to_string()),
-                        burner: Some(HumanAddr("bob".to_string())),
+                        owner: "alice".to_string(),
+                        burner: Some("bob".to_string()),
                     },
                     memo: None,
                 },
@@ -2174,9 +2214,9 @@ mod tests {
                     block_time: 1900000000,
                     token_id: "NFT2".to_string(),
                     action: TxAction::Transfer {
-                        from: HumanAddr("alice".to_string()),
+                        from: "alice".to_string(),
                         sender: None,
-                        recipient: HumanAddr("bob".to_string()),
+                        recipient: "bob".to_string(),
                     },
                     memo: Some("xfer memo".to_string()),
                 },
@@ -2186,8 +2226,8 @@ mod tests {
                     block_time: 1800000000,
                     token_id: "NFT1".to_string(),
                     action: TxAction::Mint {
-                        minter: HumanAddr("admin".to_string()),
-                        recipient: HumanAddr("alice".to_string()),
+                        minter: "admin".to_string(),
+                        recipient: "alice".to_string(),
                     },
                     memo: None,
                 },
@@ -2195,7 +2235,7 @@ mod tests {
         };
 
         let response = transaction_history_query(
-            &querier,
+            querier,
             address,
             viewing_key,
             page,
@@ -2215,46 +2255,50 @@ mod tests {
 
         impl Querier for MyMockQuerier {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
-                let mut expected_msg =
-                    to_binary(&QueryMsg::Minters {}).map_err(|_e| SystemError::Unknown {})?;
+                let mut expected_msg = try_querier_result!(
+                    to_binary(&QueryMsg::Minters {}).map_err(|_e| SystemError::Unknown {})
+                );
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = MintersResponse {
                     minters: Minters {
                         minters: vec![
-                            HumanAddr("alice".to_string()),
-                            HumanAddr("bob".to_string()),
-                            HumanAddr("charlie".to_string()),
+                            "alice".to_string(),
+                            "bob".to_string(),
+                            "charlie".to_string(),
                         ],
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let address = "contract".to_string();
         let hash = "code hash".to_string();
 
         let expected_response = Minters {
             minters: vec![
-                HumanAddr("alice".to_string()),
-                HumanAddr("bob".to_string()),
-                HumanAddr("charlie".to_string()),
+                "alice".to_string(),
+                "bob".to_string(),
+                "charlie".to_string(),
             ],
         };
 
-        let response = minters_query(&querier, 256usize, hash, address)?;
+        let response = minters_query(querier, 256usize, hash, address)?;
         assert_eq!(response, expected_response);
 
         Ok(())
@@ -2267,18 +2311,20 @@ mod tests {
         impl Querier for MyMockQuerier {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
                 let token_id = "NFT1".to_string();
-                let mut expected_msg = to_binary(&QueryMsg::IsUnwrapped { token_id })
-                    .map_err(|_e| SystemError::Unknown {})?;
+                let mut expected_msg =
+                    try_querier_result!(to_binary(&QueryMsg::IsUnwrapped { token_id })
+                        .map_err(|_e| SystemError::Unknown {}));
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = IsUnwrappedResponse {
@@ -2286,12 +2332,14 @@ mod tests {
                         token_is_unwrapped: false,
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let address = "contract".to_string();
         let hash = "code hash".to_string();
 
         let token_id = "NFT1".to_string();
@@ -2300,7 +2348,7 @@ mod tests {
             token_is_unwrapped: false,
         };
 
-        let response = is_unwrapped_query(&querier, token_id, 256usize, hash, address)?;
+        let response = is_unwrapped_query(querier, token_id, 256usize, hash, address)?;
         assert_eq!(response, expected_response);
 
         Ok(())
@@ -2313,25 +2361,27 @@ mod tests {
         impl Querier for MyMockQuerier {
             fn raw_query(&self, request: &[u8]) -> QuerierResult {
                 let token_ids = vec!["NFT1".to_string(), "NFT2".to_string(), "NFT3".to_string()];
-                let address = HumanAddr("alice".to_string());
+                let address = "alice".to_string();
                 let viewing_key = "key".to_string();
 
-                let mut expected_msg = to_binary(&QueryMsg::VerifyTransferApproval {
-                    token_ids,
-                    address,
-                    viewing_key,
-                })
-                .map_err(|_e| SystemError::Unknown {})?;
+                let mut expected_msg =
+                    try_querier_result!(to_binary(&QueryMsg::VerifyTransferApproval {
+                        token_ids,
+                        address,
+                        viewing_key,
+                    })
+                    .map_err(|_e| SystemError::Unknown {}));
 
                 space_pad(&mut expected_msg.0, 256);
                 let expected_request: QueryRequest<QueryMsg> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("contract".to_string()),
-                        callback_code_hash: "code hash".to_string(),
+                        contract_addr: "contract".to_string(),
+                        code_hash: "code hash".to_string(),
                         msg: expected_msg,
                     });
-                let test_req: &[u8] =
-                    &to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})?;
+                let test_req: &[u8] = &try_querier_result!(
+                    to_vec(&expected_request).map_err(|_e| SystemError::Unknown {})
+                );
                 assert_eq!(request, test_req);
 
                 let response = VerifyTransferApprovalResponse {
@@ -2340,16 +2390,18 @@ mod tests {
                         first_unapproved_token: Some("NFT3".to_string()),
                     },
                 };
-                Ok(to_binary(&response))
+                let response =
+                    try_querier_result!(to_binary(&response).map_err(|_e| SystemError::Unknown {}));
+                SystemResult::Ok(ContractResult::Ok(response))
             }
         }
 
-        let querier = MyMockQuerier {};
-        let contract_address = HumanAddr("contract".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let contract_address = "contract".to_string();
         let hash = "code hash".to_string();
 
         let token_ids = vec!["NFT1".to_string(), "NFT2".to_string(), "NFT3".to_string()];
-        let address = HumanAddr("alice".to_string());
+        let address = "alice".to_string();
         let viewing_key = "key".to_string();
 
         let expected_response = VerifyTransferApproval {
@@ -2358,7 +2410,7 @@ mod tests {
         };
 
         let response = verify_transfer_approval_query(
-            &querier,
+            querier,
             token_ids,
             address,
             viewing_key,
