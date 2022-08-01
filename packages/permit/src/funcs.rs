@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    to_binary, Api, Binary, CanonicalAddr, Extern, HumanAddr, Querier, StdError, StdResult, Storage,
+    to_binary, Api, Binary, CanonicalAddr, Deps, Querier, StdError, StdResult, Storage,
 };
 use ripemd160::{Digest, Ripemd160};
 
@@ -8,10 +8,10 @@ use bech32::{ToBase32, Variant};
 use secret_toolkit_crypto::sha_256;
 
 pub fn validate<Permission: Permissions, S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+    deps: Deps,
     storage_prefix: &str,
     permit: &Permit<Permission>,
-    current_token_address: HumanAddr,
+    current_token_address: String,
     hrp: Option<&str>,
 ) -> StdResult<String> {
     let account_hrp = hrp.unwrap_or("secret");
@@ -38,9 +38,9 @@ pub fn validate<Permission: Permissions, S: Storage, A: Api, Q: Querier>(
     // Validate permit_name
     let permit_name = &permit.params.permit_name;
     let is_permit_revoked = RevokedPermits::is_permit_revoked(
-        &deps.storage,
+        deps.storage,
         storage_prefix,
-        &HumanAddr(account.clone()),
+        &account.clone(),
         permit_name,
     );
     if is_permit_revoked {
@@ -79,15 +79,15 @@ pub fn pubkey_to_account(pubkey: &Binary) -> CanonicalAddr {
 mod tests {
     use super::*;
     use crate::{PermitParams, PermitSignature, PubKey, TokenPermissions};
-    use cosmwasm_std::testing::mock_dependencies;
+    use cosmwasm_std::testing::{mock_dependencies, MockApi, MockQuerier, MockStorage};
 
     #[test]
     fn test_verify_permit() {
-        let deps = mock_dependencies(20, &[]);
+        let deps = mock_dependencies();
 
         //{"permit": {"params":{"chain_id":"pulsar-2","permit_name":"memo_secret1rf03820fp8gngzg2w02vd30ns78qkc8rg8dxaq","allowed_tokens":["secret1rf03820fp8gngzg2w02vd30ns78qkc8rg8dxaq"],"permissions":["history"]},"signature":{"pub_key":{"type":"tendermint/PubKeySecp256k1","value":"A5M49l32ZrV+SDsPnoRv8fH7ivNC4gEX9prvd4RwvRaL"},"signature":"hw/Mo3ZZYu1pEiDdymElFkuCuJzg9soDHw+4DxK7cL9rafiyykh7VynS+guotRAKXhfYMwCiyWmiznc6R+UlsQ=="}}}
 
-        let token = HumanAddr("secret1rf03820fp8gngzg2w02vd30ns78qkc8rg8dxaq".to_string());
+        let token = "secret1rf03820fp8gngzg2w02vd30ns78qkc8rg8dxaq".to_string();
 
         let permit: Permit = Permit{
             params: PermitParams {
@@ -105,14 +105,28 @@ mod tests {
             }
         };
 
-        let address = validate(&deps, "test", &permit, token.clone(), Some("secret")).unwrap();
+        let address = validate::<_, MockStorage, MockApi, MockQuerier>(
+            deps.as_ref(),
+            "test",
+            &permit,
+            token.clone(),
+            Some("secret"),
+        )
+        .unwrap();
 
         assert_eq!(
             address,
             "secret1399pyvvk3hvwgxwt3udkslsc5jl3rqv4yshfrl".to_string()
         );
 
-        let address = validate(&deps, "test", &permit, token, Some("cosmos")).unwrap();
+        let address = validate::<_, MockStorage, MockApi, MockQuerier>(
+            deps.as_ref(),
+            "test",
+            &permit,
+            token,
+            Some("cosmos"),
+        )
+        .unwrap();
 
         assert_eq!(
             address,

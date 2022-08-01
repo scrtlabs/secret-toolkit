@@ -1,4 +1,4 @@
-use cosmwasm_std::{HumanAddr, Storage};
+use cosmwasm_std::Storage;
 
 pub struct RevokedPermits;
 
@@ -6,7 +6,7 @@ impl RevokedPermits {
     pub fn is_permit_revoked(
         storgae: &dyn Storage,
         storage_prefix: &str,
-        account: &HumanAddr,
+        account: &String,
         permit_name: &str,
     ) -> bool {
         let storage_key = storage_prefix.to_string() + &account.to_string() + permit_name;
@@ -17,7 +17,7 @@ impl RevokedPermits {
     pub fn revoke_permit(
         storage: &mut dyn Storage,
         storage_prefix: &str,
-        account: &HumanAddr,
+        account: &String,
         permit_name: &str,
     ) {
         let storage_key = storage_prefix.to_string() + &account.to_string() + permit_name;

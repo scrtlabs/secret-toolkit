@@ -4,7 +4,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::pubkey_to_account;
-use cosmwasm_std::{Binary, CanonicalAddr, HumanAddr, Uint128};
+use cosmwasm_std::{Binary, CanonicalAddr, Uint128};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -15,7 +15,7 @@ pub struct Permit<Permission: Permissions = TokenPermissions> {
 }
 
 impl<Permission: Permissions> Permit<Permission> {
-    pub fn check_token(&self, token: &HumanAddr) -> bool {
+    pub fn check_token(&self, token: &String) -> bool {
         self.params.allowed_tokens.contains(token)
     }
 
@@ -27,7 +27,7 @@ impl<Permission: Permissions> Permit<Permission> {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct PermitParams<Permission: Permissions = TokenPermissions> {
-    pub allowed_tokens: Vec<HumanAddr>,
+    pub allowed_tokens: Vec<String>,
     pub permit_name: String,
     pub chain_id: String,
     #[serde(bound = "")]
@@ -102,7 +102,7 @@ impl Fee {
     pub fn new() -> Self {
         Self {
             amount: vec![Coin::new()],
-            gas: Uint128(1),
+            gas: Uint128::new(1),
         }
     }
 }
@@ -161,7 +161,7 @@ impl<Permission: Permissions> PermitMsg<Permission> {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct PermitContent<Permission: Permissions = TokenPermissions> {
-    pub allowed_tokens: Vec<HumanAddr>,
+    pub allowed_tokens: Vec<String>,
     #[serde(bound = "")]
     pub permissions: Vec<Permission>,
     pub permit_name: String,
