@@ -449,9 +449,9 @@ impl QueryMsg {
     /// * `block_size` - pad the message to blocks of this size
     /// * `code_hash` - String holding the code hash of the contract being queried
     /// * `contract_addr` - address of the contract being queried
-    pub fn query<'a, C: CustomQuery, T: DeserializeOwned>(
+    pub fn query<C: CustomQuery, T: DeserializeOwned>(
         &self,
-        querier: QuerierWrapper<'a, C>,
+        querier: QuerierWrapper<C>,
         mut block_size: usize,
         code_hash: String,
         contract_addr: String,
@@ -572,8 +572,8 @@ pub struct VerifyTransferApprovalResponse {
 /// * `block_size` - pad the message to blocks of this size
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn contract_info_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn contract_info_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     block_size: usize,
     code_hash: String,
     contract_addr: String,
@@ -592,8 +592,8 @@ pub fn contract_info_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn num_tokens_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn num_tokens_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     viewer: Option<ViewerInfo>,
     block_size: usize,
     code_hash: String,
@@ -616,8 +616,8 @@ pub fn num_tokens_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn all_tokens_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn all_tokens_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     viewer: Option<ViewerInfo>,
     start_after: Option<String>,
     limit: Option<u32>,
@@ -647,8 +647,8 @@ pub fn all_tokens_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn owner_of_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn owner_of_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     token_id: String,
     viewer: Option<ViewerInfo>,
     include_expired: Option<bool>,
@@ -674,8 +674,8 @@ pub fn owner_of_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn nft_info_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn nft_info_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     token_id: String,
     block_size: usize,
     code_hash: String,
@@ -699,8 +699,8 @@ pub fn nft_info_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn all_nft_info_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn all_nft_info_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     token_id: String,
     viewer: Option<ViewerInfo>,
     include_expired: Option<bool>,
@@ -727,8 +727,8 @@ pub fn all_nft_info_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn private_metadata_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn private_metadata_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     token_id: String,
     viewer: Option<ViewerInfo>,
     block_size: usize,
@@ -757,8 +757,8 @@ pub fn private_metadata_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn nft_dossier_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn nft_dossier_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     token_id: String,
     viewer: Option<ViewerInfo>,
     include_expired: Option<bool>,
@@ -788,8 +788,8 @@ pub fn nft_dossier_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn token_approvals_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn token_approvals_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     token_id: String,
     viewing_key: String,
     include_expired: Option<bool>,
@@ -819,8 +819,8 @@ pub fn token_approvals_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn approved_for_all_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn approved_for_all_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     owner: String,
     viewing_key: Option<String>,
     include_expired: Option<bool>,
@@ -850,8 +850,8 @@ pub fn approved_for_all_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn inventory_approvals_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn inventory_approvals_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     address: String,
     viewing_key: String,
     include_expired: Option<bool>,
@@ -883,8 +883,8 @@ pub fn inventory_approvals_query<'a, C: CustomQuery>(
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
 #[allow(clippy::too_many_arguments)]
-pub fn tokens_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn tokens_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     owner: String,
     viewer: Option<String>,
     viewing_key: Option<String>,
@@ -918,8 +918,8 @@ pub fn tokens_query<'a, C: CustomQuery>(
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
 #[allow(clippy::too_many_arguments)]
-pub fn transaction_history_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn transaction_history_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     address: String,
     viewing_key: String,
     page: Option<u32>,
@@ -946,8 +946,8 @@ pub fn transaction_history_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn minters_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn minters_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     block_size: usize,
     code_hash: String,
     contract_addr: String,
@@ -966,8 +966,8 @@ pub fn minters_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn is_unwrapped_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn is_unwrapped_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     token_id: String,
     block_size: usize,
     code_hash: String,
@@ -989,8 +989,8 @@ pub fn is_unwrapped_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn verify_transfer_approval_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn verify_transfer_approval_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     token_ids: Vec<String>,
     address: String,
     viewing_key: String,

@@ -37,12 +37,8 @@ pub fn validate<Permission: Permissions, S: Storage, A: Api, Q: Querier>(
 
     // Validate permit_name
     let permit_name = &permit.params.permit_name;
-    let is_permit_revoked = RevokedPermits::is_permit_revoked(
-        deps.storage,
-        storage_prefix,
-        &account.clone(),
-        permit_name,
-    );
+    let is_permit_revoked =
+        RevokedPermits::is_permit_revoked(deps.storage, storage_prefix, &account, permit_name);
     if is_permit_revoked {
         return Err(StdError::generic_err(format!(
             "Permit {:?} was revoked by account {:?}",

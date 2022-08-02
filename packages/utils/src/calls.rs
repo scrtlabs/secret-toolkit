@@ -127,9 +127,9 @@ pub trait Query: Serialize {
     /// * `querier` - a reference to the Querier dependency of the querying contract
     /// * `callback_code_hash` - String holding the code hash of the contract to be queried
     /// * `contract_addr` - address of the contract being queried
-    fn query<'a, C: CustomQuery, T: DeserializeOwned>(
+    fn query<C: CustomQuery, T: DeserializeOwned>(
         &self,
-        querier: QuerierWrapper<'a, C>,
+        querier: QuerierWrapper<C>,
         code_hash: String,
         contract_addr: String,
     ) -> StdResult<T> {

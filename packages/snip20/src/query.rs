@@ -192,9 +192,9 @@ impl QueryMsg {
     /// * `block_size` - pad the message to blocks of this size
     /// * `callback_code_hash` - String holding the code hash of the contract being queried
     /// * `contract_addr` - address of the contract being queried
-    pub fn query<'a, C: CustomQuery, T: DeserializeOwned>(
+    pub fn query<C: CustomQuery, T: DeserializeOwned>(
         &self,
-        querier: QuerierWrapper<'a, C>,
+        querier: QuerierWrapper<C>,
         mut block_size: usize,
         code_hash: String,
         contract_addr: String,
@@ -280,8 +280,8 @@ pub struct MintersResponse {
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn token_info_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn token_info_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     block_size: usize,
     callback_code_hash: String,
     contract_addr: String,
@@ -299,8 +299,8 @@ pub fn token_info_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn token_config_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn token_config_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     block_size: usize,
     callback_code_hash: String,
     contract_addr: String,
@@ -318,8 +318,8 @@ pub fn token_config_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn contract_status_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn contract_status_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     block_size: usize,
     callback_code_hash: String,
     contract_addr: String,
@@ -341,8 +341,8 @@ pub fn contract_status_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn exchange_rate_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn exchange_rate_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     block_size: usize,
     callback_code_hash: String,
     contract_addr: String,
@@ -364,8 +364,8 @@ pub fn exchange_rate_query<'a, C: CustomQuery>(
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
 #[allow(clippy::too_many_arguments)]
-pub fn allowance_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn allowance_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     owner: String,
     spender: String,
     key: String,
@@ -408,8 +408,8 @@ pub fn allowance_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn balance_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn balance_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     address: String,
     key: String,
     block_size: usize,
@@ -444,8 +444,8 @@ pub fn balance_query<'a, C: CustomQuery>(
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
 #[allow(clippy::too_many_arguments)]
-pub fn transfer_history_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn transfer_history_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     address: String,
     key: String,
     page: Option<u32>,
@@ -487,8 +487,8 @@ pub fn transfer_history_query<'a, C: CustomQuery>(
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
 #[allow(clippy::too_many_arguments)]
-pub fn transaction_history_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn transaction_history_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     address: String,
     key: String,
     page: Option<u32>,
@@ -525,8 +525,8 @@ pub fn transaction_history_query<'a, C: CustomQuery>(
 /// * `block_size` - pad the message to blocks of this size
 /// * `callback_code_hash` - String holding the code hash of the contract being queried
 /// * `contract_addr` - address of the contract being queried
-pub fn minters_query<'a, C: CustomQuery>(
-    querier: QuerierWrapper<'a, C>,
+pub fn minters_query<C: CustomQuery>(
+    querier: QuerierWrapper<C>,
     block_size: usize,
     callback_code_hash: String,
     contract_addr: String,

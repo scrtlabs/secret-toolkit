@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
+use cosmwasm_std::{StdError, StdResult, Storage};
 
 use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
 use secret_toolkit_serialization::{Bincode2, Serde};
@@ -46,37 +46,33 @@ pub struct InternalItem<T>
     meta_data: MetaData,
 }
 
-pub struct CashMap<'a, T, S, Ser = Bincode2>
+pub struct CashMap<'a, T, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
-    storage: &'a mut S,
+    storage: &'a mut dyn Storage,
     item_type: PhantomData<*const InternalItem<T>>,
     serialization_type: PhantomData<*const Ser>,
     prefix: Option<Vec<u8>>,
 }
 
-impl<'a, T, S> CashMap<'a, T, S, Bincode2>
+impl<'a, T> CashMap<'a, T, Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: Storage,
 {
-    pub fn init(name: &[u8], storage: &'a mut S) -> Self {
+    pub fn init(name: &[u8], storage: &'a mut dyn Storage) -> Self {
         Self::attach_with_serialization(storage, Bincode2, Some(name.to_vec()))
     }
 
-    pub fn attach(storage: &'a mut S) -> Self {
+    pub fn attach(storage: &'a mut dyn Storage) -> Self {
         Self::attach_with_serialization(storage, Bincode2, None)
     }
 }
 
-impl<'a, T, S, Ser> CashMap<'a, T, S, Ser>
+impl<'a, T, Ser> CashMap<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    // K: Hash + Eq + ?Sized,
-    S: Storage,
     Ser: Serde,
 {
     pub fn is_empty(&self) -> bool {
@@ -89,7 +85,7 @@ where
     /// This method allows customization of the serialization, in case we want to force
     /// something other than Bincode2, which has it's drawbacks (such as Enums fucking up)
     pub fn attach_with_serialization(
-        storage: &'a mut S,
+        storage: &'a mut dyn Storage,
         _serialization: Ser,
         prefix: Option<Vec<u8>>,
     ) -> Self {
@@ -293,7 +289,7 @@ where
     #[allow(clippy::ptr_arg)]
     fn store_indexes(&mut self, index: u32, indexes: &Vec<u64>) -> StdResult<()> {
         if let Some(prefix) = &self.prefix {
-            let mut store = PrefixedStorage::new(prefix, self.storage);
+            let mut store = PrefixedStorage::new(self.storage, prefix);
             store.set(
                 &[INDEXES, index.to_be_bytes().to_vec().as_slice()].concat(),
                 &Ser::serialize(indexes)?,
@@ -310,7 +306,7 @@ where
     // unused - we just set deleted = true
     fn remove_from_store(&mut self, key: &[u8]) -> StdResult<()> {
         if let Some(prefix) = &self.prefix {
-            let mut store = PrefixedStorage::new(prefix, self.storage);
+            let mut store = PrefixedStorage::new(self.storage, prefix);
             store.remove(key)
         } else {
             self.storage.remove(key)
@@ -320,7 +316,7 @@ where
 
     fn store(&mut self, key: &[u8], item: &InternalItem<T>) -> StdResult<()> {
         if let Some(prefix) = &self.prefix {
-            let mut store = PrefixedStorage::new(prefix, self.storage);
+            let mut store = PrefixedStorage::new(self.storage, prefix);
             store.set(key, &Ser::serialize(item)?)
         } else {
             self.storage.set(key, &Ser::serialize(item)?)
@@ -329,7 +325,7 @@ where
         Ok(())
     }
 
-    fn as_readonly(&self) -> ReadOnlyCashMap<T, S, Ser> {
+    fn as_readonly(&self) -> ReadOnlyCashMap<T, Ser> {
         ReadOnlyCashMap {
             storage: self.storage,
             item_type: self.item_type,
@@ -340,7 +336,7 @@ where
 
     fn set_length(&mut self, length: u32) -> StdResult<()> {
         if let Some(prefix) = &self.prefix {
-            let mut store = PrefixedStorage::new(prefix, self.storage);
+            let mut store = PrefixedStorage::new(self.storage, prefix);
             store.set(MAP_LENGTH, &Ser::serialize(&length.to_be_bytes())?)
         } else {
             self.storage
@@ -356,40 +352,37 @@ where
 }
 
 /// basically this is used in queries
-pub struct ReadOnlyCashMap<'a, T, S, Ser = Bincode2>
+pub struct ReadOnlyCashMap<'a, T, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
-    storage: &'a S,
+    storage: &'a dyn Storage,
     item_type: PhantomData<*const InternalItem<T>>,
     serialization_type: PhantomData<*const Ser>,
     prefix: Option<Vec<u8>>,
 }
 
-impl<'a, T, S> ReadOnlyCashMap<'a, T, S, Bincode2>
+impl<'a, T> ReadOnlyCashMap<'a, T, Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
 {
-    pub fn init(name: &[u8], storage: &'a S) -> Self {
+    pub fn init(name: &[u8], storage: &'a dyn Storage) -> Self {
         Self::attach_with_serialization(storage, Bincode2, Some(name.to_vec()))
     }
 
-    pub fn attach(storage: &'a S) -> Self {
+    pub fn attach(storage: &'a dyn Storage) -> Self {
         Self::attach_with_serialization(storage, Bincode2, None)
     }
 }
 
-impl<'a, T, S, Ser> ReadOnlyCashMap<'a, T, S, Ser>
+impl<'a, T, Ser> ReadOnlyCashMap<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     pub fn attach_with_serialization(
-        storage: &'a S,
+        storage: &'a dyn Storage,
         _serialization: Ser,
         prefix: Option<Vec<u8>>,
     ) -> Self {
@@ -479,7 +472,7 @@ where
 
     pub fn len(&self) -> u32 {
         let maybe_serialized = if let Some(prefix) = &self.prefix {
-            let store = ReadonlyPrefixedStorage::new(prefix, self.storage);
+            let store = ReadonlyPrefixedStorage::new(self.storage, prefix);
             store.get(MAP_LENGTH)
         } else {
             self.storage.get(MAP_LENGTH)
@@ -505,7 +498,6 @@ where
         if start_pos > max_size {
             return Err(StdError::NotFound {
                 kind: "Out of bounds".to_string(),
-                backtrace: None,
             });
         } else if end_pos >= max_size {
             end_pos = max_size - 1;
@@ -560,7 +552,7 @@ where
 
     pub fn get_indexes(&self, index: u32) -> Vec<u64> {
         let maybe_serialized = if let Some(prefix) = &self.prefix {
-            let store = ReadonlyPrefixedStorage::new(prefix, self.storage);
+            let store = ReadonlyPrefixedStorage::new(self.storage, prefix);
             store.get(&[INDEXES, index.to_be_bytes().to_vec().as_slice()].concat())
         } else {
             self.storage
@@ -617,7 +609,7 @@ where
 
     fn _prefix_load(&self, hash: &u64) -> StdResult<InternalItem<T>> {
         let serialized = if let Some(prefix) = &self.prefix {
-            let store = ReadonlyPrefixedStorage::new(prefix, self.storage);
+            let store = ReadonlyPrefixedStorage::new(self.storage, prefix);
             store.get(&hash.to_be_bytes())
         } else {
             self.storage.get(&hash.to_be_bytes())
@@ -642,7 +634,7 @@ where
         hasher.finish()
     }
 
-    pub fn iter(&self) -> Iter<'a, T, S, Ser> {
+    pub fn iter(&self) -> Iter<'a, T, Ser> {
         Iter {
             storage: Self::clone(self),
             start: 0,
@@ -652,21 +644,19 @@ where
 }
 
 /// An iterator over the contents of the append store.
-pub struct Iter<'a, T, S, Ser>
+pub struct Iter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
-    storage: ReadOnlyCashMap<'a, T, S, Ser>,
+    storage: ReadOnlyCashMap<'a, T, Ser>,
     start: u32,
     end: u32,
 }
 
-impl<'a, T, S, Ser> Iterator for Iter<'a, T, S, Ser>
+impl<'a, T, Ser> Iterator for Iter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     type Item = T;
@@ -702,16 +692,15 @@ where
     }
 }
 
-impl<'a, T, S, Ser> IntoIterator for ReadOnlyCashMap<'a, T, S, Ser>
+impl<'a, T, Ser> IntoIterator for ReadOnlyCashMap<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     type Item = T;
-    type IntoIter = Iter<'a, T, S, Ser>;
+    type IntoIter = Iter<'a, T, Ser>;
 
-    fn into_iter(self) -> Iter<'a, T, S, Ser> {
+    fn into_iter(self) -> Iter<'a, T, Ser> {
         let end = self.len();
         Iter {
             storage: self,
@@ -722,10 +711,9 @@ where
 }
 
 // Manual `Clone` implementation because the default one tries to clone the Storage??
-impl<'a, T, S, Ser> Clone for ReadOnlyCashMap<'a, T, S, Ser>
+impl<'a, T, Ser> Clone for ReadOnlyCashMap<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     fn clone(&self) -> Self {
@@ -819,7 +807,7 @@ mod tests {
     #[test]
     fn test_hashmap_paging_prefixed() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let mut prefixed = PrefixedStorage::new(b"test", &mut storage);
+        let mut prefixed = PrefixedStorage::new(&mut storage, b"test");
         let mut cashmap = CashMap::init(b"yo", &mut prefixed);
 
         let page_size = 50;
@@ -1005,7 +993,7 @@ mod tests {
     #[test]
     fn test_hashmap_overwrite_prefixed() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let mut prefixed = PrefixedStorage::new(b"test", &mut storage);
+        let mut prefixed = PrefixedStorage::new(&mut storage, b"test");
         let mut hashmap = CashMap::init(b"yo", &mut prefixed);
 
         let foo1 = Foo {
@@ -1064,11 +1052,12 @@ mod tests {
 
         // Try to load it with the wrong format
         let typed_store =
-            ReadOnlyCashMap::<i32, _, _>::attach_with_serialization(&storage, Json, None);
+            ReadOnlyCashMap::<i32, _>::attach_with_serialization(&storage, Json, None);
         match typed_store.load(b"key2") {
-            Err(StdError::ParseErr { target, msg, .. })
-                if target == "secret_toolkit_incubator::cashmap::InternalItem<i32>"
-                    && msg == "Invalid type" => {}
+            Err(StdError::ParseErr {
+                target_type, msg, ..
+            }) if target_type == "secret_toolkit_incubator::cashmap::InternalItem<i32>"
+                && msg == "Invalid type" => {}
             other => panic!("unexpected value: {:?}", other),
         }
 
@@ -1111,15 +1100,16 @@ mod tests {
         assert!(cmap.get(b"key3").is_none());
 
         // Try to load it with the wrong format
-        let typed_store = ReadOnlyCashMap::<i32, _, _>::attach_with_serialization(
+        let typed_store = ReadOnlyCashMap::<i32, _>::attach_with_serialization(
             &storage,
             Json,
             Some(b"yo".to_vec()),
         );
         match typed_store.load(b"key2") {
-            Err(StdError::ParseErr { target, msg, .. })
-                if target == "secret_toolkit_incubator::cashmap::InternalItem<i32>"
-                    && msg == "Invalid type" => {}
+            Err(StdError::ParseErr {
+                target_type, msg, ..
+            }) if target_type == "secret_toolkit_incubator::cashmap::InternalItem<i32>"
+                && msg == "Invalid type" => {}
             other => panic!("unexpected value: {:?}", other),
         }
 
@@ -1167,7 +1157,7 @@ mod tests {
     #[test]
     fn test_cashmap_length_prefixed() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let mut prefixed = PrefixedStorage::new(b"test", &mut storage);
+        let mut prefixed = PrefixedStorage::new(&mut storage, b"test");
         let mut cmap = CashMap::init(b"yo", &mut prefixed);
 
         let foo1 = Foo {

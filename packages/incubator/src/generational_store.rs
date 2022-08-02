@@ -18,7 +18,7 @@ use std::marker::PhantomData;
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
+use cosmwasm_std::{StdError, StdResult, Storage};
 
 use secret_toolkit_serialization::{Bincode2, Serde};
 
@@ -82,14 +82,12 @@ pub struct StoredOccupiedEntry<T> {
 // Mutable generational index store
 
 /// A type allowing both reads from and writes to the generational store.
-#[derive(Debug)]
-pub struct GenerationalStoreMut<'a, T, S, Ser = Bincode2>
+pub struct GenerationalStoreMut<'a, T, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
-    storage: &'a mut S,
+    storage: &'a mut dyn Storage,
     item_type: PhantomData<*const T>,
     serialization_type: PhantomData<*const Ser>,
     len: u32,
@@ -99,16 +97,15 @@ where
     capacity: u32,
 }
 
-impl<'a, T, S> GenerationalStoreMut<'a, T, S, Bincode2>
+impl<'a, T> GenerationalStoreMut<'a, T, Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: Storage,
 {
     /// Try to use the provided storage as an GenerationalStore. If it doesn't seem to be one, then
     /// initialize it as one.
     ///
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_or_create(storage: &'a mut S) -> StdResult<Self> {
+    pub fn attach_or_create(storage: &'a mut dyn Storage) -> StdResult<Self> {
         GenerationalStoreMut::attach_or_create_with_serialization(storage, Bincode2)
     }
 
@@ -116,22 +113,24 @@ where
     ///
     /// Returns None if the provided storage doesn't seem like an GenerationalStore.
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach(storage: &'a mut S) -> Option<StdResult<Self>> {
+    pub fn attach(storage: &'a mut dyn Storage) -> Option<StdResult<Self>> {
         GenerationalStoreMut::attach_with_serialization(storage, Bincode2)
     }
 }
 
-impl<'a, T, S, Ser> GenerationalStoreMut<'a, T, S, Ser>
+impl<'a, T, Ser> GenerationalStoreMut<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
     /// Try to use the provided storage as an GenerationalStore. If it doesn't seem to be one, then
     /// initialize it as one. This method allows choosing the serialization format you want to use.
     ///
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_or_create_with_serialization(storage: &'a mut S, _ser: Ser) -> StdResult<Self> {
+    pub fn attach_or_create_with_serialization(
+        storage: &'a mut dyn Storage,
+        _ser: Ser,
+    ) -> StdResult<Self> {
         let len_vec = storage.get(LEN_KEY);
         let generation_vec = storage.get(GENERATION_KEY);
         let free_list_head_vec = storage.get(FREE_LIST_HEAD_KEY);
@@ -172,7 +171,10 @@ where
     ///
     /// Returns None if the provided storage doesn't seem like an GenerationalStore.
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_with_serialization(storage: &'a mut S, _ser: Ser) -> Option<StdResult<Self>> {
+    pub fn attach_with_serialization(
+        storage: &'a mut dyn Storage,
+        _ser: Ser,
+    ) -> Option<StdResult<Self>> {
         let len_vec = storage.get(LEN_KEY)?;
         let generation_vec = storage.get(GENERATION_KEY)?;
         let free_list_head_vec = storage.get(FREE_LIST_HEAD_KEY)?;
@@ -187,7 +189,7 @@ where
     }
 
     fn new(
-        storage: &'a mut S,
+        storage: &'a mut dyn Storage,
         len_vec: &[u8],
         generation_vec: &[u8],
         free_list_head_vec: &[u8],
@@ -351,16 +353,16 @@ where
         self.len == 0
     }
 
-    pub fn storage(&mut self) -> &mut S {
+    pub fn storage(&'a mut self) -> &'a mut dyn Storage {
         self.storage
     }
 
-    pub fn readonly_storage(&self) -> &S {
+    pub fn readonly_storage(&'a self) -> &'a dyn Storage {
         self.storage
     }
 
     /// Return an iterator over the items in the collection
-    pub fn iter(&self) -> Iter<T, S, Ser> {
+    pub fn iter(&self) -> Iter<T, Ser> {
         self.as_readonly().iter()
     }
 
@@ -437,7 +439,7 @@ where
     }
 
     /// Gain access to the implementation of the immutable methods
-    fn as_readonly(&self) -> GenerationalStore<T, S, Ser> {
+    fn as_readonly(&self) -> GenerationalStore<T, Ser> {
         GenerationalStore {
             storage: self.storage,
             item_type: self.item_type,
@@ -453,14 +455,12 @@ where
 // Readonly generational index store
 
 /// A type allowing only reads from an append store. useful in the context_, u8 of queries.
-#[derive(Debug)]
-pub struct GenerationalStore<'a, T, S, Ser = Bincode2>
+pub struct GenerationalStore<'a, T, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
-    storage: &'a S,
+    storage: &'a dyn Storage,
     item_type: PhantomData<*const T>,
     serialization_type: PhantomData<*const Ser>,
     len: u32,
@@ -469,24 +469,22 @@ where
     capacity: u32,
 }
 
-impl<'a, T, S> GenerationalStore<'a, T, S, Bincode2>
+impl<'a, T> GenerationalStore<'a, T, Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
 {
     /// Try to use the provided storage as an GenerationalStore.
     ///
     /// Returns None if the provided storage doesn't seem like an GenerationalStore.
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach(storage: &'a S) -> Option<StdResult<Self>> {
+    pub fn attach(storage: &'a dyn Storage) -> Option<StdResult<Self>> {
         GenerationalStore::attach_with_serialization(storage, Bincode2)
     }
 }
 
-impl<'a, T, S, Ser> GenerationalStore<'a, T, S, Ser>
+impl<'a, T, Ser> GenerationalStore<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     /// Try to use the provided storage as an GenerationalStore.
@@ -494,7 +492,10 @@ where
     ///
     /// Returns None if the provided storage doesn't seem like an GenerationalStore.
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_with_serialization(storage: &'a S, _ser: Ser) -> Option<StdResult<Self>> {
+    pub fn attach_with_serialization(
+        storage: &'a dyn Storage,
+        _ser: Ser,
+    ) -> Option<StdResult<Self>> {
         let len_vec = storage.get(LEN_KEY)?;
         let generation_vec = storage.get(GENERATION_KEY)?;
         let free_list_head_vec = storage.get(FREE_LIST_HEAD_KEY)?;
@@ -509,7 +510,7 @@ where
     }
 
     fn new(
-        storage: &'a S,
+        storage: &'a dyn Storage,
         len_vec: Vec<u8>,
         generation_vec: Vec<u8>,
         free_list_head_vec: Vec<u8>,
@@ -562,12 +563,12 @@ where
         self.capacity
     }
 
-    pub fn readonly_storage(&self) -> &S {
+    pub fn readonly_storage(&self) -> &'a dyn Storage {
         self.storage
     }
 
     /// Return an iterator over the items in the collection
-    pub fn iter(&self) -> Iter<'a, T, S, Ser> {
+    pub fn iter(&self) -> Iter<'a, T, Ser> {
         Iter {
             storage: GenerationalStore::clone(self),
             start: 0,
@@ -638,10 +639,9 @@ where
     }
 }
 
-impl<'a, T, S, Ser> IntoIterator for GenerationalStore<'a, T, S, Ser>
+impl<'a, T, Ser> IntoIterator for GenerationalStore<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     type Item = (Option<Index>, Entry<T>);
@@ -649,9 +649,9 @@ where
     // alternate version, see below
     //type Item = (Index, T);
 
-    type IntoIter = Iter<'a, T, S, Ser>;
+    type IntoIter = Iter<'a, T, Ser>;
 
-    fn into_iter(self) -> Iter<'a, T, S, Ser> {
+    fn into_iter(self) -> Iter<'a, T, Ser> {
         let end = self.len;
         Iter {
             storage: self,
@@ -662,10 +662,9 @@ where
 }
 
 // Manual `Clone` implementation because the default one tries to clone the Storage??
-impl<'a, T, S, Ser> Clone for GenerationalStore<'a, T, S, Ser>
+impl<'a, T, Ser> Clone for GenerationalStore<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     fn clone(&self) -> Self {
@@ -684,22 +683,19 @@ where
 // Owning iterator
 
 /// An iterator over the contents of the generational store.
-#[derive(Debug)]
-pub struct Iter<'a, T, S, Ser>
+pub struct Iter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
-    storage: GenerationalStore<'a, T, S, Ser>,
+    storage: GenerationalStore<'a, T, Ser>,
     start: u32,
     end: u32,
 }
 
-impl<'a, T, S, Ser> Iterator for Iter<'a, T, S, Ser>
+impl<'a, T, Ser> Iterator for Iter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     type Item = (Option<Index>, Entry<T>);
@@ -785,10 +781,9 @@ where
     }
 }
 
-impl<'a, T, S, Ser> DoubleEndedIterator for Iter<'a, T, S, Ser>
+impl<'a, T, Ser> DoubleEndedIterator for Iter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -825,10 +820,9 @@ where
 }
 
 // This enables writing `append_store.iter().skip(n).rev()`
-impl<'a, T, S, Ser> ExactSizeIterator for Iter<'a, T, S, Ser>
+impl<'a, T, Ser> ExactSizeIterator for Iter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
 }

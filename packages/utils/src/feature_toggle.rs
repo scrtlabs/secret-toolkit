@@ -19,8 +19,8 @@ impl FeatureToggleTrait for FeatureToggle {
 pub trait FeatureToggleTrait {
     const STORAGE_KEY: &'static [u8];
 
-    fn init_features<'a, T: Serialize>(
-        storage: &'a mut dyn Storage,
+    fn init_features<T: Serialize>(
+        storage: &mut dyn Storage,
         feature_statuses: Vec<FeatureStatus<T>>,
         pausers: Vec<Addr>,
     ) -> StdResult<()> {
@@ -35,10 +35,7 @@ pub trait FeatureToggleTrait {
         Ok(())
     }
 
-    fn require_not_paused<'a, T: Serialize>(
-        storage: &'a dyn Storage,
-        features: Vec<T>,
-    ) -> StdResult<()> {
+    fn require_not_paused<T: Serialize>(storage: &dyn Storage, features: Vec<T>) -> StdResult<()> {
         for feature in features {
             let status = Self::get_feature_status(storage, &feature)?;
             match status {
@@ -63,7 +60,7 @@ pub trait FeatureToggleTrait {
         Ok(())
     }
 
-    fn pause<'a, T: Serialize>(storage: &'a mut dyn Storage, features: Vec<T>) -> StdResult<()> {
+    fn pause<T: Serialize>(storage: &mut dyn Storage, features: Vec<T>) -> StdResult<()> {
         for f in features {
             Self::set_feature_status(storage, &f, Status::Paused)?;
         }
@@ -71,7 +68,7 @@ pub trait FeatureToggleTrait {
         Ok(())
     }
 
-    fn unpause<'a, T: Serialize>(storage: &'a mut dyn Storage, features: Vec<T>) -> StdResult<()> {
+    fn unpause<T: Serialize>(storage: &mut dyn Storage, features: Vec<T>) -> StdResult<()> {
         for f in features {
             Self::set_feature_status(storage, &f, Status::NotPaused)?;
         }
@@ -79,25 +76,25 @@ pub trait FeatureToggleTrait {
         Ok(())
     }
 
-    fn is_pauser<'a>(storage: &'a dyn Storage, key: &Addr) -> StdResult<bool> {
+    fn is_pauser(storage: &dyn Storage, key: &Addr) -> StdResult<bool> {
         let feature_store: ReadonlyBucket<bool> =
             ReadonlyBucket::multilevel(storage, &[Self::STORAGE_KEY, PREFIX_PAUSERS]);
         feature_store.may_load(key.as_bytes()).map(|p| p.is_some())
     }
 
-    fn set_pauser<'a>(storage: &'a mut dyn Storage, key: &Addr) -> StdResult<()> {
+    fn set_pauser(storage: &mut dyn Storage, key: &Addr) -> StdResult<()> {
         let mut feature_store = Bucket::multilevel(storage, &[Self::STORAGE_KEY, PREFIX_PAUSERS]);
         feature_store.save(key.as_bytes(), &true /* value is insignificant */)
     }
 
-    fn remove_pauser<'a>(storage: &'a mut dyn Storage, key: &Addr) {
+    fn remove_pauser(storage: &mut dyn Storage, key: &Addr) {
         let mut feature_store: Bucket<bool> =
             Bucket::multilevel(storage, &[Self::STORAGE_KEY, PREFIX_PAUSERS]);
         feature_store.remove(key.as_bytes())
     }
 
-    fn get_feature_status<'a, T: Serialize>(
-        storage: &'a dyn Storage,
+    fn get_feature_status<T: Serialize>(
+        storage: &dyn Storage,
         key: &T,
     ) -> StdResult<Option<Status>> {
         let feature_store =
@@ -105,8 +102,8 @@ pub trait FeatureToggleTrait {
         feature_store.may_load(&cosmwasm_std::to_vec(&key)?)
     }
 
-    fn set_feature_status<'a, T: Serialize>(
-        storage: &'a mut dyn Storage,
+    fn set_feature_status<T: Serialize>(
+        storage: &mut dyn Storage,
         key: &T,
         item: Status,
     ) -> StdResult<()> {

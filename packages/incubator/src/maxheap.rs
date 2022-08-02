@@ -11,7 +11,7 @@ use std::marker::PhantomData;
 use serde::{de::DeserializeOwned, Serialize};
 use std::cmp::PartialOrd;
 
-use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
+use cosmwasm_std::{StdError, StdResult, Storage};
 
 use secret_toolkit_serialization::{Bincode2, Serde};
 
@@ -244,7 +244,7 @@ where
     }
 
     /// Gain access to the implementation of the immutable methods
-    fn as_readonly(&self) -> MaxHeapStore<T, S, Ser> {
+    fn as_readonly(&self) -> MaxHeapStore<T, Ser> {
         MaxHeapStore {
             storage: self.storage,
             item_type: self.item_type,
@@ -257,37 +257,33 @@ where
 // Readonly maxheap store
 
 /// A type allowing only reads from an max heap store. useful in the context of queries.
-#[derive(Debug)]
-pub struct MaxHeapStore<'a, T, S, Ser = Bincode2>
+pub struct MaxHeapStore<'a, T, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned + PartialOrd,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
-    storage: &'a S,
+    storage: &'a dyn Storage,
     item_type: PhantomData<*const T>,
     serialization_type: PhantomData<*const Ser>,
     len: u32,
 }
 
-impl<'a, T, S> MaxHeapStore<'a, T, S, Bincode2>
+impl<'a, T> MaxHeapStore<'a, T, Bincode2>
 where
     T: Serialize + DeserializeOwned + PartialOrd,
-    S: ReadonlyStorage,
 {
     /// Try to use the provided storage as a MaxHeapStore.
     ///
     /// Returns None if the provided storage doesn't seem like a MaxHeapStore.
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach(storage: &'a S) -> Option<StdResult<Self>> {
+    pub fn attach(storage: &'a dyn Storage) -> Option<StdResult<Self>> {
         MaxHeapStore::attach_with_serialization(storage, Bincode2)
     }
 }
 
-impl<'a, T, S, Ser> MaxHeapStore<'a, T, S, Ser>
+impl<'a, T, Ser> MaxHeapStore<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned + PartialOrd,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     /// Try to use the provided storage as an MaxHeapStore.
@@ -295,12 +291,15 @@ where
     ///
     /// Returns None if the provided storage doesn't seem like an MaxHeapStore.
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_with_serialization(storage: &'a S, _ser: Ser) -> Option<StdResult<Self>> {
+    pub fn attach_with_serialization(
+        storage: &'a dyn Storage,
+        _ser: Ser,
+    ) -> Option<StdResult<Self>> {
         let len_vec = storage.get(LEN_KEY)?;
         Some(MaxHeapStore::new(storage, len_vec))
     }
 
-    fn new(storage: &'a S, len_vec: Vec<u8>) -> StdResult<Self> {
+    fn new(storage: &'a dyn Storage, len_vec: Vec<u8>) -> StdResult<Self> {
         let len_array = len_vec
             .as_slice()
             .try_into()
@@ -323,7 +322,7 @@ where
         self.len == 0
     }
 
-    pub fn readonly_storage(&self) -> &S {
+    pub fn readonly_storage(&self) -> &'a dyn Storage {
         self.storage
     }
 
@@ -356,7 +355,6 @@ mod tests {
     use cosmwasm_std::testing::MockStorage;
     use serde::Deserialize;
 
-    use cosmwasm_std::HumanAddr;
     use secret_toolkit_serialization::Json;
     use std::cmp::Ordering;
 
@@ -389,7 +387,7 @@ mod tests {
     fn test_custom_ord() -> StdResult<()> {
         #[derive(Serialize, Deserialize, Clone, Debug, Eq)]
         pub struct Tx {
-            address: HumanAddr,
+            address: String,
             amount: u128,
         }
 
@@ -415,58 +413,58 @@ mod tests {
         let mut heap_store = MaxHeapStoreMut::attach_or_create(&mut storage)?;
 
         heap_store.insert(&Tx {
-            address: HumanAddr("address1".to_string()),
+            address: "address1".to_string(),
             amount: 200,
         })?;
         heap_store.insert(&Tx {
-            address: HumanAddr("address2".to_string()),
+            address: "address2".to_string(),
             amount: 100,
         })?;
         heap_store.insert(&Tx {
-            address: HumanAddr("address3".to_string()),
+            address: "address3".to_string(),
             amount: 400,
         })?;
         heap_store.insert(&Tx {
-            address: HumanAddr("address4".to_string()),
+            address: "address4".to_string(),
             amount: 300,
         })?;
         heap_store.insert(&Tx {
-            address: HumanAddr("address5".to_string()),
+            address: "address5".to_string(),
             amount: 50,
         })?;
 
         assert_eq!(
             heap_store.remove(),
             Ok(Tx {
-                address: HumanAddr("address3".to_string()),
+                address: "address3".to_string(),
                 amount: 400,
             })
         );
         assert_eq!(
             heap_store.remove(),
             Ok(Tx {
-                address: HumanAddr("address4".to_string()),
+                address: "address4".to_string(),
                 amount: 300,
             })
         );
         assert_eq!(
             heap_store.remove(),
             Ok(Tx {
-                address: HumanAddr("address1".to_string()),
+                address: "address1".to_string(),
                 amount: 200,
             })
         );
         assert_eq!(
             heap_store.remove(),
             Ok(Tx {
-                address: HumanAddr("address2".to_string()),
+                address: "address2".to_string(),
                 amount: 100,
             })
         );
         assert_eq!(
             heap_store.remove(),
             Ok(Tx {
-                address: HumanAddr("address5".to_string()),
+                address: "address5".to_string(),
                 amount: 50,
             })
         );

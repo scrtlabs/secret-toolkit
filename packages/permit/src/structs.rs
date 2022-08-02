@@ -15,8 +15,8 @@ pub struct Permit<Permission: Permissions = TokenPermissions> {
 }
 
 impl<Permission: Permissions> Permit<Permission> {
-    pub fn check_token(&self, token: &String) -> bool {
-        self.params.allowed_tokens.contains(token)
+    pub fn check_token(&self, token: &str) -> bool {
+        self.params.allowed_tokens.contains(&token.to_string())
     }
 
     pub fn check_permission(&self, permission: &Permission) -> bool {
