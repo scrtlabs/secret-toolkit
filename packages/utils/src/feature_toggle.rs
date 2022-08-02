@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    to_binary, to_vec, Api, Env, Extern, HandleResponse, HandleResult, HumanAddr, Querier,
-    QueryResult, ReadonlyStorage, StdError, StdResult, Storage,
+    to_binary, to_vec, Addr, Binary, Deps, DepsMut, MessageInfo, Response, StdError, StdResult,
+    Storage,
 };
 use cosmwasm_storage::{Bucket, ReadonlyBucket};
 use schemars::JsonSchema;
@@ -19,10 +19,10 @@ impl FeatureToggleTrait for FeatureToggle {
 pub trait FeatureToggleTrait {
     const STORAGE_KEY: &'static [u8];
 
-    fn init_features<S: Storage, T: Serialize>(
-        storage: &mut S,
+    fn init_features<'a, T: Serialize>(
+        storage: &'a mut dyn Storage,
         feature_statuses: Vec<FeatureStatus<T>>,
-        pausers: Vec<HumanAddr>,
+        pausers: Vec<Addr>,
     ) -> StdResult<()> {
         for fs in feature_statuses {
             Self::set_feature_status(storage, &fs.feature, fs.status)?;
@@ -35,8 +35,8 @@ pub trait FeatureToggleTrait {
         Ok(())
     }
 
-    fn require_not_paused<S: Storage, T: Serialize>(
-        storage: &S,
+    fn require_not_paused<'a, T: Serialize>(
+        storage: &'a dyn Storage,
         features: Vec<T>,
     ) -> StdResult<()> {
         for feature in features {
@@ -63,7 +63,7 @@ pub trait FeatureToggleTrait {
         Ok(())
     }
 
-    fn pause<S: Storage, T: Serialize>(storage: &mut S, features: Vec<T>) -> StdResult<()> {
+    fn pause<'a, T: Serialize>(storage: &'a mut dyn Storage, features: Vec<T>) -> StdResult<()> {
         for f in features {
             Self::set_feature_status(storage, &f, Status::Paused)?;
         }
@@ -71,7 +71,7 @@ pub trait FeatureToggleTrait {
         Ok(())
     }
 
-    fn unpause<S: Storage, T: Serialize>(storage: &mut S, features: Vec<T>) -> StdResult<()> {
+    fn unpause<'a, T: Serialize>(storage: &'a mut dyn Storage, features: Vec<T>) -> StdResult<()> {
         for f in features {
             Self::set_feature_status(storage, &f, Status::NotPaused)?;
         }
@@ -79,122 +79,97 @@ pub trait FeatureToggleTrait {
         Ok(())
     }
 
-    fn is_pauser<S: ReadonlyStorage>(storage: &S, key: &HumanAddr) -> StdResult<bool> {
-        let feature_store: ReadonlyBucket<S, bool> =
-            ReadonlyBucket::multilevel(&[Self::STORAGE_KEY, PREFIX_PAUSERS], storage);
-        feature_store
-            .may_load(key.0.as_bytes())
-            .map(|p| p.is_some())
+    fn is_pauser<'a>(storage: &'a dyn Storage, key: &Addr) -> StdResult<bool> {
+        let feature_store: ReadonlyBucket<bool> =
+            ReadonlyBucket::multilevel(storage, &[Self::STORAGE_KEY, PREFIX_PAUSERS]);
+        feature_store.may_load(key.as_bytes()).map(|p| p.is_some())
     }
 
-    fn set_pauser<S: Storage>(storage: &mut S, key: &HumanAddr) -> StdResult<()> {
-        let mut feature_store = Bucket::multilevel(&[Self::STORAGE_KEY, PREFIX_PAUSERS], storage);
-        feature_store.save(key.0.as_bytes(), &true /* value is insignificant */)
+    fn set_pauser<'a>(storage: &'a mut dyn Storage, key: &Addr) -> StdResult<()> {
+        let mut feature_store = Bucket::multilevel(storage, &[Self::STORAGE_KEY, PREFIX_PAUSERS]);
+        feature_store.save(key.as_bytes(), &true /* value is insignificant */)
     }
 
-    fn remove_pauser<S: Storage>(storage: &mut S, key: &HumanAddr) {
-        let mut feature_store: Bucket<S, bool> =
-            Bucket::multilevel(&[Self::STORAGE_KEY, PREFIX_PAUSERS], storage);
-        feature_store.remove(key.0.as_bytes())
+    fn remove_pauser<'a>(storage: &'a mut dyn Storage, key: &Addr) {
+        let mut feature_store: Bucket<bool> =
+            Bucket::multilevel(storage, &[Self::STORAGE_KEY, PREFIX_PAUSERS]);
+        feature_store.remove(key.as_bytes())
     }
 
-    fn get_feature_status<S: ReadonlyStorage, T: Serialize>(
-        storage: &S,
+    fn get_feature_status<'a, T: Serialize>(
+        storage: &'a dyn Storage,
         key: &T,
     ) -> StdResult<Option<Status>> {
         let feature_store =
-            ReadonlyBucket::multilevel(&[Self::STORAGE_KEY, PREFIX_FEATURES], storage);
+            ReadonlyBucket::multilevel(storage, &[Self::STORAGE_KEY, PREFIX_FEATURES]);
         feature_store.may_load(&cosmwasm_std::to_vec(&key)?)
     }
 
-    fn set_feature_status<S: Storage, T: Serialize>(
-        storage: &mut S,
+    fn set_feature_status<'a, T: Serialize>(
+        storage: &'a mut dyn Storage,
         key: &T,
         item: Status,
     ) -> StdResult<()> {
-        let mut feature_store = Bucket::multilevel(&[Self::STORAGE_KEY, PREFIX_FEATURES], storage);
+        let mut feature_store = Bucket::multilevel(storage, &[Self::STORAGE_KEY, PREFIX_FEATURES]);
         feature_store.save(&cosmwasm_std::to_vec(&key)?, &item)
     }
 
-    fn handle_pause<S: Storage, A: Api, Q: Querier, T: Serialize>(
-        deps: &mut Extern<S, A, Q>,
-        env: &Env,
+    fn handle_pause<T: Serialize>(
+        deps: DepsMut,
+        info: &MessageInfo,
         features: Vec<T>,
-    ) -> HandleResult {
-        if !Self::is_pauser(&deps.storage, &env.message.sender)? {
-            return Err(StdError::unauthorized());
+    ) -> StdResult<Response> {
+        if !Self::is_pauser(deps.storage, &info.sender)? {
+            return Err(StdError::generic_err("unauthorized"));
         }
 
-        Self::pause(&mut deps.storage, features)?;
+        Self::pause(deps.storage, features)?;
 
-        Ok(HandleResponse {
-            messages: vec![],
-            log: vec![],
-            data: Some(to_binary(&HandleAnswer::Pause {
-                status: ResponseStatus::Success,
-            })?),
-        })
+        Ok(Response::new().set_data(to_binary(&HandleAnswer::Pause {
+            status: ResponseStatus::Success,
+        })?))
     }
 
-    fn handle_unpause<S: Storage, A: Api, Q: Querier, T: Serialize>(
-        deps: &mut Extern<S, A, Q>,
-        env: &Env,
+    fn handle_unpause<T: Serialize>(
+        deps: DepsMut,
+        info: &MessageInfo,
         features: Vec<T>,
-    ) -> HandleResult {
-        if !Self::is_pauser(&deps.storage, &env.message.sender)? {
-            return Err(StdError::unauthorized());
+    ) -> StdResult<Response> {
+        if !Self::is_pauser(deps.storage, &info.sender)? {
+            return Err(StdError::generic_err("unauthorized"));
         }
 
-        Self::unpause(&mut deps.storage, features)?;
+        Self::unpause(deps.storage, features)?;
 
-        Ok(HandleResponse {
-            messages: vec![],
-            log: vec![],
-            data: Some(to_binary(&HandleAnswer::Unpause {
-                status: ResponseStatus::Success,
-            })?),
-        })
+        Ok(Response::new().set_data(to_binary(&HandleAnswer::Unpause {
+            status: ResponseStatus::Success,
+        })?))
     }
 
-    fn handle_set_pauser<S: Storage, A: Api, Q: Querier>(
-        deps: &mut Extern<S, A, Q>,
-        _env: &Env,
-        address: HumanAddr,
-    ) -> HandleResult {
-        Self::set_pauser(&mut deps.storage, &address)?;
+    fn handle_set_pauser(deps: DepsMut, address: Addr) -> StdResult<Response> {
+        Self::set_pauser(deps.storage, &address)?;
 
-        Ok(HandleResponse {
-            messages: vec![],
-            log: vec![],
-            data: Some(to_binary(&HandleAnswer::SetPauser {
+        Ok(
+            Response::new().set_data(to_binary(&HandleAnswer::SetPauser {
                 status: ResponseStatus::Success,
             })?),
-        })
+        )
     }
 
-    fn handle_remove_pauser<S: Storage, A: Api, Q: Querier>(
-        deps: &mut Extern<S, A, Q>,
-        _env: &Env,
-        address: HumanAddr,
-    ) -> HandleResult {
-        Self::remove_pauser(&mut deps.storage, &address);
+    fn handle_remove_pauser(deps: DepsMut, address: Addr) -> StdResult<Response> {
+        Self::remove_pauser(deps.storage, &address);
 
-        Ok(HandleResponse {
-            messages: vec![],
-            log: vec![],
-            data: Some(to_binary(&HandleAnswer::RemovePauser {
+        Ok(
+            Response::new().set_data(to_binary(&HandleAnswer::RemovePauser {
                 status: ResponseStatus::Success,
             })?),
-        })
+        )
     }
 
-    fn query_status<S: Storage, A: Api, Q: Querier, T: Serialize>(
-        deps: &Extern<S, A, Q>,
-        features: Vec<T>,
-    ) -> QueryResult {
+    fn query_status<T: Serialize>(deps: Deps, features: Vec<T>) -> StdResult<Binary> {
         let mut status = Vec::with_capacity(features.len());
         for feature in features {
-            match Self::get_feature_status(&deps.storage, &feature)? {
+            match Self::get_feature_status(deps.storage, &feature)? {
                 None => {
                     return Err(StdError::generic_err(format!(
                         "invalid feature: {} does not exist",
@@ -208,11 +183,8 @@ pub trait FeatureToggleTrait {
         to_binary(&FeatureToggleQueryAnswer::Status { features: status })
     }
 
-    fn query_is_pauser<S: Storage, A: Api, Q: Querier>(
-        deps: &Extern<S, A, Q>,
-        address: HumanAddr,
-    ) -> QueryResult {
-        let is_pauser = Self::is_pauser(&deps.storage, &address)?;
+    fn query_is_pauser(deps: Deps, address: Addr) -> StdResult<Binary> {
+        let is_pauser = Self::is_pauser(deps.storage, &address)?;
 
         to_binary(&FeatureToggleQueryAnswer::<()>::IsPauser { is_pauser })
     }
@@ -242,10 +214,10 @@ pub enum FeatureToggleHandleMsg<T: Serialize + DeserializeOwned> {
         features: Vec<T>,
     },
     SetPauser {
-        address: HumanAddr,
+        address: String,
     },
     RemovePauser {
-        address: HumanAddr,
+        address: String,
     },
 }
 
@@ -273,7 +245,7 @@ pub enum FeatureToggleQueryMsg<T: Serialize + DeserializeOwned> {
         features: Vec<T>,
     },
     IsPauser {
-        address: HumanAddr,
+        address: String,
     },
 }
 
@@ -296,8 +268,8 @@ mod tests {
         FeatureStatus, FeatureToggle, FeatureToggleHandleMsg, FeatureToggleQueryMsg,
         FeatureToggleTrait, HandleAnswer, ResponseStatus, Status,
     };
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, MockStorage};
-    use cosmwasm_std::{from_binary, HumanAddr, MemoryStorage, StdError, StdResult};
+    use cosmwasm_std::testing::{mock_dependencies, mock_info, MockStorage};
+    use cosmwasm_std::{from_binary, Addr, MemoryStorage, StdError, StdResult};
 
     fn init_features(storage: &mut MemoryStorage) -> StdResult<()> {
         FeatureToggle::init_features(
@@ -316,7 +288,7 @@ mod tests {
                     status: Status::Paused,
                 },
             ],
-            vec![HumanAddr("alice".to_string())],
+            vec![Addr::unchecked("alice".to_string())],
         )
     }
 
@@ -343,11 +315,11 @@ mod tests {
         );
 
         assert_eq!(
-            FeatureToggle::is_pauser(&storage, &HumanAddr("alice".to_string()))?,
+            FeatureToggle::is_pauser(&storage, &Addr::unchecked("alice".to_string()))?,
             true
         );
         assert_eq!(
-            FeatureToggle::is_pauser(&storage, &HumanAddr("bob".to_string()))?,
+            FeatureToggle::is_pauser(&storage, &Addr::unchecked("bob".to_string()))?,
             false
         );
 
@@ -370,16 +342,17 @@ mod tests {
 
     #[test]
     fn test_handle_unpause() -> StdResult<()> {
-        let mut deps = mock_dependencies(20, &[]);
+        let mut deps = mock_dependencies();
         init_features(&mut deps.storage)?;
 
-        let env = mock_env("non-pauser", &[]);
-        let error = FeatureToggle::handle_unpause(&mut deps, &env, vec!["Feature3".to_string()]);
-        assert_eq!(error, Err(StdError::unauthorized()));
+        let info = mock_info("non-pauser", &[]);
+        let error =
+            FeatureToggle::handle_unpause(deps.as_mut(), &info, vec!["Feature3".to_string()]);
+        assert_eq!(error, Err(StdError::generic_err("unauthorized")));
 
-        let env = mock_env("alice", &[]);
+        let info = mock_info("alice", &[]);
         let response =
-            FeatureToggle::handle_unpause(&mut deps, &env, vec!["Feature3".to_string()])?;
+            FeatureToggle::handle_unpause(deps.as_mut(), &info, vec!["Feature3".to_string()])?;
         let answer: HandleAnswer = from_binary(&response.data.unwrap())?;
 
         assert_eq!(
@@ -407,15 +380,16 @@ mod tests {
 
     #[test]
     fn test_handle_pause() -> StdResult<()> {
-        let mut deps = mock_dependencies(20, &[]);
+        let mut deps = mock_dependencies();
         init_features(&mut deps.storage)?;
 
-        let env = mock_env("non-pauser", &[]);
-        let error = FeatureToggle::handle_pause(&mut deps, &env, vec!["Feature2".to_string()]);
-        assert_eq!(error, Err(StdError::unauthorized()));
+        let info = mock_info("non-pauser", &[]);
+        let error = FeatureToggle::handle_pause(deps.as_mut(), &info, vec!["Feature2".to_string()]);
+        assert_eq!(error, Err(StdError::generic_err("unauthorized")));
 
-        let env = mock_env("alice", &[]);
-        let response = FeatureToggle::handle_pause(&mut deps, &env, vec!["Feature2".to_string()])?;
+        let info = mock_info("alice", &[]);
+        let response =
+            FeatureToggle::handle_pause(deps.as_mut(), &info, vec!["Feature2".to_string()])?;
         let answer: HandleAnswer = from_binary(&response.data.unwrap())?;
 
         assert_eq!(
@@ -451,7 +425,7 @@ mod tests {
         let mut storage = MockStorage::new();
         init_features(&mut storage)?;
 
-        let bob = HumanAddr("bob".to_string());
+        let bob = Addr::unchecked("bob".to_string());
 
         FeatureToggle::set_pauser(&mut storage, &bob)?;
         assert!(

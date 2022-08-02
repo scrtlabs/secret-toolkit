@@ -15,6 +15,6 @@ all-features = true
 
 [dependencies]
 serde = "1.0"
-schemars = "0.7"
-cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
-cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "0.10"}
+schemars = "0.8.1"
+cosmwasm-std = { git = "https://github.com/scrtlabs/cosmwasm", branch = "secret" }
+cosmwasm-storage = { git = "https://github.com/scrtlabs/cosmwasm", branch = "secret" }
