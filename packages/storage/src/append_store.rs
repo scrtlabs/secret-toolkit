@@ -3,370 +3,204 @@
 //!
 //! This is achieved by storing each item in a separate storage entry. A special key is reserved
 //! for storing the length of the collection so far.
-use std::convert::TryInto;
+use std::{convert::TryInto};
 use std::marker::PhantomData;
 
 use serde::{de::DeserializeOwned, Serialize};
 
 use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
 
-use secret_toolkit_serialization::{Bincode2, Serde};
+use secret_toolkit_serialization::{Serde, Bincode2};
+
+use crate::prefixed_typed_storage::PrefixedTypedStorage;
 
 const LEN_KEY: &[u8] = b"len";
 
-// Mutable append-store
-
-/// A type allowing both reads from and writes to the append store at a given storage location.
-#[derive(Debug)]
-pub struct AppendStoreMut<'a, T, S, Ser = Bincode2>
-where
-    T: Serialize + DeserializeOwned,
-    S: Storage,
-    Ser: Serde,
+pub struct AppendStore<'a, T, Ser = Bincode2>
+    where
+        T: Serialize + DeserializeOwned,
+        Ser: Serde,
 {
-    storage: &'a mut S,
-    item_type: PhantomData<*const T>,
-    serialization_type: PhantomData<*const Ser>,
-    len: u32,
+    /// prefix of the newly constructed Storage
+    namespace: &'a [u8],
+    /// needed if any suffixes were added to the original namespace.
+    /// therefore it is not necessarily same as the namespace.
+    prefix: Option<Vec<u8>>,
+    item_type: PhantomData<T>,
+    serialization_type: PhantomData<Ser>,
 }
 
-impl<'a, T, S> AppendStoreMut<'a, T, S, Bincode2>
-where
-    T: Serialize + DeserializeOwned,
-    S: Storage,
-{
-    /// Try to use the provided storage as an AppendStore. If it doesn't seem to be one, then
-    /// initialize it as one.
-    ///
-    /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_or_create(storage: &'a mut S) -> StdResult<Self> {
-        AppendStoreMut::attach_or_create_with_serialization(storage, Bincode2)
-    }
-
-    /// Try to use the provided storage as an AppendStore.
-    ///
-    /// Returns None if the provided storage doesn't seem like an AppendStore.
-    /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach(storage: &'a mut S) -> Option<StdResult<Self>> {
-        AppendStoreMut::attach_with_serialization(storage, Bincode2)
-    }
-}
-
-impl<'a, T, S, Ser> AppendStoreMut<'a, T, S, Ser>
-where
-    T: Serialize + DeserializeOwned,
-    S: Storage,
-    Ser: Serde,
-{
-    /// Try to use the provided storage as an AppendStore. If it doesn't seem to be one, then
-    /// initialize it as one. This method allows choosing the serialization format you want to use.
-    ///
-    /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_or_create_with_serialization(storage: &'a mut S, _ser: Ser) -> StdResult<Self> {
-        if let Some(len_vec) = storage.get(LEN_KEY) {
-            Self::new(storage, &len_vec)
-        } else {
-            let len_vec = 0_u32.to_be_bytes();
-            storage.set(LEN_KEY, &len_vec);
-            Self::new(storage, &len_vec)
-        }
-    }
-
-    /// Try to use the provided storage as an AppendStore.
-    /// This method allows choosing the serialization format you want to use.
-    ///
-    /// Returns None if the provided storage doesn't seem like an AppendStore.
-    /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_with_serialization(storage: &'a mut S, _ser: Ser) -> Option<StdResult<Self>> {
-        let len_vec = storage.get(LEN_KEY)?;
-        Some(Self::new(storage, &len_vec))
-    }
-
-    fn new(storage: &'a mut S, len_vec: &[u8]) -> StdResult<Self> {
-        let len_array = len_vec
-            .try_into()
-            .map_err(|err| StdError::parse_err("u32", err))?;
-        let len = u32::from_be_bytes(len_array);
-
-        Ok(Self {
-            storage,
+impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser>{
+    /// constructor
+    pub const fn new(prefix: &'a [u8]) -> Self {
+        Self {
+            namespace: prefix,
+            prefix: None,
             item_type: PhantomData,
             serialization_type: PhantomData,
-            len,
-        })
-    }
-
-    pub fn len(&self) -> u32 {
-        self.len
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-
-    pub fn storage(&mut self) -> &mut S {
-        self.storage
-    }
-
-    pub fn readonly_storage(&self) -> &S {
-        self.storage
-    }
-
-    /// Return an iterator over the items in the collection
-    pub fn iter(&self) -> Iter<T, S, Ser> {
-        self.as_readonly().iter()
-    }
-
-    /// Get the value stored at a given position.
-    ///
-    /// # Errors
-    /// Will return an error if pos is out of bounds or if an item is not found.
-    pub fn get_at(&self, pos: u32) -> StdResult<T> {
-        self.as_readonly().get_at(pos)
-    }
-
-    fn get_at_unchecked(&self, pos: u32) -> StdResult<T> {
-        self.as_readonly().get_at_unchecked(pos)
-    }
-
-    /// Set the value of the item stored at a given position.
-    ///
-    /// # Errors
-    /// Will return an error if the position is out of bounds
-    pub fn set_at(&mut self, pos: u32, item: &T) -> StdResult<()> {
-        if pos >= self.len {
-            return Err(StdError::generic_err("AppendStorage access out of bounds"));
         }
-        self.set_at_unchecked(pos, item)
+    }
+    /// This is used to produce a new AppendListStorage. This can be used when you want to associate an AppendListStorage to each user
+    /// and you still get to define the AppendListStorage as a static constant
+    pub fn add_suffix(&self, suffix: &[u8]) -> Self {
+        Self {
+            namespace: self.namespace,
+            prefix: Some([self.prefix.clone().unwrap_or(vec![]), suffix.to_vec()].concat()),
+            item_type: self.item_type,
+            serialization_type: self.serialization_type,
+        }
+    }
+}
+
+impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
+    /// gets the length from storage, and otherwise sets it to 0
+    pub fn get_len<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<u32> {
+        let len_key = [self.as_slice(), LEN_KEY].concat();
+        if let Some(len_vec) = storage.get(&len_key) {
+            let len_bytes = len_vec.as_slice().try_into().map_err(|err| StdError::parse_err("u32", err))?;
+            let len = u32::from_be_bytes(len_bytes);
+            Ok(len)
+        } else {
+            Ok(0)
+        }
+    }
+    /// checks if the collection has any elements
+    pub fn is_empty<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<bool> {
+        Ok(self.get_len(storage)? == 0)
+    }
+    /// gets the element at pos if within bounds
+    pub fn get_at<S: ReadonlyStorage>(&self, storage: &S, pos: u32) -> StdResult<T> {
+        let len = self.get_len(storage)?;
+        if pos > len { return Err(StdError::generic_err("AppendStore access out of bounds")); }
+        self.get_at_unchecked(storage, pos)
+    }
+    /// tries to get the element at pos
+    fn get_at_unchecked<S: ReadonlyStorage>(&self, storage: &S, pos: u32) -> StdResult<T> {
+        let key = pos.to_be_bytes();
+        self.load_impl(storage, &key)
     }
 
-    fn set_at_unchecked(&mut self, pos: u32, item: &T) -> StdResult<()> {
-        let serialized = Ser::serialize(item)?;
-        self.storage.set(&pos.to_be_bytes(), &serialized);
+    /// Set the length of the collection
+    fn set_len<S: Storage>(&self, storage: &mut S, len: u32) {
+        let len_key = [self.as_slice(), LEN_KEY].concat();
+        storage.set(&len_key, &len.to_be_bytes());
+    }
+    /// Clear the collection
+    pub fn clear<S: Storage>(&self, storage: &mut S) {
+        self.set_len(storage, 0);
+    }
+    /// Replaces data at a position within bounds
+    pub fn set_at<S: Storage>(&self, storage: &mut S, pos: u32, item: &T) -> StdResult<()> {
+        let len = self.get_len(storage)?;
+        if pos >= len { return Err(StdError::generic_err("AppendStore access out of bounds")); }
+        self.set_at_unchecked(storage, pos, item)
+    }
+    /// Sets data at a given index
+    fn set_at_unchecked<S: Storage>(&self, storage: &mut S, pos: u32, item: &T) -> StdResult<()> {
+        self.save_impl(storage, &pos.to_be_bytes(), item)
+    }
+    /// Pushes an item to AppendStorage
+    pub fn push<S: Storage>(&self, storage: &mut S, item: &T) -> StdResult<()> {
+        let len = self.get_len(storage)?;
+        self.set_at_unchecked(storage, len, item)?;
+        self.set_len(storage, len + 1);
         Ok(())
     }
-
-    /// Append an item to the end of the collection.
-    ///
-    /// This operation has a constant cost.
-    pub fn push(&mut self, item: &T) -> StdResult<()> {
-        self.set_at_unchecked(self.len, item)?;
-        self.set_length(self.len + 1);
-        Ok(())
-    }
-
-    /// Pop the last item off the collection
-    pub fn pop(&mut self) -> StdResult<T> {
-        if let Some(len) = self.len.checked_sub(1) {
-            let item = self.get_at_unchecked(len);
-            self.set_length(len);
+    /// Pops an item from AppendStore
+    pub fn pop<S: Storage>(&self, storage: &mut S) -> StdResult<T> {
+        if let Some(len) = self.get_len(storage)?.checked_sub(1) { 
+            let item = self.get_at_unchecked(storage, len);
+            self.set_len(storage, len);
             item
         } else {
             Err(StdError::generic_err("Can not pop from empty AppendStore"))
         }
     }
+    /// Remove an element from the collection at the specified position.
+    ///
+    /// Removing the last element has a constant cost.
+    /// The cost of removing from the middle/start will depend on the proximity to tail of the list.
+    /// All elements above the specified position will be shifted in storage.
+    ///
+    /// Removing an element from the start (head) of the collection
+    /// has the worst runtime and gas cost.
+    pub fn remove<S: Storage>(&self, storage: &mut S, pos: u32) -> StdResult<T> {
+        let len = self.get_len(storage)?;
 
-    /// Clear the collection
-    pub fn clear(&mut self) {
-        self.set_length(0);
+        if pos >= len {
+            return Err(StdError::generic_err("DequeStorage access out of bounds"));
+        }
+        let item = self.get_at_unchecked(storage, pos);
+        
+        for i in pos..(len - 1) {
+            let element_to_shift = self.get_at_unchecked(storage, i + 1)?;
+            self.set_at_unchecked(storage, i, &element_to_shift)?;
+        }
+        self.set_len(storage, len - 1);
+        item
     }
-
-    /// Set the length of the collection
-    fn set_length(&mut self, len: u32) {
-        self.storage.set(LEN_KEY, &len.to_be_bytes());
-        self.len = len;
+    /// Returns a readonly iterator
+    pub fn iter<S: ReadonlyStorage>(&self, storage: &'a S) -> StdResult<AppendStoreIter<T, S, Ser>> {
+        let len = self.get_len(storage)?;
+        let iter = AppendStoreIter::new(self, storage, 0, len);
+        Ok(iter)
     }
+    /// does paging with the given parameters
+    pub fn paging<S: ReadonlyStorage>(&self, storage: &S, start_page: u32, size: u32) -> StdResult<Vec<T>> {
+        self.iter(storage)?.skip((start_page as usize)*(size as usize)).take(size as usize).collect()
+    }
+}
 
-    /// Gain access to the implementation of the immutable methods
-    fn as_readonly(&self) -> AppendStore<T, S, Ser> {
-        AppendStore {
-            storage: self.storage,
-            item_type: self.item_type,
-            serialization_type: self.serialization_type,
-            len: self.len,
+impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> PrefixedTypedStorage<T, Ser> for AppendStore<'a, T, Ser> {
+    fn as_slice(&self) -> &[u8] {
+        if let Some(prefix) = &self.prefix {
+            prefix
+        } else {
+            self.namespace
         }
     }
 }
 
-// Doing this is fundamentally flawed because it would theoretically permanently turn the `&mut S`
-// into a `&S`, preventing any further mutation of the entire storage.
-// In practice this just gave annoying lifetime errors either here or at `AppendStoreMut::as_readonly`.
-/*
-impl<'a, T, S> IntoIterator for AppendStoreMut<'a, T, S>
-where
-    T: 'a + Serialize + DeserializeOwned,
-    S: Storage,
-{
-    type Item = StdResult<T>;
-    type IntoIter = Iter<'a, T, S>;
-
-    fn into_iter(self) -> Iter<'a, T, S> {
-        Iter {
-            storage: self.as_readonly(),
-            start: 0,
-            end: self.len,
-        }
-    }
-}
-*/
-
-// Readonly append-store
-
-/// A type allowing only reads from an append store. useful in the context_, u8 of queries.
-#[derive(Debug)]
-pub struct AppendStore<'a, T, S, Ser = Bincode2>
+/// An iterator over the contents of the append store.
+pub struct AppendStoreIter<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
     Ser: Serde,
 {
+    append_store: &'a AppendStore<'a, T, Ser>,
     storage: &'a S,
-    item_type: PhantomData<*const T>,
-    serialization_type: PhantomData<*const Ser>,
-    len: u32,
+    start: u32,
+    end: u32,
 }
 
-impl<'a, T, S> AppendStore<'a, T, S, Bincode2>
-where
-    T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+impl<'a, T, S, Ser> AppendStoreIter<'a, T, S, Ser>
+    where
+        T: Serialize + DeserializeOwned,
+        S: ReadonlyStorage,
+        Ser: Serde,
 {
-    /// Try to use the provided storage as an AppendStore.
-    ///
-    /// Returns None if the provided storage doesn't seem like an AppendStore.
-    /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach(storage: &'a S) -> Option<StdResult<Self>> {
-        AppendStore::attach_with_serialization(storage, Bincode2)
-    }
-}
-
-impl<'a, T, S, Ser> AppendStore<'a, T, S, Ser>
-where
-    T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
-    Ser: Serde,
-{
-    /// Try to use the provided storage as an AppendStore.
-    /// This method allows choosing the serialization format you want to use.
-    ///
-    /// Returns None if the provided storage doesn't seem like an AppendStore.
-    /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_with_serialization(storage: &'a S, _ser: Ser) -> Option<StdResult<Self>> {
-        let len_vec = storage.get(LEN_KEY)?;
-        Some(AppendStore::new(storage, len_vec))
-    }
-
-    fn new(storage: &'a S, len_vec: Vec<u8>) -> StdResult<Self> {
-        let len_array = len_vec
-            .as_slice()
-            .try_into()
-            .map_err(|err| StdError::parse_err("u32", err))?;
-        let len = u32::from_be_bytes(len_array);
-
-        Ok(Self {
+    /// constructor
+    pub fn new(
+        append_store: &'a AppendStore<'a, T, Ser>,
+        storage: &'a S,
+        start: u32,
+        end: u32
+    ) -> Self {
+        Self {
+            append_store,
             storage,
-            item_type: PhantomData,
-            serialization_type: PhantomData,
-            len,
-        })
-    }
-
-    pub fn len(&self) -> u32 {
-        self.len
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-
-    pub fn readonly_storage(&self) -> &S {
-        self.storage
-    }
-
-    /// Return an iterator over the items in the collection
-    pub fn iter(&self) -> Iter<'a, T, S, Ser> {
-        Iter {
-            storage: AppendStore::clone(self),
-            start: 0,
-            end: self.len,
-        }
-    }
-
-    /// Get the value stored at a given position.
-    ///
-    /// # Errors
-    /// Will return an error if pos is out of bounds or if an item is not found.
-    pub fn get_at(&self, pos: u32) -> StdResult<T> {
-        if pos >= self.len {
-            return Err(StdError::generic_err("AppendStorage access out of bounds"));
-        }
-        self.get_at_unchecked(pos)
-    }
-
-    fn get_at_unchecked(&self, pos: u32) -> StdResult<T> {
-        let serialized = self.storage.get(&pos.to_be_bytes()).ok_or_else(|| {
-            StdError::generic_err(format!("No item in AppendStorage at position {}", pos))
-        })?;
-        Ser::deserialize(&serialized)
-    }
-}
-
-impl<'a, T, S, Ser> IntoIterator for AppendStore<'a, T, S, Ser>
-where
-    T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
-    Ser: Serde,
-{
-    type Item = StdResult<T>;
-    type IntoIter = Iter<'a, T, S, Ser>;
-
-    fn into_iter(self) -> Iter<'a, T, S, Ser> {
-        let end = self.len;
-        Iter {
-            storage: self,
-            start: 0,
+            start,
             end,
         }
     }
 }
 
-// Manual `Clone` implementation because the default one tries to clone the Storage??
-impl<'a, T, S, Ser> Clone for AppendStore<'a, T, S, Ser>
-where
-    T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
-    Ser: Serde,
-{
-    fn clone(&self) -> Self {
-        Self {
-            storage: self.storage,
-            item_type: self.item_type,
-            serialization_type: self.serialization_type,
-            len: self.len,
-        }
-    }
-}
-
-// Owning iterator
-
-/// An iterator over the contents of the append store.
-#[derive(Debug)]
-pub struct Iter<'a, T, S, Ser>
-where
-    T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
-    Ser: Serde,
-{
-    storage: AppendStore<'a, T, S, Ser>,
-    start: u32,
-    end: u32,
-}
-
-impl<'a, T, S, Ser> Iterator for Iter<'a, T, S, Ser>
-where
-    T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
-    Ser: Serde,
+impl<'a, T, S, Ser> Iterator for AppendStoreIter<'a, T, S, Ser>
+    where
+        T: Serialize + DeserializeOwned,
+        S: ReadonlyStorage,
+        Ser: Serde,
 {
     type Item = StdResult<T>;
 
@@ -374,7 +208,7 @@ where
         if self.start >= self.end {
             return None;
         }
-        let item = self.storage.get_at(self.start);
+        let item = self.append_store.get_at(self.storage, self.start);
         self.start += 1;
         Some(item)
     }
@@ -397,18 +231,18 @@ where
     }
 }
 
-impl<'a, T, S, Ser> DoubleEndedIterator for Iter<'a, T, S, Ser>
-where
-    T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
-    Ser: Serde,
+impl<'a, T, S, Ser> DoubleEndedIterator for AppendStoreIter<'a, T, S, Ser>
+    where
+        T: Serialize + DeserializeOwned,
+        S: ReadonlyStorage,
+        Ser: Serde,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.start >= self.end {
             return None;
         }
         self.end -= 1;
-        let item = self.storage.get_at(self.end);
+        let item = self.append_store.get_at(self.storage, self.end);
         Some(item)
     }
 
@@ -425,36 +259,35 @@ where
 }
 
 // This enables writing `append_store.iter().skip(n).rev()`
-impl<'a, T, S, Ser> ExactSizeIterator for Iter<'a, T, S, Ser>
+impl<'a, T, S, Ser> ExactSizeIterator for AppendStoreIter<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
     Ser: Serde,
-{
-}
+{}
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::testing::MockStorage;
+    use cosmwasm_std::{testing::{MockStorage}};
 
-    use secret_toolkit_serialization::Json;
+    use secret_toolkit_serialization::{Json};
 
     use super::*;
 
     #[test]
     fn test_push_pop() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let mut append_store = AppendStoreMut::attach_or_create(&mut storage)?;
-        append_store.push(&1234)?;
-        append_store.push(&2143)?;
-        append_store.push(&3412)?;
-        append_store.push(&4321)?;
+        let append_store: AppendStore<i32> = AppendStore::new(b"test");
+        append_store.push(&mut storage, &1234)?;
+        append_store.push(&mut storage, &2143)?;
+        append_store.push(&mut storage, &3412)?;
+        append_store.push(&mut storage, &4321)?;
 
-        assert_eq!(append_store.pop(), Ok(4321));
-        assert_eq!(append_store.pop(), Ok(3412));
-        assert_eq!(append_store.pop(), Ok(2143));
-        assert_eq!(append_store.pop(), Ok(1234));
-        assert!(append_store.pop().is_err());
+        assert_eq!(append_store.pop(&mut storage), Ok(4321));
+        assert_eq!(append_store.pop(&mut storage), Ok(3412));
+        assert_eq!(append_store.pop(&mut storage), Ok(2143));
+        assert_eq!(append_store.pop(&mut storage), Ok(1234));
+        assert!(append_store.pop(&mut storage).is_err());
 
         Ok(())
     }
@@ -462,21 +295,21 @@ mod tests {
     #[test]
     fn test_iterator() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let mut append_store = AppendStoreMut::attach_or_create(&mut storage)?;
-        append_store.push(&1234)?;
-        append_store.push(&2143)?;
-        append_store.push(&3412)?;
-        append_store.push(&4321)?;
+        let append_store: AppendStore<i32> = AppendStore::new(b"test");
+        append_store.push(&mut storage, &1234)?;
+        append_store.push(&mut storage, &2143)?;
+        append_store.push(&mut storage, &3412)?;
+        append_store.push(&mut storage, &4321)?;
 
         // iterate twice to make sure nothing changed
-        let mut iter = append_store.iter();
+        let mut iter = append_store.iter(&storage)?;
         assert_eq!(iter.next(), Some(Ok(1234)));
         assert_eq!(iter.next(), Some(Ok(2143)));
         assert_eq!(iter.next(), Some(Ok(3412)));
         assert_eq!(iter.next(), Some(Ok(4321)));
         assert_eq!(iter.next(), None);
 
-        let mut iter = append_store.iter();
+        let mut iter = append_store.iter(&storage)?;
         assert_eq!(iter.next(), Some(Ok(1234)));
         assert_eq!(iter.next(), Some(Ok(2143)));
         assert_eq!(iter.next(), Some(Ok(3412)));
@@ -484,7 +317,7 @@ mod tests {
         assert_eq!(iter.next(), None);
 
         // make sure our implementation of `nth` doesn't break anything
-        let mut iter = append_store.iter().skip(2);
+        let mut iter = append_store.iter(&storage)?.skip(2);
         assert_eq!(iter.next(), Some(Ok(3412)));
         assert_eq!(iter.next(), Some(Ok(4321)));
         assert_eq!(iter.next(), None);
@@ -495,13 +328,13 @@ mod tests {
     #[test]
     fn test_reverse_iterator() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let mut append_store = AppendStoreMut::attach_or_create(&mut storage)?;
-        append_store.push(&1234)?;
-        append_store.push(&2143)?;
-        append_store.push(&3412)?;
-        append_store.push(&4321)?;
+        let append_store: AppendStore<i32> = AppendStore::new(b"test");
+        append_store.push(&mut storage, &1234)?;
+        append_store.push(&mut storage, &2143)?;
+        append_store.push(&mut storage, &3412)?;
+        append_store.push(&mut storage, &4321)?;
 
-        let mut iter = append_store.iter().rev();
+        let mut iter = append_store.iter(&storage)?.rev();
         assert_eq!(iter.next(), Some(Ok(4321)));
         assert_eq!(iter.next(), Some(Ok(3412)));
         assert_eq!(iter.next(), Some(Ok(2143)));
@@ -509,7 +342,7 @@ mod tests {
         assert_eq!(iter.next(), None);
 
         // iterate twice to make sure nothing changed
-        let mut iter = append_store.iter().rev();
+        let mut iter = append_store.iter(&storage)?.rev();
         assert_eq!(iter.next(), Some(Ok(4321)));
         assert_eq!(iter.next(), Some(Ok(3412)));
         assert_eq!(iter.next(), Some(Ok(2143)));
@@ -517,13 +350,13 @@ mod tests {
         assert_eq!(iter.next(), None);
 
         // make sure our implementation of `nth_back` doesn't break anything
-        let mut iter = append_store.iter().rev().skip(2);
+        let mut iter = append_store.iter(&storage)?.rev().skip(2);
         assert_eq!(iter.next(), Some(Ok(2143)));
         assert_eq!(iter.next(), Some(Ok(1234)));
         assert_eq!(iter.next(), None);
 
         // make sure our implementation of `ExactSizeIterator` works well
-        let mut iter = append_store.iter().skip(2).rev();
+        let mut iter = append_store.iter(&storage)?.skip(2).rev();
         assert_eq!(iter.next(), Some(Ok(4321)));
         assert_eq!(iter.next(), Some(Ok(3412)));
         assert_eq!(iter.next(), None);
@@ -532,10 +365,121 @@ mod tests {
     }
 
     #[test]
-    fn test_attach_to_wrong_location() {
+    fn test_json_push_pop() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        assert!(AppendStore::<u8, _>::attach(&storage).is_none());
-        assert!(AppendStoreMut::<u8, _>::attach(&mut storage).is_none());
+        let append_store: AppendStore<i32, Json> = AppendStore::new(b"test");
+        append_store.push(&mut storage, &1234)?;
+        append_store.push(&mut storage, &2143)?;
+        append_store.push(&mut storage, &3412)?;
+        append_store.push(&mut storage, &4321)?;
+
+        assert_eq!(append_store.pop(&mut storage), Ok(4321));
+        assert_eq!(append_store.pop(&mut storage), Ok(3412));
+        assert_eq!(append_store.pop(&mut storage), Ok(2143));
+        assert_eq!(append_store.pop(&mut storage), Ok(1234));
+        assert!(append_store.pop(&mut storage).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_suffixed_pop() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let suffix: &[u8] = b"test_suffix";
+        let original_store: AppendStore<i32> = AppendStore::new(b"test");
+        let append_store = original_store.add_suffix(suffix);
+        append_store.push(&mut storage, &1234)?;
+        append_store.push(&mut storage, &2143)?;
+        append_store.push(&mut storage, &3412)?;
+        append_store.push(&mut storage, &4321)?;
+
+        assert_eq!(append_store.pop(&mut storage), Ok(4321));
+        assert_eq!(append_store.pop(&mut storage), Ok(3412));
+        assert_eq!(append_store.pop(&mut storage), Ok(2143));
+        assert_eq!(append_store.pop(&mut storage), Ok(1234));
+        assert!(append_store.pop(&mut storage).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_suffixed_reverse_iter() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let suffix: &[u8] = b"test_suffix";
+        let original_store: AppendStore<i32> = AppendStore::new(b"test");
+        let append_store = original_store.add_suffix(suffix);
+
+        append_store.push(&mut storage, &1234)?;
+        append_store.push(&mut storage, &2143)?;
+        append_store.push(&mut storage, &3412)?;
+        append_store.push(&mut storage, &4321)?;
+
+        assert_eq!(original_store.get_len(&storage)?, 0);
+
+        let mut iter = append_store.iter(&storage)?.rev();
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), None);
+
+        // iterate twice to make sure nothing changed
+        let mut iter = append_store.iter(&storage)?.rev();
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), None);
+
+        // make sure our implementation of `nth_back` doesn't break anything
+        let mut iter = append_store.iter(&storage)?.rev().skip(2);
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), None);
+
+        // make sure our implementation of `ExactSizeIterator` works well
+        let mut iter = append_store.iter(&storage)?.skip(2).rev();
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), None);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_suffix_iter() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let suffix: &[u8] = b"test_suffix";
+        let original_store: AppendStore<i32> = AppendStore::new(b"test");
+        let append_store = original_store.add_suffix(suffix);
+
+        append_store.push(&mut storage, &1234)?;
+        append_store.push(&mut storage, &2143)?;
+        append_store.push(&mut storage, &3412)?;
+        append_store.push(&mut storage, &4321)?;
+
+        // iterate twice to make sure nothing changed
+        let mut iter = append_store.iter(&storage)?;
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), None);
+
+        let mut iter = append_store.iter(&storage)?;
+        assert_eq!(iter.next(), Some(Ok(1234)));
+        assert_eq!(iter.next(), Some(Ok(2143)));
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), None);
+
+        // make sure our implementation of `nth` doesn't break anything
+        let mut iter = append_store.iter(&storage)?.skip(2);
+        assert_eq!(iter.next(), Some(Ok(3412)));
+        assert_eq!(iter.next(), Some(Ok(4321)));
+        assert_eq!(iter.next(), None);
+
+        Ok(())
     }
 
     #[test]
@@ -543,19 +487,110 @@ mod tests {
         // Check the default behavior is Bincode2
         let mut storage = MockStorage::new();
 
-        let mut append_store = AppendStoreMut::attach_or_create(&mut storage)?;
-        append_store.push(&1234)?;
+        let append_store: AppendStore<i32> = AppendStore::new(b"test");
+        append_store.push(&mut storage, &1234)?;
 
-        let bytes = append_store.readonly_storage().get(&0_u32.to_be_bytes());
+        let key = [append_store.as_slice(), &0_u32.to_be_bytes()].concat();
+        let bytes = storage.get(&key);
         assert_eq!(bytes, Some(vec![210, 4, 0, 0]));
 
         // Check that overriding the serializer with Json works
         let mut storage = MockStorage::new();
-        let mut append_store =
-            AppendStoreMut::attach_or_create_with_serialization(&mut storage, Json)?;
-        append_store.push(&1234)?;
-        let bytes = append_store.readonly_storage().get(&0_u32.to_be_bytes());
+        let json_append_store: AppendStore<i32, Json> = AppendStore::new(b"test2");
+        json_append_store.push(&mut storage, &1234)?;
+        
+        let key = [json_append_store.as_slice(), &0_u32.to_be_bytes()].concat();
+        let bytes = storage.get(&key);
         assert_eq!(bytes, Some(b"1234".to_vec()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_removes() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let deque_store: AppendStore<i32> = AppendStore::new(b"test");
+        deque_store.push(&mut storage, &1)?;
+        deque_store.push(&mut storage, &2)?;
+        deque_store.push(&mut storage, &3)?;
+        deque_store.push(&mut storage, &4)?;
+        deque_store.push(&mut storage, &5)?;
+        deque_store.push(&mut storage, &6)?;
+        deque_store.push(&mut storage, &7)?;
+        deque_store.push(&mut storage, &8)?;
+
+        assert!(deque_store.remove(&mut storage, 8).is_err());
+        assert!(deque_store.remove(&mut storage, 9).is_err());
+
+        assert_eq!(deque_store.remove(&mut storage, 7), Ok(8));
+        assert_eq!(deque_store.get_at(&storage, 6), Ok(7));
+        assert_eq!(deque_store.get_at(&storage, 5), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 4), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 3), Ok(4));
+        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        assert_eq!(deque_store.remove(&mut storage, 6), Ok(7));
+        assert_eq!(deque_store.get_at(&storage, 5), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 4), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 3), Ok(4));
+        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        assert_eq!(deque_store.remove(&mut storage, 3), Ok(4));
+        assert_eq!(deque_store.get_at(&storage, 4), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 3), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        assert_eq!(deque_store.remove(&mut storage, 1), Ok(2));
+        assert_eq!(deque_store.get_at(&storage, 3), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 2), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(3));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        assert_eq!(deque_store.remove(&mut storage, 2), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 2), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(3));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        assert_eq!(deque_store.remove(&mut storage, 1), Ok(3));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        assert_eq!(deque_store.remove(&mut storage, 1), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        assert_eq!(deque_store.remove(&mut storage, 0), Ok(1));
+
+        assert!(deque_store.remove(&mut storage, 0).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn test_paging() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let append_store: AppendStore<u32> = AppendStore::new(b"test");
+
+        let page_size: u32 = 5;
+        let total_items: u32 = 50;
+
+        for i in 0..total_items {
+            append_store.push(&mut storage, &i)?;
+        }
+
+        for i in 0..((total_items / page_size) - 1) {
+            let start_page = i;
+
+            let values = append_store.paging(&storage, start_page, page_size)?;
+
+            for (index, value) in values.iter().enumerate() {
+                assert_eq!(value, &(page_size * start_page + index as u32))
+            }
+        }
 
         Ok(())
     }
