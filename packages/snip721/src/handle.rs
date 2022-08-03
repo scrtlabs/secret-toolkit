@@ -1225,7 +1225,7 @@ mod tests {
 
         let test_msg = register_receive_nft_msg(
             code_hash.clone(),
-            also_implements_batch_receive_nft,
+            also_implements_batch_receive_nft.clone(),
             padding.clone(),
             256usize,
             callback_code_hash.clone(),
@@ -1805,7 +1805,7 @@ mod tests {
             token_id.clone(),
             view_owner.clone(),
             view_private_metadata.clone(),
-            expires,
+            expires.clone(),
             padding.clone(),
             256usize,
             code_hash.clone(),
