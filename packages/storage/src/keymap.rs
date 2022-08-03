@@ -61,9 +61,14 @@ impl<'a, K: Key, T: Serialize + DeserializeOwned, Ser: Serde> Keymap<'a, K, T, S
     /// This is used to produce a new Keymap. This can be used when you want to associate an Keymap to each user
     /// and you still get to define the Keymap as a static constant
     pub fn add_suffix(&self, suffix: &[u8]) -> Self {
+        let prefix = if let Some(prefix) = self.prefix.clone() {
+            [prefix, suffix.to_vec()].concat()
+        } else {
+            [self.namespace.to_vec(), suffix.to_vec()].concat()
+        };
         Self {
             namespace: self.namespace,
-            prefix: Some([self.prefix.clone().unwrap_or(vec![]), suffix.to_vec()].concat()),
+            prefix: Some(prefix),
             key_type: self.key_type,
             item_type: self.item_type,
             serialization_type: self.serialization_type,
@@ -757,9 +762,9 @@ mod tests {
         let (len, _) = x.size_hint();
         assert_eq!(len, 2);
 
-        assert_eq!(x.next().unwrap()?.1, foo1);
+        assert_eq!(x.next().unwrap()?, (b"key1".to_vec(), foo1));
 
-        assert_eq!(x.next().unwrap()?.1, foo2);
+        assert_eq!(x.next().unwrap()?, (b"key2".to_vec(), foo2));
 
         Ok(())
     }
@@ -842,6 +847,11 @@ mod tests {
         assert_eq!(original_keymap.get_len(&storage)?, 0);
         assert_eq!(foo1, read_foo1);
         assert_eq!(foo2, read_foo2);
+
+        let alternative_keymap: Keymap<String, Foo> = Keymap::new(b"alternative");
+        let alt_same_suffix = alternative_keymap.add_suffix(b"test_suffix");
+
+        assert!(alt_same_suffix.is_empty(&storage)?);
 
         // show that it loads foo1 before removal
         let before_remove_foo1 = keymap.get(&storage, &"key1".to_string());
