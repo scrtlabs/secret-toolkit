@@ -1,13 +1,17 @@
 use std::marker::PhantomData;
 
 use cosmwasm_std::{Storage, ReadonlyStorage, StdResult};
-use secret_toolkit_serialization::Serde;
+use secret_toolkit_serialization::{Serde, Bincode2};
 use serde::{Serialize, de::DeserializeOwned};
 
 use crate::typed_storage::TypedStorage;
 
 /// This storage struct is based on Item from cosmwasm-storage-plus
-pub struct Item<'a, T: Serialize + DeserializeOwned, Ser: Serde> {
+pub struct Item<'a, T, Ser = Bincode2>
+    where
+        T: Serialize + DeserializeOwned,
+        Ser: Serde,
+{
     storage_key: &'a [u8],
     item_type: PhantomData<T>,
     serialization_type: PhantomData<Ser>,
