@@ -1,13 +1,11 @@
-use cosmwasm_std::{
-    to_binary, Api, Binary, CanonicalAddr, Deps, Querier, StdError, StdResult, Storage,
-};
+use cosmwasm_std::{to_binary, Binary, CanonicalAddr, Deps, StdError, StdResult};
 use ripemd160::{Digest, Ripemd160};
 
 use crate::{Permissions, Permit, RevokedPermits, SignedPermit};
 use bech32::{ToBase32, Variant};
 use secret_toolkit_crypto::sha_256;
 
-pub fn validate<Permission: Permissions, S: Storage, A: Api, Q: Querier>(
+pub fn validate<Permission: Permissions>(
     deps: Deps,
     storage_prefix: &str,
     permit: &Permit<Permission>,
@@ -75,7 +73,7 @@ pub fn pubkey_to_account(pubkey: &Binary) -> CanonicalAddr {
 mod tests {
     use super::*;
     use crate::{PermitParams, PermitSignature, PubKey, TokenPermissions};
-    use cosmwasm_std::testing::{mock_dependencies, MockApi, MockQuerier, MockStorage};
+    use cosmwasm_std::testing::mock_dependencies;
 
     #[test]
     fn test_verify_permit() {
@@ -101,7 +99,7 @@ mod tests {
             }
         };
 
-        let address = validate::<_, MockStorage, MockApi, MockQuerier>(
+        let address = validate::<_>(
             deps.as_ref(),
             "test",
             &permit,
@@ -115,14 +113,7 @@ mod tests {
             "secret1399pyvvk3hvwgxwt3udkslsc5jl3rqv4yshfrl".to_string()
         );
 
-        let address = validate::<_, MockStorage, MockApi, MockQuerier>(
-            deps.as_ref(),
-            "test",
-            &permit,
-            token,
-            Some("cosmos"),
-        )
-        .unwrap();
+        let address = validate::<_>(deps.as_ref(), "test", &permit, token, Some("cosmos")).unwrap();
 
         assert_eq!(
             address,
