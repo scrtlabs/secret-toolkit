@@ -19,9 +19,6 @@ fn _page_from_position(position: u32) -> u32 {
     position / PAGE_SIZE
 }
 
-pub trait Key: Serialize + DeserializeOwned {}
-impl<T> Key for T where T: Serialize + DeserializeOwned {}
-
 #[derive(Serialize, Deserialize)]
 struct InternalItem<T>
 // where
@@ -33,7 +30,7 @@ struct InternalItem<T>
 
 pub struct Keymap<'a, K, T, Ser = Bincode2>
     where
-        K: Key,
+        K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
         Ser: Serde,
 {
@@ -47,7 +44,7 @@ pub struct Keymap<'a, K, T, Ser = Bincode2>
     serialization_type: PhantomData<Ser>,
 }
 
-impl<'a, K: Key, T: Serialize + DeserializeOwned, Ser: Serde> Keymap<'a, K, T, Ser>{
+impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde> Keymap<'a, K, T, Ser>{
     /// constructor
     pub const fn new(prefix: &'a [u8]) -> Self {
         Self {
@@ -76,7 +73,7 @@ impl<'a, K: Key, T: Serialize + DeserializeOwned, Ser: Serde> Keymap<'a, K, T, S
     }
 }
 
-impl<'a, K: Key, T: Serialize + DeserializeOwned, Ser: Serde> Keymap<'a, K, T, Ser> {
+impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde> Keymap<'a, K, T, Ser> {
     /// Serialize key
     fn serialize_key(&self, key: &K) -> StdResult<Vec<u8>> {
         Ser::serialize(key)
@@ -108,7 +105,7 @@ impl<'a, K: Key, T: Serialize + DeserializeOwned, Ser: Serde> Keymap<'a, K, T, S
     }
     /// Used to get the indexes stored in the given page number
     fn _get_indexes<S: ReadonlyStorage>(&self, storage: &S, page: u32) -> StdResult<Vec<Vec<u8>>> {
-        let indexes_key = [INDEXES, page.to_be_bytes().as_slice()].concat();
+        let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
         let maybe_serialized = storage.get(&indexes_key);
         match maybe_serialized {
             Some(serialized) => { Bincode2::deserialize(&serialized) },
@@ -117,7 +114,7 @@ impl<'a, K: Key, T: Serialize + DeserializeOwned, Ser: Serde> Keymap<'a, K, T, S
     }
     /// Set an indexes page
     fn _set_indexes_page<S: Storage>(&self, storage: &mut S, page: u32, indexes: &Vec<Vec<u8>>) -> StdResult<()> {
-        let indexes_key = [INDEXES, page.to_be_bytes().as_slice()].concat();
+        let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
         storage.set(&indexes_key, &Bincode2::serialize(indexes)?);
         Ok(())
     }
@@ -348,7 +345,7 @@ impl<'a, K: Key, T: Serialize + DeserializeOwned, Ser: Serde> Keymap<'a, K, T, S
     }
 }
 
-impl<'a, K: Key, T: Serialize + DeserializeOwned, Ser: Serde> PrefixedTypedStorage<InternalItem<T>, Ser> for Keymap<'a, K, T, Ser> {
+impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde> PrefixedTypedStorage<InternalItem<T>, Ser> for Keymap<'a, K, T, Ser> {
     fn as_slice(&self) -> &[u8] {
         if let Some(prefix) = &self.prefix {
             prefix
@@ -361,7 +358,7 @@ impl<'a, K: Key, T: Serialize + DeserializeOwned, Ser: Serde> PrefixedTypedStora
 /// An iterator over the keys of the Keymap.
 pub struct KeyIter<'a, K, T, S, Ser>
 where
-    K: Key,
+    K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
     Ser: Serde,
@@ -374,7 +371,7 @@ where
 
 impl<'a, K, T, S, Ser> KeyIter<'a, K, T, S, Ser>
     where
-        K: Key,
+        K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
         S: ReadonlyStorage,
         Ser: Serde,
@@ -397,7 +394,7 @@ impl<'a, K, T, S, Ser> KeyIter<'a, K, T, S, Ser>
 
 impl<'a, K, T, S, Ser> Iterator for KeyIter<'a, K, T, S, Ser>
     where
-        K: Key,
+        K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
         S: ReadonlyStorage,
         Ser: Serde,
@@ -437,7 +434,7 @@ impl<'a, K, T, S, Ser> Iterator for KeyIter<'a, K, T, S, Ser>
 
 impl<'a, K, T, S, Ser> DoubleEndedIterator for KeyIter<'a, K, T, S, Ser>
     where
-        K: Key,
+        K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
         S: ReadonlyStorage,
         Ser: Serde,
@@ -468,7 +465,7 @@ impl<'a, K, T, S, Ser> DoubleEndedIterator for KeyIter<'a, K, T, S, Ser>
 // This enables writing `append_store.iter().skip(n).rev()`
 impl<'a, K, T, S, Ser> ExactSizeIterator for KeyIter<'a, K, T, S, Ser>
 where
-    K: Key,
+    K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
     Ser: Serde,
@@ -479,7 +476,7 @@ where
 /// An iterator over the (key, item) pairs of the Keymap. Less efficient than just iterating over keys.
 pub struct KeyItemIter<'a, K, T, S, Ser>
 where
-    K: Key,
+    K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
     Ser: Serde,
@@ -492,7 +489,7 @@ where
 
 impl<'a, K, T, S, Ser> KeyItemIter<'a, K, T, S, Ser>
     where
-        K: Key,
+        K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
         S: ReadonlyStorage,
         Ser: Serde,
@@ -515,7 +512,7 @@ impl<'a, K, T, S, Ser> KeyItemIter<'a, K, T, S, Ser>
 
 impl<'a, K, T, S, Ser> Iterator for KeyItemIter<'a, K, T, S, Ser>
     where
-        K: Key,
+        K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
         S: ReadonlyStorage,
         Ser: Serde,
@@ -555,7 +552,7 @@ impl<'a, K, T, S, Ser> Iterator for KeyItemIter<'a, K, T, S, Ser>
 
 impl<'a, K, T, S, Ser> DoubleEndedIterator for KeyItemIter<'a, K, T, S, Ser>
     where
-        K: Key,
+        K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
         S: ReadonlyStorage,
         Ser: Serde,
@@ -586,7 +583,7 @@ impl<'a, K, T, S, Ser> DoubleEndedIterator for KeyItemIter<'a, K, T, S, Ser>
 // This enables writing `append_store.iter().skip(n).rev()`
 impl<'a, K, T, S, Ser> ExactSizeIterator for KeyItemIter<'a, K, T, S, Ser>
 where
-    K: Key,
+    K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
     Ser: Serde,

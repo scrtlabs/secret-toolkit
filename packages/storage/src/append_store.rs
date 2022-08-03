@@ -43,9 +43,14 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser>{
     /// This is used to produce a new AppendListStorage. This can be used when you want to associate an AppendListStorage to each user
     /// and you still get to define the AppendListStorage as a static constant
     pub fn add_suffix(&self, suffix: &[u8]) -> Self {
+        let prefix = if let Some(prefix) = self.prefix.clone() {
+            [prefix, suffix.to_vec()].concat()
+        } else {
+            [self.namespace.to_vec(), suffix.to_vec()].concat()
+        };
         Self {
             namespace: self.namespace,
-            prefix: Some([self.prefix.clone().unwrap_or(vec![]), suffix.to_vec()].concat()),
+            prefix: Some(prefix),
             item_type: self.item_type,
             serialization_type: self.serialization_type,
         }
