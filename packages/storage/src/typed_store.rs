@@ -3,38 +3,35 @@ use std::marker::PhantomData;
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
+use cosmwasm_std::{StdError, StdResult, Storage};
 
 use secret_toolkit_serialization::{Bincode2, Serde};
 
-pub struct TypedStoreMut<'a, T, S, Ser = Bincode2>
+pub struct TypedStoreMut<'a, T, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
-    storage: &'a mut S,
+    storage: &'a mut dyn Storage,
     item_type: PhantomData<*const T>,
     serialization_type: PhantomData<*const Ser>,
 }
 
-impl<'a, T, S> TypedStoreMut<'a, T, S, Bincode2>
+impl<'a, T> TypedStoreMut<'a, T, Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: Storage,
 {
-    pub fn attach(storage: &'a mut S) -> Self {
+    pub fn attach(storage: &'a mut dyn Storage) -> Self {
         Self::attach_with_serialization(storage, Bincode2)
     }
 }
 
-impl<'a, T, S, Ser> TypedStoreMut<'a, T, S, Ser>
+impl<'a, T, Ser> TypedStoreMut<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
-    pub fn attach_with_serialization(storage: &'a mut S, _serialization: Ser) -> Self {
+    pub fn attach_with_serialization(storage: &'a mut dyn Storage, _serialization: Ser) -> Self {
         Self {
             storage,
             serialization_type: PhantomData,
@@ -51,7 +48,7 @@ where
         self.storage.remove(key);
     }
 
-    fn as_readonly(&self) -> TypedStore<T, S, Ser> {
+    fn as_readonly(&self) -> TypedStore<T, Ser> {
         TypedStore {
             storage: self.storage,
             item_type: self.item_type,
@@ -68,34 +65,31 @@ where
     }
 }
 
-pub struct TypedStore<'a, T, S, Ser = Bincode2>
+pub struct TypedStore<'a, T, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
-    storage: &'a S,
+    storage: &'a dyn Storage,
     item_type: PhantomData<*const T>,
     serialization_type: PhantomData<*const Ser>,
 }
 
-impl<'a, T, S> TypedStore<'a, T, S, Bincode2>
+impl<'a, T> TypedStore<'a, T, Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
 {
-    pub fn attach(storage: &'a S) -> Self {
+    pub fn attach(storage: &'a dyn Storage) -> Self {
         Self::attach_with_serialization(storage, Bincode2)
     }
 }
 
-impl<'a, T, S, Ser> TypedStore<'a, T, S, Ser>
+impl<'a, T, Ser> TypedStore<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
-    pub fn attach_with_serialization(storage: &'a S, _serialization: Ser) -> Self {
+    pub fn attach_with_serialization(storage: &'a dyn Storage, _serialization: Ser) -> Self {
         Self {
             storage,
             serialization_type: PhantomData,
@@ -169,10 +163,11 @@ mod tests {
         assert!(typed_store_mut.may_load(b"key3")?.is_none());
 
         // Try to load it with the wrong format
-        let typed_store = TypedStore::<i32, _, _>::attach_with_serialization(&storage, Json);
+        let typed_store = TypedStore::<i32, _>::attach_with_serialization(&storage, Json);
         match typed_store.load(b"key2") {
-            Err(StdError::ParseErr { target, msg, .. })
-                if target == "i32" && msg == "Invalid type" => {}
+            Err(StdError::ParseErr {
+                target_type, msg, ..
+            }) if target_type == "i32" && msg == "Invalid type" => {}
             other => panic!("unexpected value: {:?}", other),
         }
 

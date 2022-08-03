@@ -8,7 +8,7 @@ use std::{convert::TryInto, marker::PhantomData};
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
+use cosmwasm_std::{StdError, StdResult, Storage};
 
 use secret_toolkit_serialization::{Bincode2, Serde};
 
@@ -17,30 +17,27 @@ const OFFSET_KEY: &[u8] = b"off";
 // Mutable deque_store
 
 /// A type allowing both reads from and writes to the deque store at a given storage location.
-#[derive(Debug)]
-pub struct DequeStoreMut<'a, T, S, Ser = Bincode2>
+pub struct DequeStoreMut<'a, T, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
-    storage: &'a mut S,
+    storage: &'a mut dyn Storage,
     item_type: PhantomData<*const T>,
     serialization_type: PhantomData<*const Ser>,
     len: u32,
     off: u32,
 }
 
-impl<'a, T, S> DequeStoreMut<'a, T, S, Bincode2>
+impl<'a, T> DequeStoreMut<'a, T, Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: Storage,
 {
     /// Try to use the provided storage as an DequeStore. If it doesn't seem to be one, then
     /// initialize it as one.
     ///
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_or_create(storage: &'a mut S) -> StdResult<Self> {
+    pub fn attach_or_create(storage: &'a mut dyn Storage) -> StdResult<Self> {
         DequeStoreMut::attach_or_create_with_serialization(storage, Bincode2)
     }
 
@@ -48,22 +45,24 @@ where
     ///
     /// Returns None if the provided storage doesn't seem like an DequeStore.
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach(storage: &'a mut S) -> Option<StdResult<Self>> {
+    pub fn attach(storage: &'a mut dyn Storage) -> Option<StdResult<Self>> {
         DequeStoreMut::attach_with_serialization(storage, Bincode2)
     }
 }
 
-impl<'a, T, S, Ser> DequeStoreMut<'a, T, S, Ser>
+impl<'a, T, Ser> DequeStoreMut<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
     /// Try to use the provided storage as an DequeStore. If it doesn't seem to be one, then
     /// initialize it as one. This method allows choosing the serialization format you want to use.
     ///
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_or_create_with_serialization(storage: &'a mut S, _ser: Ser) -> StdResult<Self> {
+    pub fn attach_or_create_with_serialization(
+        storage: &'a mut dyn Storage,
+        _ser: Ser,
+    ) -> StdResult<Self> {
         if let (Some(len_vec), Some(off_vec)) = (storage.get(LEN_KEY), (storage.get(OFFSET_KEY))) {
             Self::new(storage, &len_vec, &off_vec)
         } else {
@@ -80,13 +79,16 @@ where
     ///
     /// Returns None if the provided storage doesn't seem like an DequeStore.
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_with_serialization(storage: &'a mut S, _ser: Ser) -> Option<StdResult<Self>> {
+    pub fn attach_with_serialization(
+        storage: &'a mut dyn Storage,
+        _ser: Ser,
+    ) -> Option<StdResult<Self>> {
         let len_vec = storage.get(LEN_KEY)?;
         let off_vec = storage.get(OFFSET_KEY)?;
         Some(Self::new(storage, &len_vec, &off_vec))
     }
 
-    fn new(storage: &'a mut S, len_vec: &[u8], off_vec: &[u8]) -> StdResult<Self> {
+    fn new(storage: &'a mut dyn Storage, len_vec: &[u8], off_vec: &[u8]) -> StdResult<Self> {
         let len_array = len_vec
             .try_into()
             .map_err(|err| StdError::parse_err("u32", err))?;
@@ -113,16 +115,16 @@ where
         self.len == 0
     }
 
-    pub fn storage(&mut self) -> &mut S {
+    pub fn storage(&mut self) -> &mut dyn Storage {
         self.storage
     }
 
-    pub fn readonly_storage(&self) -> &S {
+    pub fn readonly_storage(&self) -> &dyn Storage {
         self.storage
     }
 
     /// Return an iterator over the items in the collection
-    pub fn iter(&self) -> Iter<T, S, Ser> {
+    pub fn iter(&self) -> Iter<T, Ser> {
         self.as_readonly().iter()
     }
 
@@ -256,7 +258,7 @@ where
     }
 
     /// Gain access to the implementation of the immutable methods
-    fn as_readonly(&self) -> DequeStore<T, S, Ser> {
+    fn as_readonly(&self) -> DequeStore<T, Ser> {
         DequeStore {
             storage: self.storage,
             item_type: self.item_type,
@@ -270,38 +272,34 @@ where
 // Readonly deque-store
 
 /// A type allowing only reads from an deque store. useful in the context_, u8 of queries.
-#[derive(Debug)]
-pub struct DequeStore<'a, T, S, Ser = Bincode2>
+pub struct DequeStore<'a, T, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
-    storage: &'a S,
+    storage: &'a dyn Storage,
     item_type: PhantomData<*const T>,
     serialization_type: PhantomData<*const Ser>,
     len: u32,
     off: u32,
 }
 
-impl<'a, T, S> DequeStore<'a, T, S, Bincode2>
+impl<'a, T> DequeStore<'a, T, Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
 {
     /// Try to use the provided storage as an DequeStore.
     ///
     /// Returns None if the provided storage doesn't seem like an DequeStore.
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach(storage: &'a S) -> Option<StdResult<Self>> {
+    pub fn attach(storage: &'a dyn Storage) -> Option<StdResult<Self>> {
         DequeStore::attach_with_serialization(storage, Bincode2)
     }
 }
 
-impl<'a, T, S, Ser> DequeStore<'a, T, S, Ser>
+impl<'a, T, Ser> DequeStore<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     /// Try to use the provided storage as an DequeStore.
@@ -309,13 +307,16 @@ where
     ///
     /// Returns None if the provided storage doesn't seem like an DequeStore.
     /// Returns Err if the contents of the storage can not be parsed.
-    pub fn attach_with_serialization(storage: &'a S, _ser: Ser) -> Option<StdResult<Self>> {
+    pub fn attach_with_serialization(
+        storage: &'a dyn Storage,
+        _ser: Ser,
+    ) -> Option<StdResult<Self>> {
         let len_vec = storage.get(LEN_KEY)?;
         let off_vec = storage.get(OFFSET_KEY)?;
         Some(DequeStore::new(storage, len_vec, off_vec))
     }
 
-    fn new(storage: &'a S, len_vec: Vec<u8>, off_vec: Vec<u8>) -> StdResult<Self> {
+    fn new(storage: &'a dyn Storage, len_vec: Vec<u8>, off_vec: Vec<u8>) -> StdResult<Self> {
         let len_array = len_vec
             .as_slice()
             .try_into()
@@ -344,12 +345,12 @@ where
         self.len == 0
     }
 
-    pub fn readonly_storage(&self) -> &S {
+    pub fn readonly_storage(&self) -> &dyn Storage {
         self.storage
     }
 
     /// Return an iterator over the items in the collection
-    pub fn iter(&self) -> Iter<'a, T, S, Ser> {
+    pub fn iter(&self) -> Iter<'a, T, Ser> {
         Iter {
             storage: DequeStore::clone(self),
             start: 0_u32,
@@ -382,16 +383,15 @@ where
     }
 }
 
-impl<'a, T, S, Ser> IntoIterator for DequeStore<'a, T, S, Ser>
+impl<'a, T, Ser> IntoIterator for DequeStore<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     type Item = StdResult<T>;
-    type IntoIter = Iter<'a, T, S, Ser>;
+    type IntoIter = Iter<'a, T, Ser>;
 
-    fn into_iter(self) -> Iter<'a, T, S, Ser> {
+    fn into_iter(self) -> Iter<'a, T, Ser> {
         let end = self.len;
         Iter {
             storage: self,
@@ -402,10 +402,9 @@ where
 }
 
 // Manual `Clone` implementation because the default one tries to clone the Storage??
-impl<'a, T, S, Ser> Clone for DequeStore<'a, T, S, Ser>
+impl<'a, T, Ser> Clone for DequeStore<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     fn clone(&self) -> Self {
@@ -422,22 +421,19 @@ where
 // Owning iterator
 
 /// An iterator over the contents of the deque store.
-#[derive(Debug)]
-pub struct Iter<'a, T, S, Ser>
+pub struct Iter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
-    storage: DequeStore<'a, T, S, Ser>,
+    storage: DequeStore<'a, T, Ser>,
     start: u32,
     end: u32,
 }
 
-impl<'a, T, S, Ser> Iterator for Iter<'a, T, S, Ser>
+impl<'a, T, Ser> Iterator for Iter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     type Item = StdResult<T>;
@@ -469,10 +465,9 @@ where
     }
 }
 
-impl<'a, T, S, Ser> DoubleEndedIterator for Iter<'a, T, S, Ser>
+impl<'a, T, Ser> DoubleEndedIterator for Iter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -497,10 +492,9 @@ where
 }
 
 // This enables writing `deque_store.iter().skip(n).rev()`
-impl<'a, T, S, Ser> ExactSizeIterator for Iter<'a, T, S, Ser>
+impl<'a, T, Ser> ExactSizeIterator for Iter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
 }
