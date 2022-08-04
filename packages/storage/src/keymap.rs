@@ -1,3 +1,4 @@
+use std::any::type_name;
 use std::{convert::TryInto};
 use std::marker::PhantomData;
 
@@ -7,8 +8,6 @@ use serde::{de::DeserializeOwned, Serialize};
 use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
 
 use secret_toolkit_serialization::{Serde, Bincode2};
-
-use crate::prefixed_typed_storage::PrefixedTypedStorage;
 
 const INDEXES: &[u8] = b"indexes";
 const MAP_LENGTH: &[u8] = b"length";
@@ -58,8 +57,8 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     /// This is used to produce a new Keymap. This can be used when you want to associate an Keymap to each user
     /// and you still get to define the Keymap as a static constant
     pub fn add_suffix(&self, suffix: &[u8]) -> Self {
-        let prefix = if let Some(prefix) = self.prefix.clone() {
-            [prefix, suffix.to_vec()].concat()
+        let prefix = if let Some(prefix) = &self.prefix {
+            [prefix.clone(), suffix.to_vec()].concat()
         } else {
             [self.namespace.to_vec(), suffix.to_vec()].concat()
         };
@@ -588,6 +587,65 @@ where
     S: ReadonlyStorage,
     Ser: Serde,
 {}
+
+trait PrefixedTypedStorage<T: Serialize + DeserializeOwned, Ser: Serde> {
+    fn as_slice(&self) -> &[u8];
+
+    /// Returns StdResult<T> from retrieving the item with the specified key.  Returns a
+    /// StdError::NotFound if there is no item with that key
+    ///
+    /// # Arguments
+    ///
+    /// * `storage` - a reference to the storage this item is in
+    /// * `key` - a byte slice representing the key to access the stored item
+    fn load_impl<S: ReadonlyStorage>(&self, storage: &S, key: &[u8]) -> StdResult<T> {
+        let prefixed_key = [self.as_slice(), key].concat();
+        Ser::deserialize(
+            &storage
+                .get(&prefixed_key)
+                .ok_or(StdError::not_found(type_name::<T>()))?,
+        )
+    }
+
+    /// Returns StdResult<Option<T>> from retrieving the item with the specified key.  Returns a
+    /// None if there is no item with that key
+    ///
+    /// # Arguments
+    ///
+    /// * `storage` - a reference to the storage this item is in
+    /// * `key` - a byte slice representing the key to access the stored item
+    fn may_load_impl<S: ReadonlyStorage>(&self, storage: &S, key: &[u8]) -> StdResult<Option<T>> {
+        let prefixed_key = [self.as_slice(), key].concat();
+        match storage.get(&prefixed_key) {
+            Some(value) => Ser::deserialize(&value).map(Some),
+            None => Ok(None),
+        }
+    }
+
+    /// Returns StdResult<()> resulting from saving an item to storage
+    ///
+    /// # Arguments
+    ///
+    /// * `storage` - a mutable reference to the storage this item should go to
+    /// * `key` - a byte slice representing the key to access the stored item
+    /// * `value` - a reference to the item to store
+    fn save_impl<S: Storage>(&self, storage: &mut S, key: &[u8], value: &T) -> StdResult<()> {
+        let prefixed_key = [self.as_slice(), key].concat();
+        storage.set(&prefixed_key, &Ser::serialize(value)?);
+        Ok(())
+    }
+
+    /// Removes an item from storage
+    ///
+    /// # Arguments
+    ///
+    /// * `storage` - a mutable reference to the storage this item is in
+    /// * `key` - a byte slice representing the key to access the stored item
+    fn remove_impl<S: Storage>(&self, storage: &mut S, key: &[u8]) {
+        let prefixed_key = [self.as_slice(), key].concat();
+        storage.remove(&prefixed_key);
+    }
+}
 
 
 #[cfg(test)]

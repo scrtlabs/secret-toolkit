@@ -4,6 +4,7 @@
 //! This is achieved by storing each item in a separate storage entry.
 //! A special key is reserved for storing the length of the collection so far.
 //! Another special key is reserved for storing the offset of the collection.
+use std::any::type_name;
 use std::{convert::TryInto};
 use std::marker::PhantomData;
 
@@ -12,8 +13,6 @@ use serde::{de::DeserializeOwned, Serialize};
 use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
 
 use secret_toolkit_serialization::{Serde, Bincode2};
-
-use crate::prefixed_typed_storage::PrefixedTypedStorage;
 
 const LEN_KEY: &[u8] = b"len";
 const OFFSET_KEY: &[u8] = b"off";
@@ -45,8 +44,8 @@ impl<'a, 'b, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser>
     /// This is used to produce a new DequeStorage. This can be used when you want to associate an AppendListStorage to each user
     /// and you still get to define the DequeStorage as a static constant
     pub fn add_suffix(&self, suffix: &[u8]) -> Self {
-        let prefix = if let Some(prefix) = self.prefix.clone() {
-            [prefix, suffix.to_vec()].concat()
+        let prefix = if let Some(prefix) = &self.prefix {
+            [prefix.clone(), suffix.to_vec()].concat()
         } else {
             [self.namespace.to_vec(), suffix.to_vec()].concat()
         };
@@ -210,13 +209,42 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 }
 
-impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> PrefixedTypedStorage<T, Ser> for DequeStore<'a, T, Ser> {
+impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     fn as_slice(&self) -> &[u8] {
         if let Some(prefix) = &self.prefix {
             prefix
         } else {
             self.namespace
         }
+    }
+
+    /// Returns StdResult<T> from retrieving the item with the specified key.  Returns a
+    /// StdError::NotFound if there is no item with that key
+    ///
+    /// # Arguments
+    ///
+    /// * `storage` - a reference to the storage this item is in
+    /// * `key` - a byte slice representing the key to access the stored item
+    fn load_impl<S: ReadonlyStorage>(&self, storage: &S, key: &[u8]) -> StdResult<T> {
+        let prefixed_key = [self.as_slice(), key].concat();
+        Ser::deserialize(
+            &storage
+                .get(&prefixed_key)
+                .ok_or(StdError::not_found(type_name::<T>()))?,
+        )
+    }
+
+    /// Returns StdResult<()> resulting from saving an item to storage
+    ///
+    /// # Arguments
+    ///
+    /// * `storage` - a mutable reference to the storage this item should go to
+    /// * `key` - a byte slice representing the key to access the stored item
+    /// * `value` - a reference to the item to store
+    fn save_impl<S: Storage>(&self, storage: &mut S, key: &[u8], value: &T) -> StdResult<()> {
+        let prefixed_key = [self.as_slice(), key].concat();
+        storage.set(&prefixed_key, &Ser::serialize(value)?);
+        Ok(())
     }
 }
 
