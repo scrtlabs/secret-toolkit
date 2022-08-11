@@ -44,7 +44,7 @@ pub trait ViewingKeyStore {
         storage: &mut dyn Storage,
         info: &MessageInfo,
         env: &Env,
-        account: &String,
+        account: &str,
         entropy: &[u8],
     ) -> String {
         let mut seed_key = Vec::with_capacity(Self::STORAGE_KEY.len() + SEED_KEY.len());
@@ -63,15 +63,15 @@ pub trait ViewingKeyStore {
     }
 
     /// Set a new viewing key based on a predetermined value.
-    fn set<S: Storage>(storage: &mut S, account: &String, viewing_key: &str) {
+    fn set<S: Storage>(storage: &mut S, account: &str, viewing_key: &str) {
         let mut balance_store = PrefixedStorage::new(storage, Self::STORAGE_KEY);
         balance_store.set(account.as_bytes(), &sha_256(viewing_key.as_bytes()));
     }
 
     /// Check if a viewing key matches an account.
-    fn check(storage: &dyn Storage, account: &String, viewing_key: &str) -> StdResult<()> {
+    fn check(storage: &dyn Storage, account: &str, viewing_key: &str) -> StdResult<()> {
         let balance_store = ReadonlyPrefixedStorage::new(storage, Self::STORAGE_KEY);
-        let expected_hash = balance_store.get(account.as_str().as_bytes());
+        let expected_hash = balance_store.get(account.as_bytes());
         let expected_hash = match &expected_hash {
             Some(hash) => hash.as_slice(),
             None => &[0u8; VIEWING_KEY_SIZE],
