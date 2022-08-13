@@ -355,7 +355,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 }
 
 /// An iterator over the keys of the Keymap.
-pub struct KeyIter<'a, K, T, S, Ser>
+pub struct KeyIter<'a, 'b, K, T, S, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
@@ -363,12 +363,14 @@ where
     Ser: Serde,
 {
     keymap: &'a Keymap<'a, K, T, Ser>,
-    storage: &'a S,
+    storage: &'b S,
     start: u32,
     end: u32,
+    saved_indexes: Option<Vec<Vec<u8>>>,
+    saved_index_page: Option<u32>,
 }
 
-impl<'a, K, T, S, Ser> KeyIter<'a, K, T, S, Ser>
+impl<'a, 'b, K, T, S, Ser> KeyIter<'a, 'b, K, T, S, Ser>
     where
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
@@ -378,7 +380,7 @@ impl<'a, K, T, S, Ser> KeyIter<'a, K, T, S, Ser>
     /// constructor
     pub fn new(
         keymap: &'a Keymap<'a, K, T, Ser>,
-        storage: &'a S,
+        storage: &'b S,
         start: u32,
         end: u32
     ) -> Self {
@@ -387,11 +389,13 @@ impl<'a, K, T, S, Ser> KeyIter<'a, K, T, S, Ser>
             storage,
             start,
             end,
+            saved_indexes: None,
+            saved_index_page: None,
         }
     }
 }
 
-impl<'a, K, T, S, Ser> Iterator for KeyIter<'a, K, T, S, Ser>
+impl<'a, 'b, K, T, S, Ser> Iterator for KeyIter<'a, 'b, K, T, S, Ser>
     where
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
@@ -405,9 +409,75 @@ impl<'a, K, T, S, Ser> Iterator for KeyIter<'a, K, T, S, Ser>
             return None;
         }
         let res: Option<Self::Item>;
-        match self.keymap.get_key_from_pos(self.storage, self.start) {
-            Ok(key) => { res = Some(Ok(key));},
-            Err(_) => { res = None; },
+        if let (Some(page), Some(indexes)) = (&self.saved_index_page, &self.saved_indexes) {
+            let current_page = _page_from_position(self.start);
+            if *page == current_page {
+                let current_idx = (self.start % PAGE_SIZE) as usize;
+                        if current_idx + 1 > indexes.len() {
+                            res = None;
+                        } else {
+                            let key_vec = &indexes[current_idx];
+                            match self.keymap.deserialize_key(key_vec) {
+                                Ok(key) => { res = Some(Ok(key)); },
+                                Err(e) => { res = Some(Err(e)); },
+                            }
+                        }
+            } else {
+                match self.keymap._get_indexes(self.storage, current_page) {
+                    Ok(new_indexes) => {
+                        let current_idx = (self.start % PAGE_SIZE) as usize;
+                        if current_idx + 1 > new_indexes.len() {
+                            res = None;
+                        } else {
+                            let key_vec = &new_indexes[current_idx];
+                            match self.keymap.deserialize_key(key_vec) {
+                                Ok(key) => { res = Some(Ok(key)); },
+                                Err(e) => { res = Some(Err(e)); },
+                            }
+                        }
+                        self.saved_index_page = Some(current_page);
+                        self.saved_indexes = Some(new_indexes);
+                    },
+                    Err(_) => {
+                        match self.keymap.get_key_from_pos(self.storage, self.start) {
+                            Ok(key) => { res = Some(Ok(key));},
+                            Err(_) => { res = None; },
+                        }
+                    },
+                }
+            }
+        } else {
+            let next_page = _page_from_position(self.start + 1);
+            let current_page = _page_from_position(self.start);
+            match self.keymap._get_indexes(self.storage, next_page) {
+                Ok(next_index) => {
+                    if current_page == next_page {
+                        let current_idx = (self.start % PAGE_SIZE) as usize;
+                        if current_idx + 1 > next_index.len() {
+                            res = None;
+                        } else {
+                            let key_vec = &next_index[current_idx];
+                            match self.keymap.deserialize_key(key_vec) {
+                                Ok(key) => { res = Some(Ok(key)); },
+                                Err(e) => { res = Some(Err(e)); },
+                            }
+                        }
+                    } else {
+                        match self.keymap.get_key_from_pos(self.storage, self.start) {
+                            Ok(key) => { res = Some(Ok(key));},
+                            Err(_) => { res = None; },
+                        }
+                    }
+                    self.saved_index_page = Some(next_page);
+                    self.saved_indexes = Some(next_index);
+                },
+                Err(_) => {
+                    match self.keymap.get_key_from_pos(self.storage, self.start) {
+                        Ok(key) => { res = Some(Ok(key));},
+                        Err(_) => { res = None; },
+                    }
+                },
+            }
         }
         self.start += 1;
         res
@@ -431,7 +501,7 @@ impl<'a, K, T, S, Ser> Iterator for KeyIter<'a, K, T, S, Ser>
     }
 }
 
-impl<'a, K, T, S, Ser> DoubleEndedIterator for KeyIter<'a, K, T, S, Ser>
+impl<'a, 'b, K, T, S, Ser> DoubleEndedIterator for KeyIter<'a, 'b, K, T, S, Ser>
     where
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
@@ -462,7 +532,7 @@ impl<'a, K, T, S, Ser> DoubleEndedIterator for KeyIter<'a, K, T, S, Ser>
 }
 
 // This enables writing `append_store.iter().skip(n).rev()`
-impl<'a, K, T, S, Ser> ExactSizeIterator for KeyIter<'a, K, T, S, Ser>
+impl<'a, 'b, K, T, S, Ser> ExactSizeIterator for KeyIter<'a, 'b, K, T, S, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
@@ -473,7 +543,7 @@ where
 // ===============================================================================================
 
 /// An iterator over the (key, item) pairs of the Keymap. Less efficient than just iterating over keys.
-pub struct KeyItemIter<'a, K, T, S, Ser>
+pub struct KeyItemIter<'a, 'b, K, T, S, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
@@ -481,12 +551,14 @@ where
     Ser: Serde,
 {
     keymap: &'a Keymap<'a, K, T, Ser>,
-    storage: &'a S,
+    storage: &'b S,
     start: u32,
     end: u32,
+    saved_indexes: Option<Vec<Vec<u8>>>,
+    saved_index_page: Option<u32>,
 }
 
-impl<'a, K, T, S, Ser> KeyItemIter<'a, K, T, S, Ser>
+impl<'a, 'b, K, T, S, Ser> KeyItemIter<'a, 'b, K, T, S, Ser>
     where
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
@@ -496,7 +568,7 @@ impl<'a, K, T, S, Ser> KeyItemIter<'a, K, T, S, Ser>
     /// constructor
     pub fn new(
         keymap: &'a Keymap<'a, K, T, Ser>,
-        storage: &'a S,
+        storage: &'b S,
         start: u32,
         end: u32
     ) -> Self {
@@ -505,11 +577,13 @@ impl<'a, K, T, S, Ser> KeyItemIter<'a, K, T, S, Ser>
             storage,
             start,
             end,
+            saved_indexes: None,
+            saved_index_page: None,
         }
     }
 }
 
-impl<'a, K, T, S, Ser> Iterator for KeyItemIter<'a, K, T, S, Ser>
+impl<'a, 'b, K, T, S, Ser> Iterator for KeyItemIter<'a, 'b, K, T, S, Ser>
     where
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
@@ -523,9 +597,84 @@ impl<'a, K, T, S, Ser> Iterator for KeyItemIter<'a, K, T, S, Ser>
             return None;
         }
         let res: Option<Self::Item>;
-        match self.keymap.get_pair_from_pos(self.storage, self.start) {
-            Ok(pair) => { res = Some(Ok(pair)); },
-            Err(_) => { res = None; },
+        if let (Some(page), Some(indexes)) = (&self.saved_index_page, &self.saved_indexes) {
+            let current_page = _page_from_position(self.start);
+            if *page == current_page {
+                let current_idx = (self.start % PAGE_SIZE) as usize;
+                        if current_idx + 1 > indexes.len() {
+                            res = None;
+                        } else {
+                            let key_vec = &indexes[current_idx];
+                            match self.keymap.deserialize_key(key_vec) {
+                                Ok(key) => {
+                                    let item = self.keymap.get(self.storage, &key)?;
+                                    res = Some(Ok((key, item)));
+                                },
+                                Err(e) => { res = Some(Err(e)); },
+                            }
+                        }
+            } else {
+                match self.keymap._get_indexes(self.storage, current_page) {
+                    Ok(new_indexes) => {
+                        let current_idx = (self.start % PAGE_SIZE) as usize;
+                        if current_idx + 1 > new_indexes.len() {
+                            res = None;
+                        } else {
+                            let key_vec = &new_indexes[current_idx];
+                            match self.keymap.deserialize_key(key_vec) {
+                                Ok(key) => {
+                                    let item = self.keymap.get(self.storage, &key)?;
+                                    res = Some(Ok((key, item)));
+                                },
+                                Err(e) => { res = Some(Err(e)); },
+                            }
+                        }
+                        self.saved_index_page = Some(current_page);
+                        self.saved_indexes = Some(new_indexes);
+                    },
+                    Err(_) => {
+                        match self.keymap.get_pair_from_pos(self.storage, self.start) {
+                            Ok(pair) => { res = Some(Ok(pair));},
+                            Err(_) => { res = None; },
+                        }
+                    },
+                }
+            }
+        } else {
+            let next_page = _page_from_position(self.start + 1);
+            let current_page = _page_from_position(self.start);
+            match self.keymap._get_indexes(self.storage, next_page) {
+                Ok(next_index) => {
+                    if current_page == next_page {
+                        let current_idx = (self.start % PAGE_SIZE) as usize;
+                        if current_idx + 1 > next_index.len() {
+                            res = None;
+                        } else {
+                            let key_vec = &next_index[current_idx];
+                            match self.keymap.deserialize_key(key_vec) {
+                                Ok(key) => {
+                                    let item = self.keymap.get(self.storage, &key)?;
+                                    res = Some(Ok((key, item)));
+                                },
+                                Err(e) => { res = Some(Err(e)); },
+                            }
+                        }
+                    } else {
+                        match self.keymap.get_pair_from_pos(self.storage, self.start) {
+                            Ok(pair) => { res = Some(Ok(pair));},
+                            Err(_) => { res = None; },
+                        }
+                    }
+                    self.saved_index_page = Some(next_page);
+                    self.saved_indexes = Some(next_index);
+                },
+                Err(_) => {
+                    match self.keymap.get_pair_from_pos(self.storage, self.start) {
+                        Ok(key) => { res = Some(Ok(key));},
+                        Err(_) => { res = None; },
+                    }
+                },
+            }
         }
         self.start += 1;
         res
@@ -549,7 +698,7 @@ impl<'a, K, T, S, Ser> Iterator for KeyItemIter<'a, K, T, S, Ser>
     }
 }
 
-impl<'a, K, T, S, Ser> DoubleEndedIterator for KeyItemIter<'a, K, T, S, Ser>
+impl<'a, 'b, K, T, S, Ser> DoubleEndedIterator for KeyItemIter<'a, 'b, K, T, S, Ser>
     where
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
@@ -580,7 +729,7 @@ impl<'a, K, T, S, Ser> DoubleEndedIterator for KeyItemIter<'a, K, T, S, Ser>
 }
 
 // This enables writing `append_store.iter().skip(n).rev()`
-impl<'a, K, T, S, Ser> ExactSizeIterator for KeyItemIter<'a, K, T, S, Ser>
+impl<'a, 'b, K, T, S, Ser> ExactSizeIterator for KeyItemIter<'a, 'b, K, T, S, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,

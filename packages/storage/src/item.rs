@@ -52,6 +52,14 @@ where
     pub fn may_load<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<Option<T>> {
         self.may_load_impl(storage)
     }
+    
+    /// efficient way to see if any object is currently saved.
+    pub fn is_empty<S: ReadonlyStorage>(&self, storage: &S) -> bool {
+        match storage.get(self.as_slice()) {
+            Some(_) => true,
+            None => false,
+        }
+    }
 
     /// Loads the data, perform the specified action, and store the result
     /// in the database. This is shorthand for some common sequences, which may be useful.

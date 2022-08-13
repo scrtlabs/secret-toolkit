@@ -1,6 +1,6 @@
 # Secret Contract Development Toolkit - Storage Tools
 
-⚠️ This package is a sub-package of the `secret-toolkit` package. Please see its crate page for more context.
+⚠️ This package is a sub-package of the `secret-toolkit` package. Please see its crate page for more context. You need Rust 1.61+ to compile this package.
 
 This package contains many tools related to storage access patterns. This readme file assumes basic familiarity with basic cosmwasm storage, [click here to learn about this](https://docs.scrt.network/secret-network-documentation/development/secret-contracts/storage).
 
@@ -177,8 +177,8 @@ use secret_toolkit_storage::{Keymap}
 ```
 
 ```rust
-pub const ADDR_VOTE: Keymap<HumanAddr, Foo> = DequeStore::new(b"vote");
-pub const BET_STORE: Keymap<u32, BetInfo> = DequeStore::new(b"vote");
+pub const ADDR_VOTE: Keymap<HumanAddr, Foo> = Keymap::new(b"vote");
+pub const BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"vote");
 ```
 
 You can use Json serde by doing `Keymap<HumanAddr, Uint128, Json>` similar to all the other storage objects above. However, keep in mind that the Serde algorthm is user to serde both the stored object (`Uint128`) AND the key (`HumanAddr`).
