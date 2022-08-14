@@ -210,8 +210,8 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
     /// user facing method that checks if any item is stored with this key.
     pub fn contains<S: ReadonlyStorage>(&self, storage: &S, key: &K) -> bool {
-        match self._get_from_key(storage, key) {
-            Ok(_) => true,
+        match self.serialize_key(key) {
+            Ok(key_vec) => self.contains_impl(storage, &key_vec),
             Err(_) => false,
         }
     }
@@ -739,6 +739,17 @@ where
 
 trait PrefixedTypedStorage<T: Serialize + DeserializeOwned, Ser: Serde> {
     fn as_slice(&self) -> &[u8];
+
+    /// Returns bool from retrieving the item with the specified key.
+    ///
+    /// # Arguments
+    ///
+    /// * `storage` - a reference to the storage this item is in
+    /// * `key` - a byte slice representing the key to access the stored item
+    fn contains_impl<S: ReadonlyStorage>(&self, storage: &S, key: &[u8]) -> bool {
+        let prefixed_key = [self.as_slice(), key].concat();
+        storage.get(&prefixed_key).is_some()
+    }
 
     /// Returns StdResult<T> from retrieving the item with the specified key.  Returns a
     /// StdError::NotFound if there is no item with that key
