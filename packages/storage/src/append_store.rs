@@ -194,6 +194,17 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     }
 }
 
+impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Clone for AppendStore<'a, T, Ser> {
+    fn clone(&self) -> Self {
+        Self {
+            namespace: self.namespace.clone(),
+            prefix: self.prefix.clone(),
+            item_type: self.item_type.clone(),
+            serialization_type: self.serialization_type.clone()
+        }
+    }
+}
+
 /// An iterator over the contents of the append store.
 pub struct AppendStoreIter<'a, T, S, Ser>
 where
@@ -201,7 +212,7 @@ where
     S: ReadonlyStorage,
     Ser: Serde,
 {
-    append_store: &'a AppendStore<'a, T, Ser>,
+    append_store: AppendStore<'a, T, Ser>,
     storage: &'a S,
     start: u32,
     end: u32,
@@ -221,7 +232,7 @@ impl<'a, T, S, Ser> AppendStoreIter<'a, T, S, Ser>
         end: u32
     ) -> Self {
         Self {
-            append_store,
+            append_store: append_store.clone(),
             storage,
             start,
             end,

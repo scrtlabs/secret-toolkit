@@ -354,16 +354,28 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 }
 
+impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde> Clone for Keymap<'a, K, T, Ser> {
+    fn clone(&self) -> Self {
+        Self {
+            namespace: self.namespace.clone(),
+            prefix: self.prefix.clone(),
+            key_type: self.key_type.clone(),
+            item_type: self.item_type.clone(),
+            serialization_type: self.serialization_type.clone()
+        }
+    }
+}
+
 /// An iterator over the keys of the Keymap.
-pub struct KeyIter<'a, 'b, K, T, S, Ser>
+pub struct KeyIter<'a, K, T, S, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
     Ser: Serde,
 {
-    keymap: &'a Keymap<'a, K, T, Ser>,
-    storage: &'b S,
+    keymap: Keymap<'a, K, T, Ser>,
+    storage: &'a S,
     start: u32,
     end: u32,
     saved_indexes: Option<Vec<Vec<u8>>>,
@@ -372,7 +384,7 @@ where
     saved_back_index_page: Option<u32>,
 }
 
-impl<'a, 'b, K, T, S, Ser> KeyIter<'a, 'b, K, T, S, Ser>
+impl<'a, K, T, S, Ser> KeyIter<'a, K, T, S, Ser>
     where
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
@@ -382,12 +394,12 @@ impl<'a, 'b, K, T, S, Ser> KeyIter<'a, 'b, K, T, S, Ser>
     /// constructor
     pub fn new(
         keymap: &'a Keymap<'a, K, T, Ser>,
-        storage: &'b S,
+        storage: &'a S,
         start: u32,
         end: u32
     ) -> Self {
         Self {
-            keymap,
+            keymap: keymap.clone(),
             storage,
             start,
             end,
@@ -399,7 +411,7 @@ impl<'a, 'b, K, T, S, Ser> KeyIter<'a, 'b, K, T, S, Ser>
     }
 }
 
-impl<'a, 'b, K, T, S, Ser> Iterator for KeyIter<'a, 'b, K, T, S, Ser>
+impl<'a, K, T, S, Ser> Iterator for KeyIter<'a, K, T, S, Ser>
     where
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
@@ -505,7 +517,7 @@ impl<'a, 'b, K, T, S, Ser> Iterator for KeyIter<'a, 'b, K, T, S, Ser>
     }
 }
 
-impl<'a, 'b, K, T, S, Ser> DoubleEndedIterator for KeyIter<'a, 'b, K, T, S, Ser>
+impl<'a, K, T, S, Ser> DoubleEndedIterator for KeyIter<'a, K, T, S, Ser>
     where
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
@@ -604,7 +616,7 @@ impl<'a, 'b, K, T, S, Ser> DoubleEndedIterator for KeyIter<'a, 'b, K, T, S, Ser>
 }
 
 // This enables writing `append_store.iter().skip(n).rev()`
-impl<'a, 'b, K, T, S, Ser> ExactSizeIterator for KeyIter<'a, 'b, K, T, S, Ser>
+impl<'a, K, T, S, Ser> ExactSizeIterator for KeyIter<'a, K, T, S, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
@@ -615,15 +627,15 @@ where
 // ===============================================================================================
 
 /// An iterator over the (key, item) pairs of the Keymap. Less efficient than just iterating over keys.
-pub struct KeyItemIter<'a, 'b, K, T, S, Ser>
+pub struct KeyItemIter<'a, K, T, S, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
     S: ReadonlyStorage,
     Ser: Serde,
 {
-    keymap: &'a Keymap<'a, K, T, Ser>,
-    storage: &'b S,
+    keymap: Keymap<'a, K, T, Ser>,
+    storage: &'a S,
     start: u32,
     end: u32,
     saved_indexes: Option<Vec<Vec<u8>>>,
@@ -632,7 +644,7 @@ where
     saved_back_index_page: Option<u32>,
 }
 
-impl<'a, 'b, K, T, S, Ser> KeyItemIter<'a, 'b, K, T, S, Ser>
+impl<'a, K, T, S, Ser> KeyItemIter<'a, K, T, S, Ser>
     where
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
@@ -642,12 +654,12 @@ impl<'a, 'b, K, T, S, Ser> KeyItemIter<'a, 'b, K, T, S, Ser>
     /// constructor
     pub fn new(
         keymap: &'a Keymap<'a, K, T, Ser>,
-        storage: &'b S,
+        storage: &'a S,
         start: u32,
         end: u32
     ) -> Self {
         Self {
-            keymap,
+            keymap: keymap.clone(),
             storage,
             start,
             end,
@@ -659,7 +671,7 @@ impl<'a, 'b, K, T, S, Ser> KeyItemIter<'a, 'b, K, T, S, Ser>
     }
 }
 
-impl<'a, 'b, K, T, S, Ser> Iterator for KeyItemIter<'a, 'b, K, T, S, Ser>
+impl<'a, K, T, S, Ser> Iterator for KeyItemIter<'a, K, T, S, Ser>
     where
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
@@ -774,7 +786,7 @@ impl<'a, 'b, K, T, S, Ser> Iterator for KeyItemIter<'a, 'b, K, T, S, Ser>
     }
 }
 
-impl<'a, 'b, K, T, S, Ser> DoubleEndedIterator for KeyItemIter<'a, 'b, K, T, S, Ser>
+impl<'a, K, T, S, Ser> DoubleEndedIterator for KeyItemIter<'a, K, T, S, Ser>
     where
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
@@ -882,7 +894,7 @@ impl<'a, 'b, K, T, S, Ser> DoubleEndedIterator for KeyItemIter<'a, 'b, K, T, S, 
 }
 
 // This enables writing `append_store.iter().skip(n).rev()`
-impl<'a, 'b, K, T, S, Ser> ExactSizeIterator for KeyItemIter<'a, 'b, K, T, S, Ser>
+impl<'a, K, T, S, Ser> ExactSizeIterator for KeyItemIter<'a, K, T, S, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
