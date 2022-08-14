@@ -331,13 +331,13 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Ok((key, item))
     }
     /// Returns a readonly iterator only for keys. More efficient than iter().
-    pub fn iter_keys<S: ReadonlyStorage>(&self, storage: &'a S) -> StdResult<KeyIter<K, T, S, Ser>> {
+    pub fn iter_keys<S: ReadonlyStorage>(self, storage: &'a S) -> StdResult<KeyIter<K, T, S, Ser>> {
         let len = self.get_len(storage)?;
         let iter = KeyIter::new(self, storage, 0, len);
         Ok(iter)
     }
     /// Returns a readonly iterator for (key-item) pairs
-    pub fn iter<S: ReadonlyStorage>(&self, storage: &'a S) -> StdResult<KeyItemIter<K, T, S, Ser>> {
+    pub fn iter<S: ReadonlyStorage>(self, storage: &'a S) -> StdResult<KeyItemIter<K, T, S, Ser>> {
         let len = self.get_len(storage)?;
         let iter = KeyItemIter::new(self, storage, 0, len);
         Ok(iter)
@@ -393,13 +393,13 @@ impl<'a, K, T, S, Ser> KeyIter<'a, K, T, S, Ser>
 {
     /// constructor
     pub fn new(
-        keymap: &'a Keymap<'a, K, T, Ser>,
+        keymap: Keymap<'a, K, T, Ser>,
         storage: &'a S,
         start: u32,
         end: u32
     ) -> Self {
         Self {
-            keymap: keymap.clone(),
+            keymap,
             storage,
             start,
             end,
@@ -653,13 +653,13 @@ impl<'a, K, T, S, Ser> KeyItemIter<'a, K, T, S, Ser>
 {
     /// constructor
     pub fn new(
-        keymap: &'a Keymap<'a, K, T, Ser>,
+        keymap: Keymap<'a, K, T, Ser>,
         storage: &'a S,
         start: u32,
         end: u32
     ) -> Self {
         Self {
-            keymap: keymap.clone(),
+            keymap: keymap,
             storage,
             start,
             end,
