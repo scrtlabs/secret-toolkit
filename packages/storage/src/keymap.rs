@@ -368,6 +368,8 @@ where
     end: u32,
     saved_indexes: Option<Vec<Vec<u8>>>,
     saved_index_page: Option<u32>,
+    saved_back_indexes: Option<Vec<Vec<u8>>>,
+    saved_back_index_page: Option<u32>,
 }
 
 impl<'a, 'b, K, T, S, Ser> KeyIter<'a, 'b, K, T, S, Ser>
@@ -391,6 +393,8 @@ impl<'a, 'b, K, T, S, Ser> KeyIter<'a, 'b, K, T, S, Ser>
             end,
             saved_indexes: None,
             saved_index_page: None,
+            saved_back_indexes: None,
+            saved_back_index_page: None,
         }
     }
 }
@@ -513,10 +517,78 @@ impl<'a, 'b, K, T, S, Ser> DoubleEndedIterator for KeyIter<'a, 'b, K, T, S, Ser>
             return None;
         }
         self.end -= 1;
-        match self.keymap.get_key_from_pos(self.storage, self.end) {
-            Ok(key) => Some(Ok(key)),
-            Err(_) => None,
+        let res;
+        if let (Some(page), Some(indexes)) = (&self.saved_back_index_page, &self.saved_back_indexes) {
+            let current_page = _page_from_position(self.end);
+            if *page == current_page {
+                let current_idx = (self.end % PAGE_SIZE) as usize;
+                        if current_idx + 1 > indexes.len() {
+                            res = None;
+                        } else {
+                            let key_vec = &indexes[current_idx];
+                            match self.keymap.deserialize_key(key_vec) {
+                                Ok(key) => { res = Some(Ok(key)); },
+                                Err(e) => { res = Some(Err(e)); },
+                            }
+                        }
+            } else {
+                match self.keymap._get_indexes(self.storage, current_page) {
+                    Ok(new_indexes) => {
+                        let current_idx = (self.end % PAGE_SIZE) as usize;
+                        if current_idx + 1 > new_indexes.len() {
+                            res = None;
+                        } else {
+                            let key_vec = &new_indexes[current_idx];
+                            match self.keymap.deserialize_key(key_vec) {
+                                Ok(key) => { res = Some(Ok(key)); },
+                                Err(e) => { res = Some(Err(e)); },
+                            }
+                        }
+                        self.saved_back_index_page = Some(current_page);
+                        self.saved_back_indexes = Some(new_indexes);
+                    },
+                    Err(_) => {
+                        match self.keymap.get_key_from_pos(self.storage, self.end) {
+                            Ok(key) => { res = Some(Ok(key));},
+                            Err(_) => { res = None; },
+                        }
+                    },
+                }
+            }
+        } else {
+            let next_page = _page_from_position(self.end - 1);
+            let current_page = _page_from_position(self.end);
+            match self.keymap._get_indexes(self.storage, next_page) {
+                Ok(next_index) => {
+                    if current_page == next_page {
+                        let current_idx = (self.end % PAGE_SIZE) as usize;
+                        if current_idx + 1 > next_index.len() {
+                            res = None;
+                        } else {
+                            let key_vec = &next_index[current_idx];
+                            match self.keymap.deserialize_key(key_vec) {
+                                Ok(key) => { res = Some(Ok(key)); },
+                                Err(e) => { res = Some(Err(e)); },
+                            }
+                        }
+                    } else {
+                        match self.keymap.get_key_from_pos(self.storage, self.end) {
+                            Ok(key) => { res = Some(Ok(key));},
+                            Err(_) => { res = None; },
+                        }
+                    }
+                    self.saved_back_index_page = Some(next_page);
+                    self.saved_back_indexes = Some(next_index);
+                },
+                Err(_) => {
+                    match self.keymap.get_key_from_pos(self.storage, self.end) {
+                        Ok(key) => { res = Some(Ok(key));},
+                        Err(_) => { res = None; },
+                    }
+                },
+            }
         }
+        res
     }
 
     // I implement `nth_back` manually because it is used in the standard library whenever
@@ -556,6 +628,8 @@ where
     end: u32,
     saved_indexes: Option<Vec<Vec<u8>>>,
     saved_index_page: Option<u32>,
+    saved_back_indexes: Option<Vec<Vec<u8>>>,
+    saved_back_index_page: Option<u32>,
 }
 
 impl<'a, 'b, K, T, S, Ser> KeyItemIter<'a, 'b, K, T, S, Ser>
@@ -579,6 +653,8 @@ impl<'a, 'b, K, T, S, Ser> KeyItemIter<'a, 'b, K, T, S, Ser>
             end,
             saved_indexes: None,
             saved_index_page: None,
+            saved_back_indexes: None,
+            saved_back_index_page: None,
         }
     }
 }
@@ -670,7 +746,7 @@ impl<'a, 'b, K, T, S, Ser> Iterator for KeyItemIter<'a, 'b, K, T, S, Ser>
                 },
                 Err(_) => {
                     match self.keymap.get_pair_from_pos(self.storage, self.start) {
-                        Ok(key) => { res = Some(Ok(key));},
+                        Ok(pair) => { res = Some(Ok(pair));},
                         Err(_) => { res = None; },
                     }
                 },
@@ -710,10 +786,87 @@ impl<'a, 'b, K, T, S, Ser> DoubleEndedIterator for KeyItemIter<'a, 'b, K, T, S, 
             return None;
         }
         self.end -= 1;
-        match self.keymap.get_pair_from_pos(self.storage, self.end) {
-            Ok(pair) => Some(Ok(pair)),
-            Err(_) => None,
+        let res;
+        if let (Some(page), Some(indexes)) = (&self.saved_back_index_page, &self.saved_back_indexes) {
+            let current_page = _page_from_position(self.end);
+            if *page == current_page {
+                let current_idx = (self.end % PAGE_SIZE) as usize;
+                        if current_idx + 1 > indexes.len() {
+                            res = None;
+                        } else {
+                            let key_vec = &indexes[current_idx];
+                            match self.keymap.deserialize_key(key_vec) {
+                                Ok(key) => {
+                                    let item = self.keymap.get(self.storage, &key)?;
+                                    res = Some(Ok((key, item)));
+                                },
+                                Err(e) => { res = Some(Err(e)); },
+                            }
+                        }
+            } else {
+                match self.keymap._get_indexes(self.storage, current_page) {
+                    Ok(new_indexes) => {
+                        let current_idx = (self.end % PAGE_SIZE) as usize;
+                        if current_idx + 1 > new_indexes.len() {
+                            res = None;
+                        } else {
+                            let key_vec = &new_indexes[current_idx];
+                            match self.keymap.deserialize_key(key_vec) {
+                                Ok(key) => {
+                                    let item = self.keymap.get(self.storage, &key)?;
+                                    res = Some(Ok((key, item)));
+                                },
+                                Err(e) => { res = Some(Err(e)); },
+                            }
+                        }
+                        self.saved_back_index_page = Some(current_page);
+                        self.saved_back_indexes = Some(new_indexes);
+                    },
+                    Err(_) => {
+                        match self.keymap.get_pair_from_pos(self.storage, self.end) {
+                            Ok(pair) => { res = Some(Ok(pair));},
+                            Err(_) => { res = None; },
+                        }
+                    },
+                }
+            }
+        } else {
+            let next_page = _page_from_position(self.end - 1);
+            let current_page = _page_from_position(self.end);
+            match self.keymap._get_indexes(self.storage, next_page) {
+                Ok(next_index) => {
+                    if current_page == next_page {
+                        let current_idx = (self.end % PAGE_SIZE) as usize;
+                        if current_idx + 1 > next_index.len() {
+                            res = None;
+                        } else {
+                            let key_vec = &next_index[current_idx];
+                            match self.keymap.deserialize_key(key_vec) {
+                                Ok(key) => {
+                                    let item = self.keymap.get(self.storage, &key)?;
+                                    res = Some(Ok((key, item)));
+                                },
+                                Err(e) => { res = Some(Err(e)); },
+                            }
+                        }
+                    } else {
+                        match self.keymap.get_pair_from_pos(self.storage, self.end) {
+                            Ok(pair) => { res = Some(Ok(pair));},
+                            Err(_) => { res = None; },
+                        }
+                    }
+                    self.saved_back_index_page = Some(next_page);
+                    self.saved_back_indexes = Some(next_index);
+                },
+                Err(_) => {
+                    match self.keymap.get_pair_from_pos(self.storage, self.end) {
+                        Ok(pair) => { res = Some(Ok(pair));},
+                        Err(_) => { res = None; },
+                    }
+                },
+            }
         }
+        res
     }
 
     // I implement `nth_back` manually because it is used in the standard library whenever
