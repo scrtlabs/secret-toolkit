@@ -20,6 +20,5 @@ cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "0.10", opti
 secret-toolkit-serialization = { version = "0.3", path = "../serialization", optional = true }
 
 [features]
-cashmap = ["cosmwasm-storage", "serde", "secret-toolkit-serialization", "cosmwasm-std"]
 generational-store = ["secret-toolkit-serialization", "serde", "cosmwasm-std"]
 maxheap = ["secret-toolkit-serialization", "serde", "cosmwasm-std"]
