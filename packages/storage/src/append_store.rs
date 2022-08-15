@@ -170,6 +170,17 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     }
 }
 
+impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Clone for AppendStore<'a, T, Ser> {
+    fn clone(&self) -> Self {
+        Self {
+            namespace: self.namespace.clone(),
+            prefix: self.prefix.clone(),
+            length: Mutex::new(None),
+            item_type: self.item_type.clone(),
+            serialization_type: self.serialization_type.clone() }
+    }
+}
+
 impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     fn as_slice(&self) -> &[u8] {
         if let Some(prefix) = &self.prefix {

@@ -1,6 +1,6 @@
 # Secret Contract Development Toolkit - Storage Tools
 
-⚠️ This package is a sub-package of the `secret-toolkit` package. Please see its crate page for more context. You need Rust 1.61+ to compile this package.
+⚠️ This package is a sub-package of the `secret-toolkit` package. Please see its crate page for more context. You need Rust 1.63+ to compile this package.
 
 This package contains many tools related to storage access patterns. This readme file assumes basic familiarity with basic cosmwasm storage, [click here to learn about this](https://docs.scrt.network/secret-network-documentation/development/secret-contracts/storage).
 
@@ -28,7 +28,7 @@ This is the simplest storage object in this toolkit. It based on the similarly n
 
 #### **Initialize**
 
-This object is meant to be initialized as a constant in `state.rs`. However, it would also work perfectly fine if it was initialized during run time with a variable key (in this case though, you'd have to remind it what type of object is stored and its serde). Import it using the following lines:
+This object is meant to be initialized as a static constant in `state.rs`. However, it would also work perfectly fine if it was initialized during run time with a variable key (in this case though, you'd have to remind it what type of object is stored and its serde). Import it using the following lines:
 
 ```rust
 use secret_toolkit_storage::{Item}
@@ -37,7 +37,7 @@ use secret_toolkit_storage::{Item}
 And initialize it using the following lines:
 
 ```rust
-pub const OWNER: Item<HumanAddr> = Item::new(b"owner");
+pub static OWNER: Item<HumanAddr> = Item::new(b"owner");
 ```
 
 This uses Bincode2 to serde HumanAddr by default. To specify the Serde algorithm as Json, first import it from `secret-toolkit-serialization`
@@ -49,7 +49,7 @@ use secret_toolkit_serialization::{Bincode2, Json};
 then
 
 ```rust
-pub const SOME_ENUM: Item<SomeEnum, Json> = Item::new(b"some_enum");
+pub static SOME_ENUM: Item<SomeEnum, Json> = Item::new(b"some_enum");
 ```
 
 #### **Read/Write**
@@ -95,15 +95,17 @@ The same conventions from `Item` also apply here, that is:
 
 #### **Initialize**
 
-To import and intialize this storage object as a constant in `state.rs`, do the following:
+To import and intialize this storage object as a static constant in `state.rs`, do the following:
 
 ```rust
 use secret_toolkit::storage::{AppendStore}
 ```
 
 ```rust
-pub const COUNT_STORE: AppendStore<i32> = AppendStore::new(b"count");
+pub static COUNT_STORE: AppendStore<i32> = AppendStore::new(b"count");
 ```
+
+> ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
 
 Often times we need these storage objects to be associated to a user address or some other key that is variable. In this case, you need not initialize a completely new AppendStore inside `contract.rs`. Instead, you can create a new AppendStore by adding a suffix to an already existing AppendStore. This has the benefit of preventing you from having to rewrite the signature of the AppendStore. For example
 
@@ -133,34 +135,23 @@ let page_size: u32 = 5;
 let values = user_count_store.paging(&deps.storage, start_page, page_size)?;
 ```
 
-> ❗ When using any iterators in any of the storage objects, the following will result in a compiling error.
-
-```rust
-let iterator = COUNT_STORE.iter(&deps.storage)?;
-```
-
-However, the follwoing will not result in an error:
-
-```rust
-let append_store = COUNT_STORE
-let iterator = append_store.iter(&deps.storage)?;
-```
-
 ### **DequeStore**
 
 This is a storage wrapper based on AppendStore that replicates a double ended list. This storage object allows the user to efficiently pop/push items to either end of the list.
 
 #### **Init**
 
-To import and intialize this storage object as a constant in `state.rs`, do the following:
+To import and intialize this storage object as a static constant in `state.rs`, do the following:
 
 ```rust
 use secret_toolkit_storage::{DequeStore}
 ```
 
 ```rust
-pub const COUNT_STORE: DequeStore<i32> = DequeStore::new(b"count");
+pub static COUNT_STORE: DequeStore<i32> = DequeStore::new(b"count");
 ```
+
+> ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
 
 #### **Read/Write**
 
@@ -179,16 +170,18 @@ be returned in each page.
 
 #### **Init**
 
-To import and intialize this storage object as a constant in `state.rs`, do the following:
+To import and intialize this storage object as a static constant in `state.rs`, do the following:
 
 ```rust
 use secret_toolkit_storage::{Keymap}
 ```
 
 ```rust
-pub const ADDR_VOTE: Keymap<HumanAddr, Foo> = Keymap::new(b"vote");
-pub const BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"vote");
+pub static ADDR_VOTE: Keymap<HumanAddr, Foo> = Keymap::new(b"vote");
+pub static BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"vote");
 ```
+
+> ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
 
 You can use Json serde algorithm by changing the signature to `Keymap<HumanAddr, Uint128, Json>`, similar to all the other storage objects above. However, keep in mind that the Serde algorthm is used to serde both the stored object (`Uint128`) AND the key (`HumanAddr`).
 
