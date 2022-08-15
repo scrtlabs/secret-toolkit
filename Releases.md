@@ -1,6 +1,22 @@
 # Release notes for the Secret Toolkit
 
-## Next Release
+## v0.4.0
+This release mostly includes the work of @srdtrk in #53. Thanks Srdtrk!
+
+It revamps the `secret-toolkit-storage` package to make it more similar to `cw-storage-plus` and much easier
+to use. It also removes the `Cashmap` type from the incubator in favor of `KeyMap` in `secret-toolkit-storage`.
+
+This is a summary of the changes and additions in this release:
+* Minimum Rust version is bumped to the latest v1.63. This is because we want to use `Mutex::new` in a `const fn`.
+* No more distinction between `Readonly*` and `*Mut` types. Instead, methods take references or mutable references to the storage every time.
+* Usage of `PrefixedStore` is made mostly unnecessary.
+* Storage type's constructors are const functions, which means they can be initialized as global static variables.
+* Added `secret-toolkit::storage::Item` which is similar to `Item` from `cw-storage-plus` or `TypedStore` from `cosmwasm_storage` v0.10.
+* Added `secret-toolkit::storage::KeyMap` which is similar to `Cashmap`.
+* `Cashmap` is completely removed.
+
+A full guide to using the new `storage` types can be found
+[in the package's readme file](https://github.com/srdtrk/secret-toolkit/blob/3725530aebe149d14f7f3f1662844340eb27e015/packages/storage/Readme.md).
 
 ## secret-toolkit-incubator v0.3.1
 * Fixed compilation issue with Rust v1.61 (#46, #48)
