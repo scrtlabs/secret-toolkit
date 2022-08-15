@@ -4,7 +4,7 @@
 //! This is achieved by storing each item in a separate storage entry. A special key is reserved
 //! for storing the length of the collection so far.
 use std::any::type_name;
-use std::cell::Cell;
+use std::sync::Mutex;
 use std::{convert::TryInto};
 use std::marker::PhantomData;
 
@@ -26,7 +26,7 @@ pub struct AppendStore<'a, T, Ser = Bincode2>
     /// needed if any suffixes were added to the original namespace.
     /// therefore it is not necessarily same as the namespace.
     prefix: Option<Vec<u8>>,
-    length: Cell<Option<u32>>,
+    length: Mutex<Option<u32>>,
     item_type: PhantomData<T>,
     serialization_type: PhantomData<Ser>,
 }
@@ -37,7 +37,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser>{
         Self {
             namespace: prefix,
             prefix: None,
-            length: Cell::new(None),
+            length: Mutex::new(None),
             item_type: PhantomData,
             serialization_type: PhantomData,
         }
@@ -53,7 +53,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser>{
         Self {
             namespace: self.namespace,
             prefix: Some(prefix),
-            length: Cell::new(None),
+            length: Mutex::new(None),
             item_type: self.item_type,
             serialization_type: self.serialization_type,
         }
@@ -63,17 +63,18 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser>{
 impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     /// gets the length from storage, and otherwise sets it to 0
     pub fn get_len<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<u32> {
-        match self.length.get() {
+        let mut may_len = self.length.lock().unwrap();
+        match *may_len {
             Some(len) => { Ok(len) },
             None => {
                 let len_key = [self.as_slice(), LEN_KEY].concat();
                 if let Some(len_vec) = storage.get(&len_key) {
                     let len_bytes = len_vec.as_slice().try_into().map_err(|err| StdError::parse_err("u32", err))?;
                     let len = u32::from_be_bytes(len_bytes);
-                    self.length.set(Some(len));
+                    *may_len = Some(len);
                     Ok(len)
                 } else {
-                    self.length.set(Some(0));
+                    *may_len = Some(0);
                     Ok(0)
                 }
             },
@@ -98,8 +99,10 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     /// Set the length of the collection
     fn set_len<S: Storage>(&self, storage: &mut S, len: u32) {
         let len_key = [self.as_slice(), LEN_KEY].concat();
-        self.length.set(Some(len));
         storage.set(&len_key, &len.to_be_bytes());
+
+        let mut may_len = self.length.lock().unwrap();
+        *may_len = Some(len);
     }
     /// Clear the collection
     pub fn clear<S: Storage>(&self, storage: &mut S) {
@@ -342,29 +345,29 @@ mod tests {
         let mut storage = MockStorage::new();
         let append_store: AppendStore<i32> = AppendStore::new(b"test");
 
-        assert_eq!(append_store.length, Cell::new(None));
+        assert!(append_store.length.lock().unwrap().eq(&None));
         assert_eq!(append_store.get_len(&mut storage)?, 0);
-        assert_eq!(append_store.length, Cell::new(Some(0)));
+        assert!(append_store.length.lock().unwrap().eq(&Some(0)));
 
         append_store.push(&mut storage, &1234)?;
         append_store.push(&mut storage, &2143)?;
         append_store.push(&mut storage, &3412)?;
         append_store.push(&mut storage, &4321)?;
-        assert_eq!(append_store.length, Cell::new(Some(4)));
+        assert!(append_store.length.lock().unwrap().eq(&Some(4)));
         assert_eq!(append_store.get_len(&mut storage)?, 4);
 
         assert_eq!(append_store.pop(&mut storage), Ok(4321));
         assert_eq!(append_store.pop(&mut storage), Ok(3412));
-        assert_eq!(append_store.length, Cell::new(Some(2)));
+        assert!(append_store.length.lock().unwrap().eq(&Some(2)));
         assert_eq!(append_store.get_len(&mut storage)?, 2);
 
         assert_eq!(append_store.pop(&mut storage), Ok(2143));
         assert_eq!(append_store.pop(&mut storage), Ok(1234));
-        assert_eq!(append_store.length, Cell::new(Some(0)));
+        assert!(append_store.length.lock().unwrap().eq(&Some(0)));
         assert_eq!(append_store.get_len(&mut storage)?, 0);
 
         assert!(append_store.pop(&mut storage).is_err());
-        assert_eq!(append_store.length, Cell::new(Some(0)));
+        assert!(append_store.length.lock().unwrap().eq(&Some(0)));
         assert_eq!(append_store.get_len(&mut storage)?, 0);
 
         Ok(())

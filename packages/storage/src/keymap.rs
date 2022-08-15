@@ -1,5 +1,5 @@
 use std::any::type_name;
-use std::cell::{Cell};
+use std::sync::Mutex;
 use std::{convert::TryInto};
 use std::marker::PhantomData;
 
@@ -39,7 +39,7 @@ pub struct Keymap<'a, K, T, Ser = Bincode2>
     /// needed if any suffixes were added to the original namespace.
     /// therefore it is not necessarily same as the namespace.
     prefix: Option<Vec<u8>>,
-    length: Cell<Option<u32>>,
+    length: Mutex<Option<u32>>,
     key_type: PhantomData<K>,
     item_type: PhantomData<T>,
     serialization_type: PhantomData<Ser>,
@@ -51,7 +51,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Self {
             namespace: prefix,
             prefix: None,
-            length: Cell::new(None),
+            length: Mutex::new(None),
             key_type: PhantomData,
             item_type: PhantomData,
             serialization_type: PhantomData,
@@ -68,7 +68,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Self {
             namespace: self.namespace,
             prefix: Some(prefix),
-            length: Cell::new(None),
+            length: Mutex::new(None),
             key_type: self.key_type,
             item_type: self.item_type,
             serialization_type: self.serialization_type,
@@ -87,17 +87,18 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
     /// get total number of objects saved
     pub fn get_len<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<u32> {
-        match self.length.get() {
+        let mut may_len = self.length.lock().unwrap();
+        match *may_len {
             Some(length) => { Ok(length) },
             None => {
                 let len_key = [self.as_slice(), MAP_LENGTH].concat();
                 if let Some(len_vec) = storage.get(&len_key) {
                     let len_bytes = len_vec.as_slice().try_into().map_err(|err| StdError::parse_err("u32", err))?;
                     let len = u32::from_be_bytes(len_bytes);
-                    self.length.set(Some(len));
+                    *may_len = Some(len);
                     Ok(len)
                 } else {
-                    self.length.set(Some(0));
+                    *may_len = Some(0);
                     Ok(0)
                 }
             },
@@ -111,7 +112,10 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     fn set_len<S: Storage>(&self, storage: &mut S, len: u32) -> StdResult<()> {
         let len_key = [self.as_slice(), MAP_LENGTH].concat();
         storage.set(&len_key, &len.to_be_bytes());
-        self.length.set(Some(len));
+
+        let mut may_len = self.length.lock().unwrap();
+        *may_len = Some(len);
+
         Ok(())
     }
     /// Used to get the indexes stored in the given page number
@@ -1262,36 +1266,36 @@ mod tests {
             number: 1111,
         };
 
-        assert_eq!(keymap.length, Cell::new(None));
+        assert!(keymap.length.lock().unwrap().eq(&None));
         assert_eq!(keymap.get_len(&storage)?, 0);
-        assert_eq!(keymap.length, Cell::new(Some(0)));
+        assert!(keymap.length.lock().unwrap().eq(&Some(0)));
 
         let key1 = "k1".to_string();
         let key2 = "k2".to_string();
 
         keymap.insert(&mut storage, &key1, foo1.clone())?;
         assert_eq!(keymap.get_len(&storage)?, 1);
-        assert_eq!(keymap.length, Cell::new(Some(1)));
+        assert!(keymap.length.lock().unwrap().eq(&Some(1)));
 
         // add another item
         keymap.insert(&mut storage, &key2, foo2.clone())?;
         assert_eq!(keymap.get_len(&storage)?, 2);
-        assert_eq!(keymap.length, Cell::new(Some(2)));
+        assert!(keymap.length.lock().unwrap().eq(&Some(2)));
 
         // remove item and check length
         keymap.remove(&mut storage, &key1)?;
         assert_eq!(keymap.get_len(&storage)?, 1);
-        assert_eq!(keymap.length, Cell::new(Some(1)));
+        assert!(keymap.length.lock().unwrap().eq(&Some(1)));
 
         // override item (should not change length)
         keymap.insert(&mut storage, &key2, foo1)?;
         assert_eq!(keymap.get_len(&storage)?, 1);
-        assert_eq!(keymap.length, Cell::new(Some(1)));
+        assert!(keymap.length.lock().unwrap().eq(&Some(1)));
 
         // remove item and check length
         keymap.remove(&mut storage, &key2)?;
         assert_eq!(keymap.get_len(&storage)?, 0);
-        assert_eq!(keymap.length, Cell::new(Some(0)));
+        assert!(keymap.length.lock().unwrap().eq(&Some(0)));
 
         Ok(())
     }

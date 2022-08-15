@@ -5,7 +5,7 @@
 //! A special key is reserved for storing the length of the collection so far.
 //! Another special key is reserved for storing the offset of the collection.
 use std::any::type_name;
-use std::cell::Cell;
+use std::sync::Mutex;
 use std::{convert::TryInto};
 use std::marker::PhantomData;
 
@@ -28,8 +28,8 @@ pub struct DequeStore<'a, T, Ser = Bincode2>
     /// needed if any suffixes were added to the original namespace.
     /// therefore it is not necessarily same as the namespace.
     prefix: Option<Vec<u8>>,
-    length: Cell<Option<u32>>,
-    offset: Cell<Option<u32>>,
+    length: Mutex<Option<u32>>,
+    offset: Mutex<Option<u32>>,
     item_type: PhantomData<T>,
     serialization_type: PhantomData<Ser>,
 }
@@ -40,8 +40,8 @@ impl<'a, 'b, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser>
         Self {
             namespace: prefix,
             prefix: None,
-            length: Cell::new(None),
-            offset: Cell::new(None),
+            length: Mutex::new(None),
+            offset: Mutex::new(None),
             item_type: PhantomData,
             serialization_type: PhantomData,
         }
@@ -57,8 +57,8 @@ impl<'a, 'b, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser>
         Self {
             namespace: self.namespace,
             prefix: Some(prefix),
-            length: Cell::new(None),
-            offset: Cell::new(None),
+            length: Mutex::new(None),
+            offset: Mutex::new(None),
             item_type: self.item_type,
             serialization_type: self.serialization_type,
         }
@@ -68,12 +68,13 @@ impl<'a, 'b, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser>
 impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// gets the length from storage, and otherwise sets it to 0
     pub fn get_len<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<u32> {
-        match self.length.get() {
+        let mut may_len = self.length.lock().unwrap();
+        match *may_len {
             Some(len) => { Ok(len) },
             None => {
                 match self._get_u32(storage, LEN_KEY) {
                     Ok(len) => {
-                        self.length.set(Some(len));
+                        *may_len = Some(len);
                         Ok(len)
                     },
                     Err(e) => { Err(e) },
@@ -83,12 +84,13 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
     /// gets the offset from storage, and otherwise sets it to 0
     pub fn get_off<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<u32> {
-        match self.offset.get() {
+        let mut may_off = self.offset.lock().unwrap();
+        match *may_off {
             Some(len) => { Ok(len) },
             None => {
                 match self._get_u32(storage, OFFSET_KEY) {
                     Ok(len) => {
-                        self.offset.set(Some(len));
+                        *may_off = Some(len);
                         Ok(len)
                     },
                     Err(e) => { Err(e) },
@@ -128,12 +130,14 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
     /// Set the length of the collection
     fn set_len<S: Storage>(&self, storage: &mut S, len: u32) {
-        self.length.set(Some(len));
+        let mut may_len = self.length.lock().unwrap();
+        *may_len = Some(len);
         self._set_u32(storage, LEN_KEY, len)
     }
     /// Set the offset of the collection
     fn set_off<S: Storage>(&self, storage: &mut S, off: u32) {
-        self.offset.set(Some(off));
+        let mut may_off = self.offset.lock().unwrap();
+        *may_off = Some(off);
         self._set_u32(storage, OFFSET_KEY, off)
     }
     /// Set the length or offset of the collection
