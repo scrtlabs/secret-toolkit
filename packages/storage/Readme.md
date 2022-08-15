@@ -9,26 +9,22 @@ This package contains many tools related to storage access patterns. This readme
 To import this package, add one of the following lines to your `Cargo.toml` file
 
 ```toml
-secret-toolkit = { version = "0.3", default-features = false, features = ["utils"] }
-secret-toolkit-storage = "0.3"
-secret-toolkit-serialization = "0.3"
+secret-toolkit = { version = "0.3", default-features = false, features = ["utils", "storage", "serialization"] }
 ```
 
 for the release versions, or
 
 ```toml
-secret-toolkit = { git = "https://github.com/scrtlabs/secret-toolkit.git", default-features = false, features = ["utils"] }
-secret-toolkit-storage = { git = "https://github.com/scrtlabs/secret-toolkit.git" }
-secret-toolkit-serialization = { git = "https://github.com/scrtlabs/secret-toolkit.git" }
+secret-toolkit = { git = "https://github.com/scrtlabs/secret-toolkit.git", default-features = false, features = ["utils", "storage", "serialization"]}
 ```
 
-for the github version. We also import `secret-toolkit-serialization` in case we want to switch to using Json instead of Bincode2.
+for the github version. We also import the `serialization` feature in case we want to switch to using Json instead of Bincode2 to serialize/deserialize data.
 
 ## **Storage Objects**
 
 ### **Item**
 
-This is the simplest storage object in this toolkit. It based on the synonymous Item from cosmwasm-storage-plus. Item allows the user to specify the type of the object being stored and the serialization/deserialization method used to store it (default being Bincode2). **One can think of the Item struct as a wrapper for the storage key.** Note that you want to use Json to serde an enum or any struct that stores an enum (except for the standard Option enum), because Bincode2 somehow uses floats during the deserialization of enums. This is why other cosmwasm chains don't use Bincode2 at all, however, you gain some performance when you can use it.
+This is the simplest storage object in this toolkit. It based on the similarly named Item from cosmwasm-storage-plus. Item allows the user to specify the type of the object being stored and the serialization/deserialization method used to store it (default being Bincode2). **One can think of the Item struct as a wrapper for the storage key.** Note that you want to use Json to serde an enum or any struct that stores an enum (except for the standard Option enum), because Bincode2 somehow uses floats during the deserialization of enums. This is why other cosmwasm chains don't use Bincode2 at all, however, you gain some performance when you can use it.
 
 #### **Initialize**
 
@@ -86,7 +82,7 @@ let may_addr = OWNER.update(&mut deps.storage, |_x| Ok(env.message.sender))?;
 
 ### **AppendStore**
 
-AppendStore is meant replicate the functionality of an append list in a cosmwasm efficient manner. The length of the list is stored and used to pop/push items to the list. It also has a method to create a read only iterator. 
+AppendStore is meant replicate the functionality of an append list in a cosmwasm efficient manner. The length of the list is stored and used to pop/push items to the list. It also has a method to create a read only iterator.
 
 This storage object also has the method `remove` to remove a stored object from an arbitrary position in the list, but this can be exteremely inefficient.
 
@@ -109,7 +105,7 @@ use secret_toolkit_storage::{AppendStore}
 pub const COUNT_STORE: AppendStore<i32> = AppendStore::new(b"count");
 ```
 
-Often times we need these storage objects to be associated to a user address or some other key that is variable. In this case, you need not initialize a completely new AppendStore inside `contract.rs`. Instead, you can create a new AppendStore, by adding a suffix to an already existing AppendStore. This has the benefit of preventing you from have to rewrite the type/serde used in that AppendStore. For example
+Often times we need these storage objects to be associated to a user address or some other key that is variable. In this case, you need not initialize a completely new AppendStore inside `contract.rs`. Instead, you can create a new AppendStore by adding a suffix to an already existing AppendStore. This has the benefit of preventing you from having to rewrite the signature of the AppendStore. For example
 
 ```rust
 // The compiler knows that user_count_store is AppendStore<i32, Bincode2>
@@ -181,7 +177,7 @@ pub const ADDR_VOTE: Keymap<HumanAddr, Foo> = Keymap::new(b"vote");
 pub const BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"vote");
 ```
 
-You can use Json serde by doing `Keymap<HumanAddr, Uint128, Json>` similar to all the other storage objects above. However, keep in mind that the Serde algorthm is user to serde both the stored object (`Uint128`) AND the key (`HumanAddr`).
+You can use Json serde algorithm by changing the signature to `Keymap<HumanAddr, Uint128, Json>`, similar to all the other storage objects above. However, keep in mind that the Serde algorthm is used to serde both the stored object (`Uint128`) AND the key (`HumanAddr`).
 
 If you need to associate a keymap to a user address (or any other variable), then you can also do this using the `.add_suffix` method.
 
@@ -223,64 +219,62 @@ Keymap also has two paging methods, these are `.paging` and `.paging_keys`. `pag
 Here are some select examples from the unit tests:
 
 ```rust
-#[test]
-    fn test_keymap_iter_keys() -> StdResult<()> {
-        let mut storage = MockStorage::new();
+fn test_keymap_iter_keys() -> StdResult<()> {
+    let mut storage = MockStorage::new();
 
-        let keymap: Keymap<String, Foo> = Keymap::new(b"test");
-        let foo1 = Foo {
-            string: "string one".to_string(),
-            number: 1111,
-        };
-        let foo2 = Foo {
-            string: "string two".to_string(),
-            number: 1111,
-        };
+    let keymap: Keymap<String, Foo> = Keymap::new(b"test");
+    let foo1 = Foo {
+        string: "string one".to_string(),
+        number: 1111,
+    };
+    let foo2 = Foo {
+        string: "string two".to_string(),
+        number: 1111,
+    };
 
-        let key1 = "key1".to_string();
-        let key2 = "key2".to_string();
+    let key1 = "key1".to_string();
+    let key2 = "key2".to_string();
 
-        keymap.insert(&mut storage, &key1, foo1.clone())?;
-        keymap.insert(&mut storage, &key2, foo2.clone())?;
+    keymap.insert(&mut storage, &key1, foo1.clone())?;
+    keymap.insert(&mut storage, &key2, foo2.clone())?;
 
-        let mut x = keymap.iter_keys(&storage)?;
-        let (len, _) = x.size_hint();
-        assert_eq!(len, 2);
+    let mut x = keymap.iter_keys(&storage)?;
+    let (len, _) = x.size_hint();
+    assert_eq!(len, 2);
 
-        assert_eq!(x.next().unwrap()?, key1);
+    assert_eq!(x.next().unwrap()?, key1);
 
-        assert_eq!(x.next().unwrap()?, key2);
+    assert_eq!(x.next().unwrap()?, key2);
 
-        Ok(())
-    }
+    Ok(())
+}
 ```
 
 ```rust
-#[test]
-    fn test_keymap_iter() -> StdResult<()> {
-        let mut storage = MockStorage::new();
+fn test_keymap_iter() -> StdResult<()> {
+    let mut storage = MockStorage::new();
 
-        let keymap: Keymap<Vec<u8>, Foo> = Keymap::new(b"test");
-        let foo1 = Foo {
-            string: "string one".to_string(),
-            number: 1111,
-        };
-        let foo2 = Foo {
-            string: "string two".to_string(),
-            number: 1111,
-        };
+    let keymap: Keymap<Vec<u8>, Foo> = Keymap::new(b"test");
+    let foo1 = Foo {
+        string: "string one".to_string(),
+        number: 1111,
+    };
+    let foo2 = Foo {
+        string: "string two".to_string(),
+        number: 1111,
+    };
 
-        keymap.insert(&mut storage, &b"key1".to_vec(), foo1.clone())?;
-        keymap.insert(&mut storage, &b"key2".to_vec(), foo2.clone())?;
+    keymap.insert(&mut storage, &b"key1".to_vec(), foo1.clone())?;
+    keymap.insert(&mut storage, &b"key2".to_vec(), foo2.clone())?;
 
-        let mut x = keymap.iter(&storage)?;
-        let (len, _) = x.size_hint();
-        assert_eq!(len, 2);
+    let mut x = keymap.iter(&storage)?;
+    let (len, _) = x.size_hint();
+    assert_eq!(len, 2);
 
-        assert_eq!(x.next().unwrap()?.1, foo1);
+    assert_eq!(x.next().unwrap()?.1, foo1);
 
-        assert_eq!(x.next().unwrap()?.1, foo2);
+    assert_eq!(x.next().unwrap()?.1, foo2);
 
-        Ok(())
-    }
+    Ok(())
+}
 ```

@@ -1,4 +1,5 @@
 use std::any::type_name;
+use std::cell::{Cell};
 use std::{convert::TryInto};
 use std::marker::PhantomData;
 
@@ -38,6 +39,7 @@ pub struct Keymap<'a, K, T, Ser = Bincode2>
     /// needed if any suffixes were added to the original namespace.
     /// therefore it is not necessarily same as the namespace.
     prefix: Option<Vec<u8>>,
+    length: Cell<Option<u32>>,
     key_type: PhantomData<K>,
     item_type: PhantomData<T>,
     serialization_type: PhantomData<Ser>,
@@ -49,6 +51,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Self {
             namespace: prefix,
             prefix: None,
+            length: Cell::new(None),
             key_type: PhantomData,
             item_type: PhantomData,
             serialization_type: PhantomData,
@@ -65,6 +68,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Self {
             namespace: self.namespace,
             prefix: Some(prefix),
+            length: Cell::new(None),
             key_type: self.key_type,
             item_type: self.item_type,
             serialization_type: self.serialization_type,
@@ -83,13 +87,20 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
     /// get total number of objects saved
     pub fn get_len<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<u32> {
-        let len_key = [self.as_slice(), MAP_LENGTH].concat();
-        if let Some(len_vec) = storage.get(&len_key) {
-            let len_bytes = len_vec.as_slice().try_into().map_err(|err| StdError::parse_err("u32", err))?;
-            let len = u32::from_be_bytes(len_bytes);
-            Ok(len)
-        } else {
-            Ok(0)
+        match self.length.get() {
+            Some(length) => { Ok(length) },
+            None => {
+                let len_key = [self.as_slice(), MAP_LENGTH].concat();
+                if let Some(len_vec) = storage.get(&len_key) {
+                    let len_bytes = len_vec.as_slice().try_into().map_err(|err| StdError::parse_err("u32", err))?;
+                    let len = u32::from_be_bytes(len_bytes);
+                    self.length.set(Some(len));
+                    Ok(len)
+                } else {
+                    self.length.set(Some(0));
+                    Ok(0)
+                }
+            },
         }
     }
     /// checks if the collection has any elements
@@ -100,6 +111,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     fn set_len<S: Storage>(&self, storage: &mut S, len: u32) -> StdResult<()> {
         let len_key = [self.as_slice(), MAP_LENGTH].concat();
         storage.set(&len_key, &len.to_be_bytes());
+        self.length.set(Some(len));
         Ok(())
     }
     /// Used to get the indexes stored in the given page number
@@ -359,6 +371,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Self {
             namespace: self.namespace.clone(),
             prefix: self.prefix.clone(),
+            length: Cell::new(None),
             key_type: self.key_type.clone(),
             item_type: self.item_type.clone(),
             serialization_type: self.serialization_type.clone()
