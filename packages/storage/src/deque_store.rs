@@ -5,6 +5,7 @@
 //! A special key is reserved for storing the length of the collection so far.
 //! Another special key is reserved for storing the offset of the collection.
 use std::any::type_name;
+use std::cell::Cell;
 use std::{convert::TryInto};
 use std::marker::PhantomData;
 
@@ -27,6 +28,8 @@ pub struct DequeStore<'a, T, Ser = Bincode2>
     /// needed if any suffixes were added to the original namespace.
     /// therefore it is not necessarily same as the namespace.
     prefix: Option<Vec<u8>>,
+    length: Cell<Option<u32>>,
+    offset: Cell<Option<u32>>,
     item_type: PhantomData<T>,
     serialization_type: PhantomData<Ser>,
 }
@@ -37,6 +40,8 @@ impl<'a, 'b, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser>
         Self {
             namespace: prefix,
             prefix: None,
+            length: Cell::new(None),
+            offset: Cell::new(None),
             item_type: PhantomData,
             serialization_type: PhantomData,
         }
@@ -52,6 +57,8 @@ impl<'a, 'b, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser>
         Self {
             namespace: self.namespace,
             prefix: Some(prefix),
+            length: Cell::new(None),
+            offset: Cell::new(None),
             item_type: self.item_type,
             serialization_type: self.serialization_type,
         }
@@ -61,11 +68,33 @@ impl<'a, 'b, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser>
 impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// gets the length from storage, and otherwise sets it to 0
     pub fn get_len<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<u32> {
-        self._get_u32(storage, LEN_KEY)
+        match self.length.get() {
+            Some(len) => { Ok(len) },
+            None => {
+                match self._get_u32(storage, LEN_KEY) {
+                    Ok(len) => {
+                        self.length.set(Some(len));
+                        Ok(len)
+                    },
+                    Err(e) => { Err(e) },
+                }
+            },
+        }
     }
     /// gets the offset from storage, and otherwise sets it to 0
     pub fn get_off<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<u32> {
-        self._get_u32(storage, OFFSET_KEY)
+        match self.offset.get() {
+            Some(len) => { Ok(len) },
+            None => {
+                match self._get_u32(storage, OFFSET_KEY) {
+                    Ok(len) => {
+                        self.offset.set(Some(len));
+                        Ok(len)
+                    },
+                    Err(e) => { Err(e) },
+                }
+            },
+        }
     }
     /// gets offset or length
     fn _get_u32<S: ReadonlyStorage>(&self, storage: &S, key: &[u8]) -> StdResult<u32> {
@@ -99,10 +128,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
     /// Set the length of the collection
     fn set_len<S: Storage>(&self, storage: &mut S, len: u32) {
+        self.length.set(Some(len));
         self._set_u32(storage, LEN_KEY, len)
     }
     /// Set the offset of the collection
     fn set_off<S: Storage>(&self, storage: &mut S, off: u32) {
+        self.offset.set(Some(off));
         self._set_u32(storage, OFFSET_KEY, off)
     }
     /// Set the length or offset of the collection
@@ -248,17 +279,6 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 }
 
-impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Clone for DequeStore<'a, T, Ser> {
-    fn clone(&self) -> Self {
-        Self {
-            namespace: self.namespace.clone(),
-            prefix: self.prefix.clone(),
-            item_type: self.item_type.clone(),
-            serialization_type: self.serialization_type.clone()
-        }
-    }
-}
-
 /// An iterator over the contents of the deque store.
 pub struct DequeStoreIter<'a, T, S, Ser>
 where
@@ -266,7 +286,7 @@ where
     S: ReadonlyStorage,
     Ser: Serde,
 {
-    deque_store: DequeStore<'a, T, Ser>,
+    deque_store: &'a DequeStore<'a, T, Ser>,
     storage: &'a S,
     start: u32,
     end: u32,
@@ -286,7 +306,7 @@ impl<'a, T, S, Ser> DequeStoreIter<'a, T, S, Ser>
         end: u32
     ) -> Self {
         Self {
-            deque_store: deque_store.clone(),
+            deque_store,
             storage,
             start,
             end,

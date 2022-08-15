@@ -366,19 +366,6 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 }
 
-impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde> Clone for Keymap<'a, K, T, Ser> {
-    fn clone(&self) -> Self {
-        Self {
-            namespace: self.namespace.clone(),
-            prefix: self.prefix.clone(),
-            length: Cell::new(None),
-            key_type: self.key_type.clone(),
-            item_type: self.item_type.clone(),
-            serialization_type: self.serialization_type.clone()
-        }
-    }
-}
-
 /// An iterator over the keys of the Keymap.
 pub struct KeyIter<'a, K, T, S, Ser>
 where
@@ -1275,29 +1262,36 @@ mod tests {
             number: 1111,
         };
 
+        assert_eq!(keymap.length, Cell::new(None));
         assert_eq!(keymap.get_len(&storage)?, 0);
+        assert_eq!(keymap.length, Cell::new(Some(0)));
 
         let key1 = "k1".to_string();
         let key2 = "k2".to_string();
 
         keymap.insert(&mut storage, &key1, foo1.clone())?;
         assert_eq!(keymap.get_len(&storage)?, 1);
+        assert_eq!(keymap.length, Cell::new(Some(1)));
 
         // add another item
         keymap.insert(&mut storage, &key2, foo2.clone())?;
         assert_eq!(keymap.get_len(&storage)?, 2);
+        assert_eq!(keymap.length, Cell::new(Some(2)));
 
         // remove item and check length
         keymap.remove(&mut storage, &key1)?;
         assert_eq!(keymap.get_len(&storage)?, 1);
+        assert_eq!(keymap.length, Cell::new(Some(1)));
 
         // override item (should not change length)
         keymap.insert(&mut storage, &key2, foo1)?;
         assert_eq!(keymap.get_len(&storage)?, 1);
+        assert_eq!(keymap.length, Cell::new(Some(1)));
 
         // remove item and check length
         keymap.remove(&mut storage, &key2)?;
         assert_eq!(keymap.get_len(&storage)?, 0);
+        assert_eq!(keymap.length, Cell::new(Some(0)));
 
         Ok(())
     }

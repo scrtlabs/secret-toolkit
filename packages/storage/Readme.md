@@ -98,7 +98,7 @@ The same conventions from `Item` also apply here, that is:
 To import and intialize this storage object as a constant in `state.rs`, do the following:
 
 ```rust
-use secret_toolkit_storage::{AppendStore}
+use secret_toolkit::storage::{AppendStore}
 ```
 
 ```rust
@@ -121,7 +121,7 @@ The main user facing methods to read/write to AppendStore are `pop`, `push`, `ge
 AppendStore also implements a readonly iterator feature. This feature is also used to create a paging wrapper method called `paging`. The way you create the iterator is:
 
 ```rust
-let iter = user_count_store.iter(&deps.storage)?
+let iter = user_count_store.iter(&deps.storage)?;
 ```
 
 More examples can be found in the unit tests. And the paging wrapper is used in the following manner:
@@ -131,6 +131,19 @@ let start_page: u32 = 0;
 let page_size: u32 = 5;
 // The compiler knows that values is Vec<i32>
 let values = user_count_store.paging(&deps.storage, start_page, page_size)?;
+```
+
+> ❗ When using any iterators in any of the storage objects, the following will result in a compiling error.
+
+```rust
+let iterator = COUNT_STORE.iter(&deps.storage)?;
+```
+
+However, the follwoing will not result in an error:
+
+```rust
+let append_store = COUNT_STORE
+let iterator = append_store.iter(&deps.storage)?;
 ```
 
 ### **DequeStore**
