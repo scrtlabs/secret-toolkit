@@ -15,7 +15,7 @@ secret-toolkit = { version = "0.3", default-features = false, features = ["utils
 for the release versions, or
 
 ```toml
-secret-toolkit = { git = "https://github.com/scrtlabs/secret-toolkit.git", default-features = false, features = ["utils", "storage", "serialization"]}
+secret-toolkit = { git = "https://github.com/scrtlabs/secret-toolkit", branch = "master", default-features = false, features = ["utils", "storage", "serialization"]}
 ```
 
 for the github version. We also import the `serialization` feature in case we want to switch to using Json instead of Bincode2 to serialize/deserialize data.
