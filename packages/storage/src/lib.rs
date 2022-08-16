@@ -4,7 +4,7 @@ pub mod deque_store;
 pub mod item;
 pub mod keymap;
 
-pub use item::Item;
 pub use append_store::AppendStore;
 pub use deque_store::DequeStore;
+pub use item::Item;
 pub use keymap::Keymap;

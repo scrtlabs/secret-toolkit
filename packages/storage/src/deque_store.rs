@@ -5,23 +5,23 @@
 //! A special key is reserved for storing the length of the collection so far.
 //! Another special key is reserved for storing the offset of the collection.
 use std::any::type_name;
-use std::sync::Mutex;
-use std::{convert::TryInto};
+use std::convert::TryInto;
 use std::marker::PhantomData;
+use std::sync::Mutex;
 
 use serde::{de::DeserializeOwned, Serialize};
 
 use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
 
-use secret_toolkit_serialization::{Serde, Bincode2};
+use secret_toolkit_serialization::{Bincode2, Serde};
 
 const LEN_KEY: &[u8] = b"len";
 const OFFSET_KEY: &[u8] = b"off";
 
 pub struct DequeStore<'a, T, Ser = Bincode2>
-    where
-        T: Serialize + DeserializeOwned,
-        Ser: Serde,
+where
+    T: Serialize + DeserializeOwned,
+    Ser: Serde,
 {
     /// prefix of the newly constructed Storage
     namespace: &'a [u8],
@@ -34,7 +34,7 @@ pub struct DequeStore<'a, T, Ser = Bincode2>
     serialization_type: PhantomData<Ser>,
 }
 
-impl<'a, 'b, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser>{
+impl<'a, 'b, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// constructor
     pub const fn new(prefix: &'a [u8]) -> Self {
         Self {
@@ -70,15 +70,13 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     pub fn get_len<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<u32> {
         let mut may_len = self.length.lock().unwrap();
         match *may_len {
-            Some(len) => { Ok(len) },
-            None => {
-                match self._get_u32(storage, LEN_KEY) {
-                    Ok(len) => {
-                        *may_len = Some(len);
-                        Ok(len)
-                    },
-                    Err(e) => { Err(e) },
+            Some(len) => Ok(len),
+            None => match self._get_u32(storage, LEN_KEY) {
+                Ok(len) => {
+                    *may_len = Some(len);
+                    Ok(len)
                 }
+                Err(e) => Err(e),
             },
         }
     }
@@ -86,15 +84,13 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     pub fn get_off<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<u32> {
         let mut may_off = self.offset.lock().unwrap();
         match *may_off {
-            Some(len) => { Ok(len) },
-            None => {
-                match self._get_u32(storage, OFFSET_KEY) {
-                    Ok(len) => {
-                        *may_off = Some(len);
-                        Ok(len)
-                    },
-                    Err(e) => { Err(e) },
+            Some(len) => Ok(len),
+            None => match self._get_u32(storage, OFFSET_KEY) {
+                Ok(len) => {
+                    *may_off = Some(len);
+                    Ok(len)
                 }
+                Err(e) => Err(e),
             },
         }
     }
@@ -102,7 +98,10 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     fn _get_u32<S: ReadonlyStorage>(&self, storage: &S, key: &[u8]) -> StdResult<u32> {
         let num_key = [self.as_slice(), key].concat();
         if let Some(num_vec) = storage.get(&num_key) {
-            let num_bytes = num_vec.as_slice().try_into().map_err(|err| StdError::parse_err("u32", err))?;
+            let num_bytes = num_vec
+                .as_slice()
+                .try_into()
+                .map_err(|err| StdError::parse_err("u32", err))?;
             let num = u32::from_be_bytes(num_bytes);
             Ok(num)
         } else {
@@ -116,7 +115,9 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// gets the element at pos if within bounds
     pub fn get_at<S: ReadonlyStorage>(&self, storage: &S, pos: u32) -> StdResult<T> {
         let len = self.get_len(storage)?;
-        if pos >= len { return Err(StdError::generic_err("DequeStore access out of bounds")); }
+        if pos >= len {
+            return Err(StdError::generic_err("DequeStore access out of bounds"));
+        }
         self.get_at_unchecked(storage, pos)
     }
     /// tries to get the element at pos
@@ -153,12 +154,18 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// Replaces data at a position within bounds
     pub fn set_at<S: Storage>(&self, storage: &mut S, pos: u32, item: &T) -> StdResult<()> {
         let len = self.get_len(storage)?;
-        if pos >= len { return Err(StdError::generic_err("DequeStore access out of bounds")); }
+        if pos >= len {
+            return Err(StdError::generic_err("DequeStore access out of bounds"));
+        }
         self.set_at_unchecked(storage, pos, item)
     }
     /// Sets data at a given index
     fn set_at_unchecked<S: Storage>(&self, storage: &mut S, pos: u32, item: &T) -> StdResult<()> {
-        self.save_impl(storage, &self._get_offset_pos(storage, pos)?.to_be_bytes(), item)
+        self.save_impl(
+            storage,
+            &self._get_offset_pos(storage, pos)?.to_be_bytes(),
+            item,
+        )
     }
     /// Pushes an item to the back
     pub fn push_back<S: Storage>(&self, storage: &mut S, item: &T) -> StdResult<()> {
@@ -178,7 +185,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
     /// Pops an item from the back
     pub fn pop_back<S: Storage>(&self, storage: &mut S) -> StdResult<T> {
-        if let Some(len) = self.get_len(storage)?.checked_sub(1) { 
+        if let Some(len) = self.get_len(storage)?.checked_sub(1) {
             let item = self.get_at_unchecked(storage, len);
             self.set_len(storage, len);
             item
@@ -239,8 +246,16 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         Ok(iter)
     }
     /// does paging with the given parameters
-    pub fn paging<S: ReadonlyStorage>(&self, storage: &S, start_page: u32, size: u32) -> StdResult<Vec<T>> {
-        self.iter(storage)?.skip((start_page as usize)*(size as usize)).take(size as usize).collect()
+    pub fn paging<S: ReadonlyStorage>(
+        &self,
+        storage: &S,
+        start_page: u32,
+        size: u32,
+    ) -> StdResult<Vec<T>> {
+        self.iter(storage)?
+            .skip((start_page as usize) * (size as usize))
+            .take(size as usize)
+            .collect()
     }
 }
 
@@ -291,7 +306,8 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Clone for DequeStore<'a, T
             length: Mutex::new(None),
             offset: Mutex::new(None),
             item_type: self.item_type.clone(),
-            serialization_type: self.serialization_type.clone() }
+            serialization_type: self.serialization_type.clone(),
+        }
     }
 }
 
@@ -309,17 +325,17 @@ where
 }
 
 impl<'a, T, S, Ser> DequeStoreIter<'a, T, S, Ser>
-    where
-        T: Serialize + DeserializeOwned,
-        S: ReadonlyStorage,
-        Ser: Serde,
+where
+    T: Serialize + DeserializeOwned,
+    S: ReadonlyStorage,
+    Ser: Serde,
 {
     /// constructor
     pub fn new(
         deque_store: &'a DequeStore<'a, T, Ser>,
         storage: &'a S,
         start: u32,
-        end: u32
+        end: u32,
     ) -> Self {
         Self {
             deque_store,
@@ -331,10 +347,10 @@ impl<'a, T, S, Ser> DequeStoreIter<'a, T, S, Ser>
 }
 
 impl<'a, T, S, Ser> Iterator for DequeStoreIter<'a, T, S, Ser>
-    where
-        T: Serialize + DeserializeOwned,
-        S: ReadonlyStorage,
-        Ser: Serde,
+where
+    T: Serialize + DeserializeOwned,
+    S: ReadonlyStorage,
+    Ser: Serde,
 {
     type Item = StdResult<T>;
 
@@ -366,10 +382,10 @@ impl<'a, T, S, Ser> Iterator for DequeStoreIter<'a, T, S, Ser>
 }
 
 impl<'a, T, S, Ser> DoubleEndedIterator for DequeStoreIter<'a, T, S, Ser>
-    where
-        T: Serialize + DeserializeOwned,
-        S: ReadonlyStorage,
-        Ser: Serde,
+where
+    T: Serialize + DeserializeOwned,
+    S: ReadonlyStorage,
+    Ser: Serde,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.start >= self.end {
@@ -593,7 +609,7 @@ mod tests {
         let mut storage = MockStorage::new();
         let json_deque_store: DequeStore<i32, Json> = DequeStore::new(b"test2");
         json_deque_store.push_back(&mut storage, &1234)?;
-        
+
         let key = [json_deque_store.as_slice(), &0_u32.to_be_bytes()].concat();
         let bytes = storage.get(&key);
         assert_eq!(bytes, Some(b"1234".to_vec()));
