@@ -1,5 +1,9 @@
 # Release notes for the Secret Toolkit
 
+## secret-toolkit-storage v0.4.1
+
+* BUGFIX: `Item::is_empty` was returning the opposite value from what you'd expect.
+
 ## v0.4.0
 This release mostly includes the work of @srdtrk in #53. Thanks Srdtrk!
 
