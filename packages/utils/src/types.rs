@@ -8,7 +8,7 @@ pub struct Contract {
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone, JsonSchema)]
-pub struct Code {
+pub struct WasmCode {
     pub code_id: u64,
     pub hash: String,
 }
