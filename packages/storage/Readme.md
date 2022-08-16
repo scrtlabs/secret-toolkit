@@ -30,25 +30,25 @@ This is the simplest storage object in this toolkit. It based on the similarly n
 
 This object is meant to be initialized as a static constant in `state.rs`. However, it would also work perfectly fine if it was initialized during run time with a variable key (in this case though, you'd have to remind it what type of object is stored and its serde). Import it using the following lines:
 
-```rust
+```ignore
 use secret_toolkit_storage::{Item}
 ```
 
 And initialize it using the following lines:
 
-```rust
+```ignore
 pub static OWNER: Item<HumanAddr> = Item::new(b"owner");
 ```
 
 This uses Bincode2 to serde HumanAddr by default. To specify the Serde algorithm as Json, first import it from `secret-toolkit-serialization`
 
-```rust
+```ignore
 use secret_toolkit_serialization::{Bincode2, Json};
 ```
 
 then
 
-```rust
+```ignore
 pub static SOME_ENUM: Item<SomeEnum, Json> = Item::new(b"some_enum");
 ```
 
@@ -56,26 +56,26 @@ pub static SOME_ENUM: Item<SomeEnum, Json> = Item::new(b"some_enum");
 
 The way to read/write to/from strorage is to use its methods. These methods are `save`, `load`, `may_load`, `remove`, `update`. Here is an example usecase for each in execution inside `contract.rs`:
 
-```rust
+```ignore
 // The compiler knows that owner_addr is HumanAddr
 let owner_addr = OWNER.load(&deps.storage)?;
 ```
 
-```rust
+```ignore
 OWNER.save(&mut deps.storage, &env.message.sender)?;
 ```
 
-```rust
+```ignore
 // The compiler knows that may_addr is Option<HumanAddr>
 let may_addr = OWNER.may_load(&deps.storage)?;
 ```
 
-```rust
+```ignore
 // The compiler knows that may_addr is Option<HumanAddr>
 let may_addr = OWNER.remove(&mut deps.storage)?;
 ```
 
-```rust
+```ignore
 // The compiler knows that may_addr is Option<HumanAddr>
 let may_addr = OWNER.update(&mut deps.storage, |_x| Ok(env.message.sender))?;
 ```
@@ -97,11 +97,11 @@ The same conventions from `Item` also apply here, that is:
 
 To import and intialize this storage object as a static constant in `state.rs`, do the following:
 
-```rust
+```ignore
 use secret_toolkit::storage::{AppendStore}
 ```
 
-```rust
+```ignore
 pub static COUNT_STORE: AppendStore<i32> = AppendStore::new(b"count");
 ```
 
@@ -109,7 +109,7 @@ pub static COUNT_STORE: AppendStore<i32> = AppendStore::new(b"count");
 
 Often times we need these storage objects to be associated to a user address or some other key that is variable. In this case, you need not initialize a completely new AppendStore inside `contract.rs`. Instead, you can create a new AppendStore by adding a suffix to an already existing AppendStore. This has the benefit of preventing you from having to rewrite the signature of the AppendStore. For example
 
-```rust
+```ignore
 // The compiler knows that user_count_store is AppendStore<i32, Bincode2>
 let user_count_store = COUNT_STORE.add_suffix(env.message.sender.to_string().as_bytes());
 ```
@@ -122,13 +122,13 @@ The main user facing methods to read/write to AppendStore are `pop`, `push`, `ge
 
 AppendStore also implements a readonly iterator feature. This feature is also used to create a paging wrapper method called `paging`. The way you create the iterator is:
 
-```rust
+```ignore
 let iter = user_count_store.iter(&deps.storage)?;
 ```
 
 More examples can be found in the unit tests. And the paging wrapper is used in the following manner:
 
-```rust
+```ignore
 let start_page: u32 = 0;
 let page_size: u32 = 5;
 // The compiler knows that values is Vec<i32>
@@ -143,11 +143,11 @@ This is a storage wrapper based on AppendStore that replicates a double ended li
 
 To import and intialize this storage object as a static constant in `state.rs`, do the following:
 
-```rust
+```ignore
 use secret_toolkit_storage::{DequeStore}
 ```
 
-```rust
+```ignore
 pub static COUNT_STORE: DequeStore<i32> = DequeStore::new(b"count");
 ```
 
@@ -172,11 +172,11 @@ be returned in each page.
 
 To import and intialize this storage object as a static constant in `state.rs`, do the following:
 
-```rust
+```ignore
 use secret_toolkit_storage::{Keymap}
 ```
 
-```rust
+```ignore
 pub static ADDR_VOTE: Keymap<HumanAddr, Foo> = Keymap::new(b"vote");
 pub static BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"vote");
 ```
@@ -189,7 +189,7 @@ If you need to associate a keymap to a user address (or any other variable), the
 
 For example suppose that in your contract, a user can make multiple bets. Then, you'd want a Keymap to be associated to each user. You would achieve this my doing the following during execution in `contract.rs`.
 
-```rust
+```ignore
 // The compiler knows that user_bet_store is AppendStore<u32, BetInfo>
 let user_count_store = BET_STORE.add_suffix(env.message.sender.to_string().as_bytes());
 ```
@@ -200,7 +200,7 @@ You can find more examples of using keymaps in the unit tests of Keymap in `keym
 
 To insert, remove, read from the keymap, do the following:
 
-```rust
+```ignore
 let user_addr: HumanAddr = env.message.sender;
 
 let foo = Foo {
@@ -224,7 +224,7 @@ Keymap also has two paging methods, these are `.paging` and `.paging_keys`. `pag
 
 Here are some select examples from the unit tests:
 
-```rust
+```ignore
 fn test_keymap_iter_keys() -> StdResult<()> {
     let mut storage = MockStorage::new();
 
@@ -256,7 +256,7 @@ fn test_keymap_iter_keys() -> StdResult<()> {
 }
 ```
 
-```rust
+```ignore
 fn test_keymap_iter() -> StdResult<()> {
     let mut storage = MockStorage::new();
 

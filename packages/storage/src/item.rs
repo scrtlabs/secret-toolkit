@@ -1,16 +1,16 @@
-use std::{any::type_name};
+use std::any::type_name;
 
 use std::marker::PhantomData;
 
-use cosmwasm_std::{Storage, ReadonlyStorage, StdResult, StdError};
-use secret_toolkit_serialization::{Serde, Bincode2};
-use serde::{Serialize, de::DeserializeOwned};
+use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
+use secret_toolkit_serialization::{Bincode2, Serde};
+use serde::{de::DeserializeOwned, Serialize};
 
 /// This storage struct is based on Item from cosmwasm-storage-plus
 pub struct Item<'a, T, Ser = Bincode2>
-    where
-        T: Serialize + DeserializeOwned,
-        Ser: Serde,
+where
+    T: Serialize + DeserializeOwned,
+    Ser: Serde,
 {
     storage_key: &'a [u8],
     item_type: PhantomData<T>,
@@ -30,7 +30,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Item<'a, T, Ser> {
 impl<'a, T, Ser> Item<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    Ser: Serde
+    Ser: Serde,
 {
     /// save will serialize the model and store, returns an error on serialization issues
     pub fn save<S: Storage>(&self, storage: &mut S, data: &T) -> StdResult<()> {
@@ -52,7 +52,7 @@ where
     pub fn may_load<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<Option<T>> {
         self.may_load_impl(storage)
     }
-    
+
     /// efficient way to see if any object is currently saved.
     pub fn is_empty<S: ReadonlyStorage>(&self, storage: &S) -> bool {
         match storage.get(self.as_slice()) {
@@ -69,7 +69,7 @@ where
     pub fn update<S, A>(&self, storage: &mut S, action: A) -> StdResult<T>
     where
         S: Storage,
-        A: FnOnce(T) -> StdResult<T>
+        A: FnOnce(T) -> StdResult<T>,
     {
         let input = self.load_impl(storage)?;
         let output = action(input)?;
@@ -85,7 +85,8 @@ where
     /// * `storage` - a reference to the storage this item is in
     fn load_impl<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<T> {
         Ser::deserialize(
-            &storage.get(self.as_slice())
+            &storage
+                .get(self.as_slice())
                 .ok_or(StdError::not_found(type_name::<T>()))?,
         )
     }
@@ -128,10 +129,11 @@ where
     }
 }
 
+#[cfg(test)]
 mod tests {
-    use cosmwasm_std::{testing::{MockStorage}};
+    use cosmwasm_std::testing::MockStorage;
 
-    use secret_toolkit_serialization::{Json};
+    use secret_toolkit_serialization::Json;
 
     use super::*;
 
@@ -171,7 +173,7 @@ mod tests {
         let mut storage = MockStorage::new();
         let json_item: Item<i32, Json> = Item::new(b"test2");
         json_item.save(&mut storage, &1234)?;
-        
+
         let key = b"test2";
         let bytes = storage.get(key);
         assert_eq!(bytes, Some(b"1234".to_vec()));
