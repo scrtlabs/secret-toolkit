@@ -56,8 +56,8 @@ where
     /// efficient way to see if any object is currently saved.
     pub fn is_empty<S: ReadonlyStorage>(&self, storage: &S) -> bool {
         match storage.get(self.as_slice()) {
-            Some(_) => true,
-            None => false,
+            Some(_) => false,
+            None => true,
         }
     }
 
@@ -125,5 +125,57 @@ where
 
     fn as_slice(&self) -> &[u8] {
         self.storage_key
+    }
+}
+
+mod tests {
+    use cosmwasm_std::{testing::{MockStorage}};
+
+    use secret_toolkit_serialization::{Json};
+
+    use super::*;
+
+    #[test]
+    fn test_item() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let item: Item<i32> = Item::new(b"test");
+
+        assert!(item.is_empty(&storage));
+        assert_eq!(item.may_load(&storage)?, None);
+        assert!(item.load(&storage).is_err());
+        item.save(&mut storage, &6)?;
+        assert!(!item.is_empty(&storage));
+        assert_eq!(item.load(&storage)?, 6);
+        assert_eq!(item.may_load(&storage)?, Some(6));
+        item.remove(&mut storage);
+        assert!(item.is_empty(&storage));
+        assert_eq!(item.may_load(&storage)?, None);
+        assert!(item.load(&storage).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_serializations() -> StdResult<()> {
+        // Check the default behavior is Bincode2
+        let mut storage = MockStorage::new();
+
+        let item: Item<i32> = Item::new(b"test");
+        item.save(&mut storage, &1234)?;
+
+        let key = b"test";
+        let bytes = storage.get(key);
+        assert_eq!(bytes, Some(vec![210, 4, 0, 0]));
+
+        // Check that overriding the serializer with Json works
+        let mut storage = MockStorage::new();
+        let json_item: Item<i32, Json> = Item::new(b"test2");
+        json_item.save(&mut storage, &1234)?;
+        
+        let key = b"test2";
+        let bytes = storage.get(key);
+        assert_eq!(bytes, Some(b"1234".to_vec()));
+
+        Ok(())
     }
 }
