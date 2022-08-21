@@ -186,8 +186,8 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Clone for AppendStore<'a, 
             namespace: self.namespace,
             prefix: self.prefix.clone(),
             length: Mutex::new(None),
-            item_type: self.item_type,
-            serialization_type: self.serialization_type,
+            item_type: PhantomData,
+            serialization_type: PhantomData,
         }
     }
 }
