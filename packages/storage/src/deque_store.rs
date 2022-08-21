@@ -305,8 +305,8 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Clone for DequeStore<'a, T
             prefix: self.prefix.clone(),
             length: Mutex::new(None),
             offset: Mutex::new(None),
-            item_type: self.item_type,
-            serialization_type: self.serialization_type,
+            item_type: PhantomData,
+            serialization_type: PhantomData,
         }
     }
 }
