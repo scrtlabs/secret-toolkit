@@ -34,7 +34,7 @@ where
     serialization_type: PhantomData<Ser>,
 }
 
-impl<'a, 'b, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
+impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// constructor
     pub const fn new(prefix: &'a [u8]) -> Self {
         Self {
@@ -296,12 +296,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Clone for DequeStore<'a, T, Ser> {
     fn clone(&self) -> Self {
         Self {
-            namespace: self.namespace.clone(),
+            namespace: self.namespace,
             prefix: self.prefix.clone(),
             length: Mutex::new(None),
             offset: Mutex::new(None),
-            item_type: self.item_type.clone(),
-            serialization_type: self.serialization_type.clone(),
+            item_type: self.item_type,
+            serialization_type: self.serialization_type,
         }
     }
 }

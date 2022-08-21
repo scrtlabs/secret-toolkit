@@ -430,12 +430,12 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 {
     fn clone(&self) -> Self {
         Self {
-            namespace: self.namespace.clone(),
+            namespace: self.namespace,
             prefix: self.prefix.clone(),
             length: Mutex::new(None),
-            key_type: self.key_type.clone(),
-            item_type: self.item_type.clone(),
-            serialization_type: self.serialization_type.clone(),
+            key_type: self.key_type,
+            item_type: self.item_type,
+            serialization_type: self.serialization_type,
         }
     }
 }
