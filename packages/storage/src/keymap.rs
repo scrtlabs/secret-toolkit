@@ -442,9 +442,9 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             namespace: self.namespace,
             prefix: self.prefix.clone(),
             length: Mutex::new(None),
-            key_type: self.key_type,
-            item_type: self.item_type,
-            serialization_type: self.serialization_type,
+            key_type: PhantomData,
+            item_type: PhantomData,
+            serialization_type: PhantomData,
         }
     }
 }
