@@ -55,10 +55,7 @@ where
 
     /// efficient way to see if any object is currently saved.
     pub fn is_empty<S: ReadonlyStorage>(&self, storage: &S) -> bool {
-        match storage.get(self.as_slice()) {
-            Some(_) => false,
-            None => true,
-        }
+        storage.get(self.as_slice()).is_none()
     }
 
     /// Loads the data, perform the specified action, and store the result

@@ -191,11 +191,11 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
 impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Clone for AppendStore<'a, T, Ser> {
     fn clone(&self) -> Self {
         Self {
-            namespace: self.namespace.clone(),
+            namespace: self.namespace,
             prefix: self.prefix.clone(),
             length: Mutex::new(None),
-            item_type: self.item_type.clone(),
-            serialization_type: self.serialization_type.clone(),
+            item_type: self.item_type,
+            serialization_type: self.serialization_type,
         }
     }
 }
