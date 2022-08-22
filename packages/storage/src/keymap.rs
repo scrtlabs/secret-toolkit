@@ -25,7 +25,7 @@ where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
-    item: Vec<u8>,
+    item_vec: Vec<u8>,
     index_pos: u32,
     item_type: PhantomData<T>,
     serialization_type: PhantomData<Ser>,
@@ -34,14 +34,14 @@ where
 impl<T: Serialize + DeserializeOwned, Ser: Serde> InternalItem<T, Ser> {
     fn new(index_pos: u32, item: &T) -> StdResult<Self> {
         Ok(Self {
-            item: Ser::serialize(item)?,
+            item_vec: Ser::serialize(item)?,
             index_pos,
             item_type: PhantomData,
             serialization_type: PhantomData,
         })
     }
     fn get_item(&self) -> StdResult<T> {
-        Ser::deserialize(&self.item)
+        Ser::deserialize(&self.item_vec)
     }
 }
 
