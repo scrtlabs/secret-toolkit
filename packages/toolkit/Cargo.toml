@@ -33,6 +33,6 @@ secret-toolkit-permit = { version = "0.3.0", path = "../permit", optional = true
 secret-toolkit-serialization = { version = "0.3", path = "../serialization", optional = true }
 secret-toolkit-snip20 = { version = "0.3", path = "../snip20", optional = true }
 secret-toolkit-snip721 = { version = "0.3", path = "../snip721", optional = true }
-secret-toolkit-storage = { version = "0.4.1", path = "../storage", optional = true }
+secret-toolkit-storage = { version = "0.4", path = "../storage", optional = true }
 secret-toolkit-utils = { version = "0.3", path = "../utils", optional = true }
 secret-toolkit-viewing-key = { version = "0.3", path = "../viewing_key", optional = true }
