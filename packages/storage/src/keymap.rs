@@ -20,7 +20,7 @@ fn _page_from_position(position: u32) -> u32 {
 }
 
 #[derive(Serialize, Deserialize)]
-struct InternalItem<T, Ser = Bincode2>
+struct InternalItem<T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
@@ -171,7 +171,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         }
     }
     /// internal item get function
-    fn _get_from_key<S: Storage>(&self, storage: &S, key: &K) -> StdResult<InternalItem<T>> {
+    fn _get_from_key<S: Storage>(&self, storage: &S, key: &K) -> StdResult<InternalItem<T, Ser>> {
         let key_vec = self.serialize_key(key)?;
         self.load_impl(storage, &key_vec)
     }
@@ -414,7 +414,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 }
 
 impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
-    PrefixedTypedStorage<InternalItem<T>, Ser> for Keymap<'a, K, T, Ser>
+    PrefixedTypedStorage<InternalItem<T, Ser>, Bincode2> for Keymap<'a, K, T, Ser>
 {
     fn as_slice(&self) -> &[u8] {
         if let Some(prefix) = &self.prefix {
