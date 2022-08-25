@@ -178,7 +178,7 @@ use secret_toolkit::storage::{Keymap}
 
 ```ignore
 pub static ADDR_VOTE: Keymap<HumanAddr, Foo> = Keymap::new(b"vote");
-pub static BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"vote");
+pub static BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"bet");
 ```
 
 > ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
