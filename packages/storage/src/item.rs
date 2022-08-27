@@ -33,28 +33,28 @@ where
     Ser: Serde,
 {
     /// save will serialize the model and store, returns an error on serialization issues
-    pub fn save<S: Storage>(&self, storage: &mut S, data: &T) -> StdResult<()> {
+    pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
         self.save_impl(storage, data)
     }
 
     /// userfacing remove function
-    pub fn remove<S: Storage>(&self, storage: &mut S) {
+    pub fn remove(&self, storage: &mut dyn Storage) {
         self.remove_impl(storage);
     }
 
     /// load will return an error if no data is set at the given key, or on parse error
-    pub fn load<S: Storage>(&self, storage: &S) -> StdResult<T> {
+    pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
         self.load_impl(storage)
     }
 
     /// may_load will parse the data stored at the key if present, returns `Ok(None)` if no data there.
     /// returns an error on issues parsing
-    pub fn may_load<S: Storage>(&self, storage: &S) -> StdResult<Option<T>> {
+    pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
         self.may_load_impl(storage)
     }
 
     /// efficient way to see if any object is currently saved.
-    pub fn is_empty<S: Storage>(&self, storage: &S) -> bool {
+    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
         storage.get(self.as_slice()).is_none()
     }
 
@@ -63,7 +63,7 @@ where
     ///
     /// It assumes, that data was initialized before, and if it doesn't exist, `Err(StdError::NotFound)`
     /// is returned.
-    pub fn update<S, A>(&self, storage: &mut S, action: A) -> StdResult<T>
+    pub fn update<S, A>(&self, storage: &mut dyn Storage, action: A) -> StdResult<T>
     where
         S: Storage,
         A: FnOnce(T) -> StdResult<T>,
@@ -80,7 +80,7 @@ where
     /// # Arguments
     ///
     /// * `storage` - a reference to the storage this item is in
-    fn load_impl<S: Storage>(&self, storage: &S) -> StdResult<T> {
+    fn load_impl(&self, storage: &dyn Storage) -> StdResult<T> {
         Ser::deserialize(
             &storage
                 .get(self.as_slice())
@@ -94,7 +94,7 @@ where
     /// # Arguments
     ///
     /// * `storage` - a reference to the storage this item is in
-    fn may_load_impl<S: Storage>(&self, storage: &S) -> StdResult<Option<T>> {
+    fn may_load_impl(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
         match storage.get(self.as_slice()) {
             Some(value) => Ser::deserialize(&value).map(Some),
             None => Ok(None),
@@ -107,7 +107,7 @@ where
     ///
     /// * `storage` - a mutable reference to the storage this item should go to
     /// * `value` - a reference to the item to store
-    fn save_impl<S: Storage>(&self, storage: &mut S, value: &T) -> StdResult<()> {
+    fn save_impl(&self, storage: &mut dyn Storage, value: &T) -> StdResult<()> {
         storage.set(self.as_slice(), &Ser::serialize(value)?);
         Ok(())
     }
@@ -117,7 +117,7 @@ where
     /// # Arguments
     ///
     /// * `storage` - a mutable reference to the storage this item is in
-    fn remove_impl<S: Storage>(&self, storage: &mut S) {
+    fn remove_impl(&self, storage: &mut dyn Storage) {
         storage.remove(self.as_slice());
     }
 

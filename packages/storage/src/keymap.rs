@@ -107,7 +107,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Ser::deserialize(key_data)
     }
     /// get total number of objects saved
-    pub fn get_len<S: Storage>(&self, storage: &S) -> StdResult<u32> {
+    pub fn get_len(&self, storage: &dyn Storage) -> StdResult<u32> {
         let mut may_len = self.length.lock().unwrap();
         match *may_len {
             Some(length) => Ok(length),
@@ -129,11 +129,11 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         }
     }
     /// checks if the collection has any elements
-    pub fn is_empty<S: Storage>(&self, storage: &S) -> StdResult<bool> {
+    pub fn is_empty(&self, storage: &dyn Storage) -> StdResult<bool> {
         Ok(self.get_len(storage)? == 0)
     }
     /// set length of the map
-    fn set_len<S: Storage>(&self, storage: &mut S, len: u32) -> StdResult<()> {
+    fn set_len(&self, storage: &mut dyn Storage, len: u32) -> StdResult<()> {
         let len_key = [self.as_slice(), MAP_LENGTH].concat();
         storage.set(&len_key, &len.to_be_bytes());
 
@@ -143,7 +143,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Ok(())
     }
     /// Used to get the indexes stored in the given page number
-    fn _get_indexes<S: Storage>(&self, storage: &S, page: u32) -> StdResult<Vec<Vec<u8>>> {
+    fn _get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<Vec<Vec<u8>>> {
         let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
         let maybe_serialized = storage.get(&indexes_key);
         match maybe_serialized {
@@ -152,9 +152,9 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         }
     }
     /// Set an indexes page
-    fn _set_indexes_page<S: Storage>(
+    fn _set_indexes_page(
         &self,
-        storage: &mut S,
+        storage: &mut dyn Storage,
         page: u32,
         indexes: &Vec<Vec<u8>>,
     ) -> StdResult<()> {
@@ -163,7 +163,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Ok(())
     }
     /// user facing get function
-    pub fn get<S: Storage>(&self, storage: &S, key: &K) -> Option<T> {
+    pub fn get(&self, storage: &dyn Storage, key: &K) -> Option<T> {
         if let Ok(internal_item) = self._get_from_key(storage, key) {
             internal_item.get_item().ok()
         } else {
@@ -171,12 +171,12 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         }
     }
     /// internal item get function
-    fn _get_from_key<S: Storage>(&self, storage: &S, key: &K) -> StdResult<InternalItem<T, Ser>> {
+    fn _get_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<InternalItem<T, Ser>> {
         let key_vec = self.serialize_key(key)?;
         self.load_impl(storage, &key_vec)
     }
     /// user facing remove function
-    pub fn remove<S: Storage>(&self, storage: &mut S, key: &K) -> StdResult<()> {
+    pub fn remove(&self, storage: &mut dyn Storage, key: &K) -> StdResult<()> {
         let key_vec = self.serialize_key(key)?;
         let removed_pos = self._get_from_key(storage, key)?.index_pos;
 
@@ -236,7 +236,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Ok(())
     }
     /// user facing insert function
-    pub fn insert<S: Storage>(&self, storage: &mut S, key: &K, item: &T) -> StdResult<()> {
+    pub fn insert(&self, storage: &mut dyn Storage, key: &K, item: &T) -> StdResult<()> {
         let key_vec = self.serialize_key(key)?;
         match self.may_load_impl(storage, &key_vec)? {
             Some(existing_internal_item) => {
@@ -260,16 +260,16 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         }
     }
     /// user facing method that checks if any item is stored with this key.
-    pub fn contains<S: Storage>(&self, storage: &S, key: &K) -> bool {
+    pub fn contains(&self, storage: &dyn Storage, key: &K) -> bool {
         match self.serialize_key(key) {
             Ok(key_vec) => self.contains_impl(storage, &key_vec),
             Err(_) => false,
         }
     }
     /// paginates (key, item) pairs.
-    pub fn paging<S: Storage>(
+    pub fn paging(
         &self,
-        storage: &S,
+        storage: &dyn Storage,
         start_page: u32,
         size: u32,
     ) -> StdResult<Vec<(K, T)>> {
@@ -292,9 +292,9 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         self.get_pairs_at_positions(storage, start_pos, end_pos)
     }
     /// paginates only the keys. More efficient than paginating both items and keys
-    pub fn paging_keys<S: Storage>(
+    pub fn paging_keys(
         &self,
-        storage: &S,
+        storage: &dyn Storage,
         start_page: u32,
         size: u32,
     ) -> StdResult<Vec<K>> {
@@ -317,9 +317,9 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         self.get_keys_at_positions(storage, start_pos, end_pos)
     }
     /// tries to list keys without checking start/end bounds
-    fn get_keys_at_positions<S: Storage>(
+    fn get_keys_at_positions(
         &self,
-        storage: &S,
+        storage: &dyn Storage,
         start: u32,
         end: u32,
     ) -> StdResult<Vec<K>> {
@@ -349,9 +349,9 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Ok(res)
     }
     /// tries to list (key, item) pairs without checking start/end bounds
-    fn get_pairs_at_positions<S: Storage>(
+    fn get_pairs_at_positions(
         &self,
-        storage: &S,
+        storage: &dyn Storage,
         start: u32,
         end: u32,
     ) -> StdResult<Vec<(K, T)>> {
@@ -382,7 +382,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Ok(res)
     }
     /// gets a key from a specific position in indexes
-    fn get_key_from_pos<S: Storage>(&self, storage: &S, pos: u32) -> StdResult<K> {
+    fn get_key_from_pos(&self, storage: &dyn Storage, pos: u32) -> StdResult<K> {
         let page = _page_from_position(pos);
         let indexes = self._get_indexes(storage, page)?;
         let index = pos % PAGE_SIZE;
@@ -390,7 +390,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         self.deserialize_key(key_vec)
     }
     /// gets a key from a specific position in indexes
-    fn get_pair_from_pos<S: Storage>(&self, storage: &S, pos: u32) -> StdResult<(K, T)> {
+    fn get_pair_from_pos(&self, storage: &dyn Storage, pos: u32) -> StdResult<(K, T)> {
         let page = _page_from_position(pos);
         let indexes = self._get_indexes(storage, page)?;
         let index = pos % PAGE_SIZE;
@@ -400,13 +400,13 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Ok((key, item))
     }
     /// Returns a readonly iterator only for keys. More efficient than iter().
-    pub fn iter_keys<S: Storage>(&self, storage: &'a S) -> StdResult<KeyIter<K, T, S, Ser>> {
+    pub fn iter_keys(&self, storage: &'a dyn Storage) -> StdResult<KeyIter<K, T, Ser>> {
         let len = self.get_len(storage)?;
         let iter = KeyIter::new(self, storage, 0, len);
         Ok(iter)
     }
     /// Returns a readonly iterator for (key-item) pairs
-    pub fn iter<S: Storage>(&self, storage: &'a S) -> StdResult<KeyItemIter<K, T, S, Ser>> {
+    pub fn iter(&self, storage: &'a dyn Storage) -> StdResult<KeyItemIter<K, T, Ser>> {
         let len = self.get_len(storage)?;
         let iter = KeyItemIter::new(self, storage, 0, len);
         Ok(iter)
@@ -441,15 +441,14 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 }
 
 /// An iterator over the keys of the Keymap.
-pub struct KeyIter<'a, K, T, S, Ser>
+pub struct KeyIter<'a, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
     keymap: &'a Keymap<'a, K, T, Ser>,
-    storage: &'a S,
+    storage: &'a dyn Storage,
     start: u32,
     end: u32,
     saved_indexes: Option<Vec<Vec<u8>>>,
@@ -458,15 +457,19 @@ where
     saved_back_index_page: Option<u32>,
 }
 
-impl<'a, K, T, S, Ser> KeyIter<'a, K, T, S, Ser>
+impl<'a, K, T, Ser> KeyIter<'a, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
     /// constructor
-    pub fn new(keymap: &'a Keymap<'a, K, T, Ser>, storage: &'a S, start: u32, end: u32) -> Self {
+    pub fn new(
+        keymap: &'a Keymap<'a, K, T, Ser>,
+        storage: &'a dyn Storage,
+        start: u32,
+        end: u32,
+    ) -> Self {
         Self {
             keymap,
             storage,
@@ -480,11 +483,10 @@ where
     }
 }
 
-impl<'a, K, T, S, Ser> Iterator for KeyIter<'a, K, T, S, Ser>
+impl<'a, K, T, Ser> Iterator for KeyIter<'a, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
     type Item = StdResult<K>;
@@ -606,11 +608,10 @@ where
     }
 }
 
-impl<'a, K, T, S, Ser> DoubleEndedIterator for KeyIter<'a, K, T, S, Ser>
+impl<'a, K, T, Ser> DoubleEndedIterator for KeyIter<'a, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -726,11 +727,10 @@ where
 }
 
 // This enables writing `append_store.iter().skip(n).rev()`
-impl<'a, K, T, S, Ser> ExactSizeIterator for KeyIter<'a, K, T, S, Ser>
+impl<'a, K, T, Ser> ExactSizeIterator for KeyIter<'a, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
 }
@@ -738,15 +738,14 @@ where
 // ===============================================================================================
 
 /// An iterator over the (key, item) pairs of the Keymap. Less efficient than just iterating over keys.
-pub struct KeyItemIter<'a, K, T, S, Ser>
+pub struct KeyItemIter<'a, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
     keymap: &'a Keymap<'a, K, T, Ser>,
-    storage: &'a S,
+    storage: &'a dyn Storage,
     start: u32,
     end: u32,
     saved_indexes: Option<Vec<Vec<u8>>>,
@@ -755,15 +754,19 @@ where
     saved_back_index_page: Option<u32>,
 }
 
-impl<'a, K, T, S, Ser> KeyItemIter<'a, K, T, S, Ser>
+impl<'a, K, T, Ser> KeyItemIter<'a, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
     /// constructor
-    pub fn new(keymap: &'a Keymap<'a, K, T, Ser>, storage: &'a S, start: u32, end: u32) -> Self {
+    pub fn new(
+        keymap: &'a Keymap<'a, K, T, Ser>,
+        storage: &'a dyn Storage,
+        start: u32,
+        end: u32,
+    ) -> Self {
         Self {
             keymap,
             storage,
@@ -777,11 +780,10 @@ where
     }
 }
 
-impl<'a, K, T, S, Ser> Iterator for KeyItemIter<'a, K, T, S, Ser>
+impl<'a, K, T, Ser> Iterator for KeyItemIter<'a, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
     type Item = StdResult<(K, T)>;
@@ -906,11 +908,10 @@ where
     }
 }
 
-impl<'a, K, T, S, Ser> DoubleEndedIterator for KeyItemIter<'a, K, T, S, Ser>
+impl<'a, K, T, Ser> DoubleEndedIterator for KeyItemIter<'a, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -1029,11 +1030,10 @@ where
 }
 
 // This enables writing `append_store.iter().skip(n).rev()`
-impl<'a, K, T, S, Ser> ExactSizeIterator for KeyItemIter<'a, K, T, S, Ser>
+impl<'a, K, T, Ser> ExactSizeIterator for KeyItemIter<'a, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
-    S: Storage,
     Ser: Serde,
 {
 }
@@ -1047,7 +1047,7 @@ trait PrefixedTypedStorage<T: Serialize + DeserializeOwned, Ser: Serde> {
     ///
     /// * `storage` - a reference to the storage this item is in
     /// * `key` - a byte slice representing the key to access the stored item
-    fn contains_impl<S: Storage>(&self, storage: &S, key: &[u8]) -> bool {
+    fn contains_impl(&self, storage: &dyn Storage, key: &[u8]) -> bool {
         let prefixed_key = [self.as_slice(), key].concat();
         storage.get(&prefixed_key).is_some()
     }
@@ -1059,7 +1059,7 @@ trait PrefixedTypedStorage<T: Serialize + DeserializeOwned, Ser: Serde> {
     ///
     /// * `storage` - a reference to the storage this item is in
     /// * `key` - a byte slice representing the key to access the stored item
-    fn load_impl<S: Storage>(&self, storage: &S, key: &[u8]) -> StdResult<T> {
+    fn load_impl(&self, storage: &dyn Storage, key: &[u8]) -> StdResult<T> {
         let prefixed_key = [self.as_slice(), key].concat();
         Ser::deserialize(
             &storage
@@ -1075,7 +1075,7 @@ trait PrefixedTypedStorage<T: Serialize + DeserializeOwned, Ser: Serde> {
     ///
     /// * `storage` - a reference to the storage this item is in
     /// * `key` - a byte slice representing the key to access the stored item
-    fn may_load_impl<S: Storage>(&self, storage: &S, key: &[u8]) -> StdResult<Option<T>> {
+    fn may_load_impl(&self, storage: &dyn Storage, key: &[u8]) -> StdResult<Option<T>> {
         let prefixed_key = [self.as_slice(), key].concat();
         match storage.get(&prefixed_key) {
             Some(value) => Ser::deserialize(&value).map(Some),
@@ -1090,7 +1090,7 @@ trait PrefixedTypedStorage<T: Serialize + DeserializeOwned, Ser: Serde> {
     /// * `storage` - a mutable reference to the storage this item should go to
     /// * `key` - a byte slice representing the key to access the stored item
     /// * `value` - a reference to the item to store
-    fn save_impl<S: Storage>(&self, storage: &mut S, key: &[u8], value: &T) -> StdResult<()> {
+    fn save_impl(&self, storage: &mut dyn Storage, key: &[u8], value: &T) -> StdResult<()> {
         let prefixed_key = [self.as_slice(), key].concat();
         storage.set(&prefixed_key, &Ser::serialize(value)?);
         Ok(())
@@ -1102,7 +1102,7 @@ trait PrefixedTypedStorage<T: Serialize + DeserializeOwned, Ser: Serde> {
     ///
     /// * `storage` - a mutable reference to the storage this item is in
     /// * `key` - a byte slice representing the key to access the stored item
-    fn remove_impl<S: Storage>(&self, storage: &mut S, key: &[u8]) {
+    fn remove_impl(&self, storage: &mut dyn Storage, key: &[u8]) {
         let prefixed_key = [self.as_slice(), key].concat();
         storage.remove(&prefixed_key);
     }
