@@ -63,7 +63,7 @@ pub trait ViewingKeyStore {
     }
 
     /// Set a new viewing key based on a predetermined value.
-    fn set<S: Storage>(storage: &mut S, account: &str, viewing_key: &str) {
+    fn set(storage: &mut dyn Storage, account: &str, viewing_key: &str) {
         let mut balance_store = PrefixedStorage::new(storage, Self::STORAGE_KEY);
         balance_store.set(account.as_bytes(), &sha_256(viewing_key.as_bytes()));
     }
