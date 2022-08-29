@@ -1,4 +1,4 @@
-use cosmwasm_std::{Binary, Response, StdResult};
+use cosmwasm_std::{Binary, Response};
 
 /// Take a Vec<u8> and pad it up to a multiple of `block_size`, using spaces at the end.
 pub fn space_pad(message: &mut Vec<u8>, block_size: usize) -> &mut Vec<u8> {
@@ -14,13 +14,13 @@ pub fn space_pad(message: &mut Vec<u8>, block_size: usize) -> &mut Vec<u8> {
     message
 }
 
-/// Pad the data and logs in a `StdResult<Response>` to the block size, with spaces.
+/// Pad the data and logs in a `Result<Response, _>` to the block size, with spaces.
 // Users don't need to care about it as the type `T` has a default, and will
 // always be known in the context of the caller.
-pub fn pad_handle_result<T>(
-    response: StdResult<Response<T>>,
+pub fn pad_handle_result<T, E>(
+    response: Result<Response<T>, E>,
     block_size: usize,
-) -> StdResult<Response<T>>
+) -> Result<Response<T>, E>
 where
     T: Clone + std::fmt::Debug + PartialEq + schemars::JsonSchema,
 {
@@ -40,7 +40,7 @@ where
 }
 
 /// Pad a `QueryResult` with spaces
-pub fn pad_query_result(response: StdResult<Binary>, block_size: usize) -> StdResult<Binary> {
+pub fn pad_query_result<E>(response: Result<Binary, E>, block_size: usize) -> Result<Binary, E> {
     response.map(|mut response| {
         space_pad(&mut response.0, block_size);
         response
