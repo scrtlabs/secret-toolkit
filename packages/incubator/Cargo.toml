@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-incubator"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2018"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -20,7 +20,5 @@ cosmwasm-storage = { git = "https://github.com/scrtlabs/cosmwasm", branch = "sec
 secret-toolkit-serialization = { version = "0.3", path = "../serialization", optional = true }
 
 [features]
-default = ["cashmap",  "generational-store", "maxheap"]
-cashmap = ["cosmwasm-storage", "serde", "secret-toolkit-serialization", "cosmwasm-std"]
 generational-store = ["secret-toolkit-serialization", "serde", "cosmwasm-std"]
 maxheap = ["secret-toolkit-serialization", "serde", "cosmwasm-std"]
