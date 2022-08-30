@@ -1,5 +1,11 @@
 # Release notes for the Secret Toolkit
 
+## secret-toolkit-storage v0.4.2
+
+* BUGFIX: clippy errors resolved
+* Added `.add_suffix` and `.clone` methods to `secret-toolkit::storage::Item`
+* Minor performance updates to `secret-toolkit::storage::Keymap`
+
 ## secret-toolkit-storage v0.4.1
 
 * BUGFIX: `Item::is_empty` was returning the opposite value from what you'd expect.
