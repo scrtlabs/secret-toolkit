@@ -963,6 +963,8 @@ pub fn reveal_msg(
 
 #[cfg(test)]
 mod tests {
+    use crate::{Extension, Trait};
+
     use super::*;
 
     #[test]
@@ -1276,14 +1278,46 @@ mod tests {
         let owner = Some(HumanAddr("alice".to_string()));
         let token_id = Some("NFT1".to_string());
         let public_metadata = Some(Metadata {
-            name: Some("public name".to_string()),
-            description: None,
-            image: Some("public image".to_string()),
+            token_uri: Some("token uri".to_string()),
+            extension: Some(Extension {
+                image: Some("public_image".to_string()),
+                image_data: None,
+                external_url: None,
+                description: None,
+                name: None,
+                attributes: Some(vec![Trait {
+                    display_type: None,
+                    trait_type: Some("public trait".to_string()),
+                    value: "value".to_string(),
+                    max_value: None,
+                }]),
+                background_color: None,
+                animation_url: None,
+                youtube_url: None,
+                media: None,
+                protected_attributes: None,
+            }),
         });
         let private_metadata = Some(Metadata {
-            name: None,
-            description: Some("private description".to_string()),
-            image: Some("private image".to_string()),
+            token_uri: Some("token uri".to_string()),
+            extension: Some(Extension {
+                image: Some("private_image".to_string()),
+                image_data: None,
+                external_url: None,
+                description: None,
+                name: None,
+                attributes: Some(vec![Trait {
+                    display_type: None,
+                    trait_type: Some("private trait".to_string()),
+                    value: "value".to_string(),
+                    max_value: None,
+                }]),
+                background_color: None,
+                animation_url: None,
+                youtube_url: None,
+                media: None,
+                protected_attributes: None,
+            }),
         });
         let memo = Some("memo".to_string());
         let padding = None;
@@ -1410,14 +1444,46 @@ mod tests {
     fn test_set_metadata_msg() -> StdResult<()> {
         let token_id = "NFT1".to_string();
         let public_metadata = Some(Metadata {
-            name: Some("public name".to_string()),
-            description: Some("public description".to_string()),
-            image: None,
+            token_uri: Some("token uri".to_string()),
+            extension: Some(Extension {
+                image: Some("public_image".to_string()),
+                image_data: None,
+                external_url: None,
+                description: None,
+                name: None,
+                attributes: Some(vec![Trait {
+                    display_type: None,
+                    trait_type: Some("public trait".to_string()),
+                    value: "value".to_string(),
+                    max_value: None,
+                }]),
+                background_color: None,
+                animation_url: None,
+                youtube_url: None,
+                media: None,
+                protected_attributes: None,
+            }),
         });
         let private_metadata = Some(Metadata {
-            name: Some("private name".to_string()),
-            description: Some("private description".to_string()),
-            image: Some("private image".to_string()),
+            token_uri: Some("token uri".to_string()),
+            extension: Some(Extension {
+                image: Some("private_image".to_string()),
+                image_data: None,
+                external_url: None,
+                description: None,
+                name: None,
+                attributes: Some(vec![Trait {
+                    display_type: None,
+                    trait_type: Some("private trait".to_string()),
+                    value: "value".to_string(),
+                    max_value: None,
+                }]),
+                background_color: None,
+                animation_url: None,
+                youtube_url: None,
+                media: None,
+                protected_attributes: None,
+            }),
         });
         let padding = None;
         let callback_code_hash = "code hash".to_string();
@@ -1456,9 +1522,25 @@ mod tests {
                 token_id: None,
                 owner: Some(HumanAddr("alice".to_string())),
                 public_metadata: Some(Metadata {
-                    name: Some("public name 1".to_string()),
-                    description: None,
-                    image: Some("public image 1".to_string()),
+                    token_uri: Some("token uri".to_string()),
+                    extension: Some(Extension {
+                        image: Some("public_image".to_string()),
+                        image_data: None,
+                        external_url: None,
+                        description: None,
+                        name: None,
+                        attributes: Some(vec![Trait {
+                            display_type: None,
+                            trait_type: Some("public trait".to_string()),
+                            value: "value".to_string(),
+                            max_value: None,
+                        }]),
+                        background_color: None,
+                        animation_url: None,
+                        youtube_url: None,
+                        media: None,
+                        protected_attributes: None,
+                    }),
                 }),
                 private_metadata: None,
                 memo: Some("memo 1".to_string()),
@@ -1467,14 +1549,46 @@ mod tests {
                 token_id: Some("NFT2".to_string()),
                 owner: None,
                 public_metadata: Some(Metadata {
-                    name: None,
-                    description: Some("public description 2".to_string()),
-                    image: Some("public image 2".to_string()),
+                    token_uri: Some("token uri2".to_string()),
+                    extension: Some(Extension {
+                        image: Some("public_image2".to_string()),
+                        image_data: None,
+                        external_url: None,
+                        description: None,
+                        name: None,
+                        attributes: Some(vec![Trait {
+                            display_type: None,
+                            trait_type: Some("public trait2".to_string()),
+                            value: "value2".to_string(),
+                            max_value: None,
+                        }]),
+                        background_color: None,
+                        animation_url: None,
+                        youtube_url: None,
+                        media: None,
+                        protected_attributes: None,
+                    }),
                 }),
                 private_metadata: Some(Metadata {
-                    name: Some("private name 2".to_string()),
-                    description: Some("private description 2".to_string()),
-                    image: None,
+                    token_uri: Some("token uri2".to_string()),
+                    extension: Some(Extension {
+                        image: Some("private_image2".to_string()),
+                        image_data: None,
+                        external_url: None,
+                        description: None,
+                        name: None,
+                        attributes: Some(vec![Trait {
+                            display_type: None,
+                            trait_type: Some("private trait2".to_string()),
+                            value: "value2".to_string(),
+                            max_value: None,
+                        }]),
+                        background_color: None,
+                        animation_url: None,
+                        youtube_url: None,
+                        media: None,
+                        protected_attributes: None,
+                    }),
                 }),
                 memo: None,
             },
@@ -1483,9 +1597,25 @@ mod tests {
                 owner: Some(HumanAddr("bob".to_string())),
                 public_metadata: None,
                 private_metadata: Some(Metadata {
-                    name: Some("private name 3".to_string()),
-                    description: Some("private description 3".to_string()),
-                    image: Some("private image 3".to_string()),
+                    token_uri: Some("token uri3".to_string()),
+                    extension: Some(Extension {
+                        image: Some("private_image3".to_string()),
+                        image_data: None,
+                        external_url: None,
+                        description: None,
+                        name: None,
+                        attributes: Some(vec![Trait {
+                            display_type: None,
+                            trait_type: Some("private trait3".to_string()),
+                            value: "value3".to_string(),
+                            max_value: None,
+                        }]),
+                        background_color: None,
+                        animation_url: None,
+                        youtube_url: None,
+                        media: None,
+                        protected_attributes: None,
+                    }),
                 }),
                 memo: Some("memo 3".to_string()),
             },
