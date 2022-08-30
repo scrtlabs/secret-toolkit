@@ -1,16 +1,24 @@
 # Release notes for the Secret Toolkit
 
+## secret-toolkit-storage v0.4.2
+
+* BUGFIX: implementation of `.clone` method fixed
+* Added `.add_suffix` and `.clone` methods to `secret-toolkit::storage::Item`
+* Minor performance updates to `secret-toolkit::storage::Keymap`
+
 ## secret-toolkit-storage v0.4.1
 
 * BUGFIX: `Item::is_empty` was returning the opposite value from what you'd expect.
 
 ## v0.4.0
+
 This release mostly includes the work of @srdtrk in #53. Thanks Srdtrk!
 
 It revamps the `secret-toolkit-storage` package to make it more similar to `cw-storage-plus` and much easier
 to use. It also removes the `Cashmap` type from the incubator in favor of `KeyMap` in `secret-toolkit-storage`.
 
 This is a summary of the changes and additions in this release:
+
 * Minimum Rust version is bumped to the latest v1.63. This is because we want to use `Mutex::new` in a `const fn`.
 * No more distinction between `Readonly*` and `*Mut` types. Instead, methods take references or mutable references to the storage every time.
 * Usage of `PrefixedStore` is made mostly unnecessary.
@@ -23,20 +31,24 @@ A full guide to using the new `storage` types can be found
 [in the package's readme file](https://github.com/srdtrk/secret-toolkit/blob/3725530aebe149d14f7f3f1662844340eb27e015/packages/storage/Readme.md).
 
 ## secret-toolkit-incubator v0.3.1
+
 * Fixed compilation issue with Rust v1.61 (#46, #48)
 * Removed Siphasher dependency (#46, #48)
 
 ## secret-toolkit-utils v0.3.1
 
 ### Security
+
 * BUGFIX: `secret-toolkit::utils::FeatureToggle::handle_pause` had an inverse authorization check: only non-pausers
   could pause features.
 
 ## secret-toolkit-permit v0.3.1
+
 * Removed the `ecc-secp256k1` feature from `secret-toolkit-crypto` dependency of `secret-toolkit-permit`.
-    * This tiny change significantly reduces the size of binaries that only use the permit feature.
+  * This tiny change significantly reduces the size of binaries that only use the permit feature.
 
 ## v0.3.0
+
 * Added `clear` method to `AppendStore` and `DequeStore` to quickly reset the collections (#34)
 * docs.rs documentation now includes all sub-crates.
 * BUGFIX: `secret-toolkit::snip721::Metadata` was severely out of date with the SNIP-721 specification, and not useful.
@@ -49,8 +61,9 @@ A full guide to using the new `storage` types can be found
 * Added `secret-toolkit::utils::feature_toggle` which allow managing feature flags in your contract.
 
 ### Breaking
-* `secret-toolkit::permit::validate()` Now supports validating any type of Cosmos address. 
-Interface changes: Now takes a reference to the current token address instead 
+
+* `secret-toolkit::permit::validate()` Now supports validating any type of Cosmos address.
+Interface changes: Now takes a reference to the current token address instead
 of taking it by value and an optional hrp string.
 In addition, it returns a String and not HumanAddr.
 * Renamed `secret-toolkit::permit::Permission` to `secret-toolkit::permit::TokenPermission`.
@@ -64,6 +77,7 @@ In addition, it returns a String and not HumanAddr.
 * `secret-toolkit-incubator` now has features `["cashmap", "generational-store"]` which are all off by default.
 
 ## v0.2.0
+
 This release includes a ton of new features, and a few breaking changes in various interfaces.
 This version is also the first released to [crates.io](https://crates.io)!
 
@@ -73,7 +87,7 @@ This version is also the first released to [crates.io](https://crates.io)!
 * Added support for SNIP-22 messages (batch operations)
 * Added support for SNIP-23 messages (improved Send operations) which broke some interfaces
 * Added support for SNIP-24 permits
-* Added `Base64Of<S: Serde, T>`, `Base64JsonOf<T>`, and `Base64Bincode2Of<T>`, 
+* Added `Base64Of<S: Serde, T>`, `Base64JsonOf<T>`, and `Base64Bincode2Of<T>`,
     which are wrappers that automatically deserializes base64 strings to `T`.
     It can be used in message types' fields instead of `Binary` when the contents of the string
     should have more specific contents.
@@ -85,9 +99,11 @@ This version is also the first released to [crates.io](https://crates.io)!
     while `["crypto", "permit", "incubator"]` are left disabled by default.
 
 ## v0.1.1
+
 * Removed unused dev-dependency that was slowing down test compilation times.
 
 ## v0.1.0
+
 This is the first release of `secret-toolkit`. It supports:
 
 * `secret-toolkit::snip20` - Helper types and functions for interaction with
@@ -102,6 +118,6 @@ This is the first release of `secret-toolkit`. It supports:
 * `secret-toolkit::serialization` - marker types for overriding the storage
   format used by types in `secret-toolkit::storage`. `Json` and `Bincode2`.
 * `secret-toolkit::utils` - General utilities for writing contract code.
-    * `padding` - tools for padding queries and responses.
-    * `calls` - Tools for marking types as messages in queries and callbacks
+  * `padding` - tools for padding queries and responses.
+  * `calls` - Tools for marking types as messages in queries and callbacks
       to other contracts.

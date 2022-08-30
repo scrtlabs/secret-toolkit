@@ -20,12 +20,29 @@ fn _page_from_position(position: u32) -> u32 {
 }
 
 #[derive(Serialize, Deserialize)]
-struct InternalItem<T>
-// where
-//     T: Serialize + DeserializeOwned,
+struct InternalItem<T, Ser>
+where
+    T: Serialize + DeserializeOwned,
+    Ser: Serde,
 {
-    item: T,
+    item_vec: Vec<u8>,
     index_pos: u32,
+    item_type: PhantomData<T>,
+    serialization_type: PhantomData<Ser>,
+}
+
+impl<T: Serialize + DeserializeOwned, Ser: Serde> InternalItem<T, Ser> {
+    fn new(index_pos: u32, item: &T) -> StdResult<Self> {
+        Ok(Self {
+            item_vec: Ser::serialize(item)?,
+            index_pos,
+            item_type: PhantomData,
+            serialization_type: PhantomData,
+        })
+    }
+    fn get_item(&self) -> StdResult<T> {
+        Ser::deserialize(&self.item_vec)
+    }
 }
 
 pub struct Keymap<'a, K, T, Ser = Bincode2>
@@ -37,7 +54,6 @@ where
     /// prefix of the newly constructed Storage
     namespace: &'a [u8],
     /// needed if any suffixes were added to the original namespace.
-    /// therefore it is not necessarily same as the namespace.
     prefix: Option<Vec<u8>>,
     length: Mutex<Option<u32>>,
     key_type: PhantomData<K>,
@@ -148,7 +164,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     /// user facing get function
     pub fn get<S: ReadonlyStorage>(&self, storage: &S, key: &K) -> Option<T> {
         if let Ok(internal_item) = self._get_from_key(storage, key) {
-            Some(internal_item.item)
+            internal_item.get_item().ok()
         } else {
             None
         }
@@ -158,7 +174,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         &self,
         storage: &S,
         key: &K,
-    ) -> StdResult<InternalItem<T>> {
+    ) -> StdResult<InternalItem<T, Ser>> {
         let key_vec = self.serialize_key(key)?;
         self.load_impl(storage, &key_vec)
     }
@@ -195,9 +211,9 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         let max_page = _page_from_position(len);
         if max_page == page {
             // last page indexes is the same as indexes
-            let last_key = indexes.pop().ok_or(StdError::generic_err(
-                "Last item's key not found - should never happen",
-            ))?;
+            let last_key = indexes.pop().ok_or_else(|| {
+                StdError::generic_err("Last item's key not found - should never happen")
+            })?;
             // modify last item
             let mut last_internal_item = self.load_impl(storage, &last_key)?;
             last_internal_item.index_pos = removed_pos;
@@ -207,9 +223,9 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             self._set_indexes_page(storage, page, &indexes)?;
         } else {
             let mut last_page_indexes = self._get_indexes(storage, max_page)?;
-            let last_key = last_page_indexes.pop().ok_or(StdError::generic_err(
-                "Last item's key not found - should never happen",
-            ))?;
+            let last_key = last_page_indexes.pop().ok_or_else(|| {
+                StdError::generic_err("Last item's key not found - should never happen")
+            })?;
             // modify last item
             let mut last_internal_item = self.load_impl(storage, &last_key)?;
             last_internal_item.index_pos = removed_pos;
@@ -226,10 +242,10 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     pub fn insert<S: Storage>(&self, storage: &mut S, key: &K, item: T) -> StdResult<()> {
         let key_vec = self.serialize_key(key)?;
         match self.may_load_impl(storage, &key_vec)? {
-            Some(mut existing_internal_item) => {
+            Some(existing_internal_item) => {
                 // if item already exists
-                existing_internal_item.item = item;
-                self.save_impl(storage, &key_vec, &existing_internal_item)
+                let new_internal_item = InternalItem::new(existing_internal_item.index_pos, &item)?;
+                self.save_impl(storage, &key_vec, &new_internal_item)
             }
             None => {
                 // not already saved
@@ -237,10 +253,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
                 self.set_len(storage, pos + 1)?;
                 let page = _page_from_position(pos);
                 // save the item
-                let internal_item = InternalItem {
-                    item,
-                    index_pos: pos,
-                };
+                let internal_item = InternalItem::new(pos, &item)?;
                 self.save_impl(storage, &key_vec, &internal_item)?;
                 // add index
                 let mut indexes = self._get_indexes(storage, page)?;
@@ -367,7 +380,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             for i in start_page_pos..=end_page_pos {
                 let key_vec = &indexes[i as usize];
                 let key = self.deserialize_key(key_vec)?;
-                let item = self.load_impl(storage, key_vec)?.item;
+                let item = self.load_impl(storage, key_vec)?.get_item()?;
                 res.push((key, item));
             }
         }
@@ -388,7 +401,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         let index = pos % PAGE_SIZE;
         let key_vec = &indexes[index as usize];
         let key = self.deserialize_key(key_vec)?;
-        let item = self.load_impl(storage, key_vec)?.item;
+        let item = self.load_impl(storage, key_vec)?.get_item()?;
         Ok((key, item))
     }
     /// Returns a readonly iterator only for keys. More efficient than iter().
@@ -409,7 +422,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 }
 
 impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
-    PrefixedTypedStorage<InternalItem<T>, Ser> for Keymap<'a, K, T, Ser>
+    PrefixedTypedStorage<InternalItem<T, Ser>, Bincode2> for Keymap<'a, K, T, Ser>
 {
     fn as_slice(&self) -> &[u8] {
         if let Some(prefix) = &self.prefix {
@@ -425,12 +438,12 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 {
     fn clone(&self) -> Self {
         Self {
-            namespace: self.namespace.clone(),
+            namespace: self.namespace,
             prefix: self.prefix.clone(),
             length: Mutex::new(None),
-            key_type: self.key_type.clone(),
-            item_type: self.item_type.clone(),
-            serialization_type: self.serialization_type.clone(),
+            key_type: PhantomData,
+            item_type: PhantomData,
+            serialization_type: PhantomData,
         }
     }
 }
@@ -1059,7 +1072,7 @@ trait PrefixedTypedStorage<T: Serialize + DeserializeOwned, Ser: Serde> {
         Ser::deserialize(
             &storage
                 .get(&prefixed_key)
-                .ok_or(StdError::not_found(type_name::<T>()))?,
+                .ok_or_else(|| StdError::not_found(type_name::<T>()))?,
         )
     }
 
@@ -1242,7 +1255,7 @@ mod tests {
             number: 1111,
         };
 
-        keymap.insert(&mut storage, &b"key1".to_vec(), foo1.clone())?;
+        keymap.insert(&mut storage, &b"key1".to_vec(), foo1)?;
         let contains_k1 = keymap.contains(&storage, &b"key1".to_vec());
 
         assert_eq!(contains_k1, true);
@@ -1295,8 +1308,8 @@ mod tests {
         let key1 = "key1".to_string();
         let key2 = "key2".to_string();
 
-        keymap.insert(&mut storage, &key1, foo1.clone())?;
-        keymap.insert(&mut storage, &key2, foo2.clone())?;
+        keymap.insert(&mut storage, &key1, foo1)?;
+        keymap.insert(&mut storage, &key2, foo2)?;
 
         let mut x = keymap.iter_keys(&storage)?;
         let (len, _) = x.size_hint();
@@ -1323,7 +1336,7 @@ mod tests {
             number: 2222,
         };
 
-        keymap.insert(&mut storage, &b"key1".to_vec(), foo1.clone())?;
+        keymap.insert(&mut storage, &b"key1".to_vec(), foo1)?;
         keymap.insert(&mut storage, &b"key1".to_vec(), foo2.clone())?;
 
         let foo3 = keymap.get(&storage, &b"key1".to_vec()).unwrap();
@@ -1403,7 +1416,7 @@ mod tests {
         assert!(keymap.length.lock().unwrap().eq(&Some(1)));
 
         // add another item
-        keymap.insert(&mut storage, &key2, foo2.clone())?;
+        keymap.insert(&mut storage, &key2, foo2)?;
         assert_eq!(keymap.get_len(&storage)?, 2);
         assert!(keymap.length.lock().unwrap().eq(&Some(2)));
 

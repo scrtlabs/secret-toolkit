@@ -9,7 +9,7 @@ This package contains many tools related to storage access patterns. This readme
 To import this package, add one of the following lines to your `Cargo.toml` file
 
 ```toml
-secret-toolkit = { version = "0.3", default-features = false, features = ["utils", "storage", "serialization"] }
+secret-toolkit = { version = "0.4", default-features = false, features = ["utils", "storage", "serialization"] }
 ```
 
 for the release versions, or
@@ -31,7 +31,7 @@ This is the simplest storage object in this toolkit. It based on the similarly n
 This object is meant to be initialized as a static constant in `state.rs`. However, it would also work perfectly fine if it was initialized during run time with a variable key (in this case though, you'd have to remind it what type of object is stored and its serde). Import it using the following lines:
 
 ```ignore
-use secret_toolkit_storage::{Item}
+use secret_toolkit::storage::{Item}
 ```
 
 And initialize it using the following lines:
@@ -43,7 +43,7 @@ pub static OWNER: Item<HumanAddr> = Item::new(b"owner");
 This uses Bincode2 to serde HumanAddr by default. To specify the Serde algorithm as Json, first import it from `secret-toolkit-serialization`
 
 ```ignore
-use secret_toolkit_serialization::{Bincode2, Json};
+use secret_toolkit::serialization::{Bincode2, Json};
 ```
 
 then
@@ -144,7 +144,7 @@ This is a storage wrapper based on AppendStore that replicates a double ended li
 To import and intialize this storage object as a static constant in `state.rs`, do the following:
 
 ```ignore
-use secret_toolkit_storage::{DequeStore}
+use secret_toolkit::storage::{DequeStore}
 ```
 
 ```ignore
@@ -173,12 +173,12 @@ be returned in each page.
 To import and intialize this storage object as a static constant in `state.rs`, do the following:
 
 ```ignore
-use secret_toolkit_storage::{Keymap}
+use secret_toolkit::storage::{Keymap}
 ```
 
 ```ignore
 pub static ADDR_VOTE: Keymap<HumanAddr, Foo> = Keymap::new(b"vote");
-pub static BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"vote");
+pub static BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"bet");
 ```
 
 > ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
@@ -208,7 +208,7 @@ let foo = Foo {
     votes: 1111,
 };
 
-ADDR_VOTE.insert(&mut deps.storage, &user_addr, foo.clone())?;
+ADDR_VOTE.insert(&mut deps.storage, &user_addr, &foo)?;
 // Compiler knows that this is Foo
 let read_foo = ADDR_VOTE.get(&deps.storage, &user_addr).unwrap();
 assert_eq!(read_foo, foo1);
@@ -241,8 +241,8 @@ fn test_keymap_iter_keys() -> StdResult<()> {
     let key1 = "key1".to_string();
     let key2 = "key2".to_string();
 
-    keymap.insert(&mut storage, &key1, foo1.clone())?;
-    keymap.insert(&mut storage, &key2, foo2.clone())?;
+    keymap.insert(&mut storage, &key1, &foo1)?;
+    keymap.insert(&mut storage, &key2, &foo2)?;
 
     let mut x = keymap.iter_keys(&storage)?;
     let (len, _) = x.size_hint();
@@ -270,8 +270,8 @@ fn test_keymap_iter() -> StdResult<()> {
         number: 1111,
     };
 
-    keymap.insert(&mut storage, &b"key1".to_vec(), foo1.clone())?;
-    keymap.insert(&mut storage, &b"key2".to_vec(), foo2.clone())?;
+    keymap.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
+    keymap.insert(&mut storage, &b"key2".to_vec(), &foo2)?;
 
     let mut x = keymap.iter(&storage)?;
     let (len, _) = x.size_hint();

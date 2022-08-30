@@ -24,7 +24,6 @@ where
     /// prefix of the newly constructed Storage
     namespace: &'a [u8],
     /// needed if any suffixes were added to the original namespace.
-    /// therefore it is not necessarily same as the namespace.
     prefix: Option<Vec<u8>>,
     length: Mutex<Option<u32>>,
     item_type: PhantomData<T>,
@@ -191,11 +190,11 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
 impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Clone for AppendStore<'a, T, Ser> {
     fn clone(&self) -> Self {
         Self {
-            namespace: self.namespace.clone(),
+            namespace: self.namespace,
             prefix: self.prefix.clone(),
             length: Mutex::new(None),
-            item_type: self.item_type.clone(),
-            serialization_type: self.serialization_type.clone(),
+            item_type: PhantomData,
+            serialization_type: PhantomData,
         }
     }
 }
@@ -221,7 +220,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         Ser::deserialize(
             &storage
                 .get(&prefixed_key)
-                .ok_or(StdError::not_found(type_name::<T>()))?,
+                .ok_or_else(|| StdError::not_found(type_name::<T>()))?,
         )
     }
 
