@@ -28,5 +28,6 @@ cosmwasm-std = { package = "secret-cosmwasm-std", version = "0.10" }
 [dev-dependencies]
 secp256k1-test = { package = "secp256k1", version = "0.17", features = [
     "rand-std",
-    "recovery"
+    "recovery",
 ] }
+base64 = "0.11"
