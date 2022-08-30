@@ -2,7 +2,7 @@
 
 ## secret-toolkit-storage v0.4.2
 
-* BUGFIX: clippy errors resolved
+* BUGFIX: implementation of `.clone` method fixed
 * Added `.add_suffix` and `.clone` methods to `secret-toolkit::storage::Item`
 * Minor performance updates to `secret-toolkit::storage::Keymap`
 
