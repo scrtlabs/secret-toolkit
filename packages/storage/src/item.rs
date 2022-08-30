@@ -13,6 +13,8 @@ where
     Ser: Serde,
 {
     storage_key: &'a [u8],
+    /// needed if any suffixes were added to the original storage key.
+    prefix: Option<Vec<u8>>,
     item_type: PhantomData<T>,
     serialization_type: PhantomData<Ser>,
 }
@@ -21,8 +23,24 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Item<'a, T, Ser> {
     pub const fn new(key: &'a [u8]) -> Self {
         Self {
             storage_key: key,
+            prefix: None,
             item_type: PhantomData,
             serialization_type: PhantomData,
+        }
+    }
+    /// This is used to produce a new Item. This can be used when you want to associate an Item to each user
+    /// and you still get to define the Item as a static constant
+    pub fn add_suffix(&self, suffix: &[u8]) -> Self {
+        let prefix = if let Some(prefix) = &self.prefix {
+            [prefix.clone(), suffix.to_vec()].concat()
+        } else {
+            [self.storage_key.to_vec(), suffix.to_vec()].concat()
+        };
+        Self {
+            storage_key: self.storage_key,
+            prefix: Some(prefix),
+            item_type: self.item_type,
+            serialization_type: self.serialization_type,
         }
     }
 }
@@ -122,7 +140,22 @@ where
     }
 
     fn as_slice(&self) -> &[u8] {
-        self.storage_key
+        if let Some(prefix) = &self.prefix {
+            prefix
+        } else {
+            self.storage_key
+        }
+    }
+}
+
+impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Clone for Item<'a, T, Ser> {
+    fn clone(&self) -> Self {
+        Self {
+            storage_key: self.storage_key,
+            prefix: self.prefix.clone(),
+            item_type: PhantomData,
+            serialization_type: PhantomData,
+        }
     }
 }
 

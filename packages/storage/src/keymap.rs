@@ -54,7 +54,6 @@ where
     /// prefix of the newly constructed Storage
     namespace: &'a [u8],
     /// needed if any suffixes were added to the original namespace.
-    /// therefore it is not necessarily same as the namespace.
     prefix: Option<Vec<u8>>,
     length: Mutex<Option<u32>>,
     key_type: PhantomData<K>,
