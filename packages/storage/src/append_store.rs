@@ -221,7 +221,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         Ser::deserialize(
             &storage
                 .get(&prefixed_key)
-                .ok_or(StdError::not_found(type_name::<T>()))?,
+                .ok_or_else(|| StdError::not_found(type_name::<T>()))?,
         )
     }
 

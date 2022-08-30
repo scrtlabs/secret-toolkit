@@ -84,7 +84,7 @@ where
         Ser::deserialize(
             &storage
                 .get(self.as_slice())
-                .ok_or(StdError::not_found(type_name::<T>()))?,
+                .ok_or_else(|| StdError::not_found(type_name::<T>()))?,
         )
     }
 

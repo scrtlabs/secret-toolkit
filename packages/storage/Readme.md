@@ -31,7 +31,7 @@ This is the simplest storage object in this toolkit. It based on the similarly n
 This object is meant to be initialized as a static constant in `state.rs`. However, it would also work perfectly fine if it was initialized during run time with a variable key (in this case though, you'd have to remind it what type of object is stored and its serde). Import it using the following lines:
 
 ```ignore
-use secret_toolkit_storage::{Item}
+use secret_toolkit::storage::{Item}
 ```
 
 And initialize it using the following lines:
@@ -178,7 +178,7 @@ use secret_toolkit::storage::{Keymap}
 
 ```ignore
 pub static ADDR_VOTE: Keymap<HumanAddr, Foo> = Keymap::new(b"vote");
-pub static BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"vote");
+pub static BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"bet");
 ```
 
 > ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
