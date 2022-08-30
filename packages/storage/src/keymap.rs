@@ -54,7 +54,6 @@ where
     /// prefix of the newly constructed Storage
     namespace: &'a [u8],
     /// needed if any suffixes were added to the original namespace.
-    /// therefore it is not necessarily same as the namespace.
     prefix: Option<Vec<u8>>,
     length: Mutex<Option<u32>>,
     key_type: PhantomData<K>,
@@ -208,9 +207,9 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         let max_page = _page_from_position(len);
         if max_page == page {
             // last page indexes is the same as indexes
-            let last_key = indexes.pop().ok_or(StdError::generic_err(
-                "Last item's key not found - should never happen",
-            ))?;
+            let last_key = indexes.pop().ok_or_else(|| {
+                StdError::generic_err("Last item's key not found - should never happen")
+            })?;
             // modify last item
             let mut last_internal_item = self.load_impl(storage, &last_key)?;
             last_internal_item.index_pos = removed_pos;
@@ -220,9 +219,9 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             self._set_indexes_page(storage, page, &indexes)?;
         } else {
             let mut last_page_indexes = self._get_indexes(storage, max_page)?;
-            let last_key = last_page_indexes.pop().ok_or(StdError::generic_err(
-                "Last item's key not found - should never happen",
-            ))?;
+            let last_key = last_page_indexes.pop().ok_or_else(|| {
+                StdError::generic_err("Last item's key not found - should never happen")
+            })?;
             // modify last item
             let mut last_internal_item = self.load_impl(storage, &last_key)?;
             last_internal_item.index_pos = removed_pos;
@@ -1064,7 +1063,7 @@ trait PrefixedTypedStorage<T: Serialize + DeserializeOwned, Ser: Serde> {
         Ser::deserialize(
             &storage
                 .get(&prefixed_key)
-                .ok_or(StdError::not_found(type_name::<T>()))?,
+                .ok_or_else(|| StdError::not_found(type_name::<T>()))?,
         )
     }
 
