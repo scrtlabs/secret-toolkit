@@ -188,6 +188,43 @@ mod tests {
     }
 
     #[test]
+    fn test_suffix() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let item: Item<i32> = Item::new(b"test");
+        let item1 = item.add_suffix(b"suffix1");
+        let item2 = item.add_suffix(b"suffix2");
+
+        item.save(&mut storage, &0)?;
+        assert!(item1.is_empty(&storage));
+        assert!(item2.is_empty(&storage));
+
+        item1.save(&mut storage, &1)?;
+        assert!(!item1.is_empty(&storage));
+        assert!(item2.is_empty(&storage));
+        assert_eq!(item.may_load(&storage)?, Some(0));
+        assert_eq!(item1.may_load(&storage)?, Some(1));
+        item2.save(&mut storage, &2)?;
+        assert_eq!(item.may_load(&storage)?, Some(0));
+        assert_eq!(item1.may_load(&storage)?, Some(1));
+        assert_eq!(item2.may_load(&storage)?, Some(2));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_update() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let item: Item<i32> = Item::new(b"test");
+
+        assert!(item.update(&mut storage, |x| Ok(x + 1)).is_err());
+        item.save(&mut storage, &7)?;
+        assert!(item.update(&mut storage, |x| Ok(x + 1)).is_ok());
+        assert_eq!(item.load(&storage), Ok(8));
+
+        Ok(())
+    }
+
+    #[test]
     fn test_serializations() -> StdResult<()> {
         // Check the default behavior is Bincode2
         let mut storage = MockStorage::new();
