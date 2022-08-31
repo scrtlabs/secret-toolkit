@@ -28,6 +28,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Item<'a, T, Ser> {
             serialization_type: PhantomData,
         }
     }
+
     /// This is used to produce a new Item. This can be used when you want to associate an Item to each user
     /// and you still get to define the Item as a static constant
     pub fn add_suffix(&self, suffix: &[u8]) -> Self {

@@ -41,6 +41,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
             serialization_type: PhantomData,
         }
     }
+
     /// This is used to produce a new AppendListStorage. This can be used when you want to associate an AppendListStorage to each user
     /// and you still get to define the AppendListStorage as a static constant
     pub fn add_suffix(&self, suffix: &[u8]) -> Self {
@@ -82,10 +83,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
             }
         }
     }
+
     /// checks if the collection has any elements
     pub fn is_empty<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<bool> {
         Ok(self.get_len(storage)? == 0)
     }
+
     /// gets the element at pos if within bounds
     pub fn get_at<S: ReadonlyStorage>(&self, storage: &S, pos: u32) -> StdResult<T> {
         let len = self.get_len(storage)?;
@@ -94,6 +97,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         }
         self.get_at_unchecked(storage, pos)
     }
+
     /// tries to get the element at pos
     fn get_at_unchecked<S: ReadonlyStorage>(&self, storage: &S, pos: u32) -> StdResult<T> {
         let key = pos.to_be_bytes();
@@ -108,10 +112,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         let mut may_len = self.length.lock().unwrap();
         *may_len = Some(len);
     }
+
     /// Clear the collection
     pub fn clear<S: Storage>(&self, storage: &mut S) {
         self.set_len(storage, 0);
     }
+
     /// Replaces data at a position within bounds
     pub fn set_at<S: Storage>(&self, storage: &mut S, pos: u32, item: &T) -> StdResult<()> {
         let len = self.get_len(storage)?;
@@ -120,10 +126,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         }
         self.set_at_unchecked(storage, pos, item)
     }
+
     /// Sets data at a given index
     fn set_at_unchecked<S: Storage>(&self, storage: &mut S, pos: u32, item: &T) -> StdResult<()> {
         self.save_impl(storage, &pos.to_be_bytes(), item)
     }
+
     /// Pushes an item to AppendStorage
     pub fn push<S: Storage>(&self, storage: &mut S, item: &T) -> StdResult<()> {
         let len = self.get_len(storage)?;
@@ -131,6 +139,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         self.set_len(storage, len + 1);
         Ok(())
     }
+
     /// Pops an item from AppendStore
     pub fn pop<S: Storage>(&self, storage: &mut S) -> StdResult<T> {
         if let Some(len) = self.get_len(storage)?.checked_sub(1) {
@@ -141,6 +150,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
             Err(StdError::generic_err("Can not pop from empty AppendStore"))
         }
     }
+
     /// Remove an element from the collection at the specified position.
     ///
     /// Removing the last element has a constant cost.
@@ -164,6 +174,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         self.set_len(storage, len - 1);
         item
     }
+
     /// Returns a readonly iterator
     pub fn iter<S: ReadonlyStorage>(
         &self,
@@ -173,6 +184,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         let iter = AppendStoreIter::new(self, storage, 0, len);
         Ok(iter)
     }
+
     /// does paging with the given parameters
     pub fn paging<S: ReadonlyStorage>(
         &self,
