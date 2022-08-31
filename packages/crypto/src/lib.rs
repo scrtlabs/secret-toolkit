@@ -42,19 +42,6 @@
 //! - `["rand"]` - Used to generate pseudo-random numbers. Uses [rand_chacha] and [rand_core].
 //! - `["ecc-secp256k1"]` - Contains types and methods for working with secp256k1 keys and signatures,
 //! as well as standard constants for key sizes. Uses [secp256k1](https://crates.io/crates/secp256k1).
-//!
-
-// fn hello() {
-//     sha_256(data)
-// }
-
-// mod tom {
-//     use crate::sha_256;
-
-//     fn langer() {
-//         sha_256(data)
-//     }
-// }
 
 #[cfg(feature = "hash")]
 mod hash;
