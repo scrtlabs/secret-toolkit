@@ -149,17 +149,6 @@ where
     }
 }
 
-impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Clone for Item<'a, T, Ser> {
-    fn clone(&self) -> Self {
-        Self {
-            storage_key: self.storage_key,
-            prefix: self.prefix.clone(),
-            item_type: PhantomData,
-            serialization_type: PhantomData,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::testing::MockStorage;

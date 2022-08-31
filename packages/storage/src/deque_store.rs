@@ -317,19 +317,6 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 }
 
-impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Clone for DequeStore<'a, T, Ser> {
-    fn clone(&self) -> Self {
-        Self {
-            namespace: self.namespace,
-            prefix: self.prefix.clone(),
-            length: Mutex::new(None),
-            offset: Mutex::new(None),
-            item_type: PhantomData,
-            serialization_type: PhantomData,
-        }
-    }
-}
-
 /// An iterator over the contents of the deque store.
 pub struct DequeStoreIter<'a, T, S, Ser>
 where
