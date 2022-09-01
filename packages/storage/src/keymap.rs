@@ -249,12 +249,12 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 
     /// user facing insert function
-    pub fn insert<S: Storage>(&self, storage: &mut S, key: &K, item: T) -> StdResult<()> {
+    pub fn insert<S: Storage>(&self, storage: &mut S, key: &K, item: &T) -> StdResult<()> {
         let key_vec = self.serialize_key(key)?;
         match self.may_load_impl(storage, &key_vec)? {
             Some(existing_internal_item) => {
                 // if item already exists
-                let new_internal_item = InternalItem::new(existing_internal_item.index_pos, &item)?;
+                let new_internal_item = InternalItem::new(existing_internal_item.index_pos, item)?;
                 self.save_impl(storage, &key_vec, &new_internal_item)
             }
             None => {
@@ -263,7 +263,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
                 self.set_len(storage, pos + 1)?;
                 let page = _page_from_position(pos);
                 // save the item
-                let internal_item = InternalItem::new(pos, &item)?;
+                let internal_item = InternalItem::new(pos, item)?;
                 self.save_impl(storage, &key_vec, &internal_item)?;
                 // add index
                 let mut indexes = self._get_indexes(storage, page)?;
@@ -1143,7 +1143,7 @@ mod tests {
 
         for i in 0..total_items {
             let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
-            keymap.insert(&mut storage, &key, i)?;
+            keymap.insert(&mut storage, &key, &i)?;
         }
 
         assert_eq!(keymap.get_len(&storage)?, 1000);
@@ -1160,7 +1160,7 @@ mod tests {
         let keymap: Keymap<i32, i32> = Keymap::new(b"test");
 
         for i in 0..total_items {
-            keymap.insert(&mut storage, &i, i)?;
+            keymap.insert(&mut storage, &i, &i)?;
         }
 
         for i in 0..total_items {
@@ -1182,7 +1182,7 @@ mod tests {
 
         for i in 0..total_items {
             let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
-            keymap.insert(&mut storage, &key, i)?;
+            keymap.insert(&mut storage, &key, &i)?;
         }
 
         for i in 0..((total_items / page_size) - 1) {
@@ -1210,7 +1210,7 @@ mod tests {
         let keymap: Keymap<i32, u32> = Keymap::new(b"test");
 
         for i in 0..total_items {
-            keymap.insert(&mut storage, &(i as i32), i)?;
+            keymap.insert(&mut storage, &(i as i32), &i)?;
         }
 
         let values = keymap.paging_keys(&storage, 0, page_size)?;
@@ -1238,8 +1238,8 @@ mod tests {
             number: 1111,
         };
 
-        keymap.insert(&mut storage, &b"key1".to_vec(), foo1.clone())?;
-        keymap.insert(&mut storage, &b"key2".to_vec(), foo2.clone())?;
+        keymap.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
+        keymap.insert(&mut storage, &b"key2".to_vec(), &foo2)?;
 
         let read_foo1 = keymap.get(&storage, &b"key1".to_vec()).unwrap();
         let read_foo2 = keymap.get(&storage, &b"key2".to_vec()).unwrap();
@@ -1259,10 +1259,10 @@ mod tests {
             number: 1111,
         };
 
-        keymap.insert(&mut storage, &b"key1".to_vec(), foo1)?;
+        keymap.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
         let contains_k1 = keymap.contains(&storage, &b"key1".to_vec());
 
-        assert_eq!(contains_k1, true);
+        assert!(contains_k1);
 
         Ok(())
     }
@@ -1281,8 +1281,8 @@ mod tests {
             number: 1111,
         };
 
-        keymap.insert(&mut storage, &b"key1".to_vec(), foo1.clone())?;
-        keymap.insert(&mut storage, &b"key2".to_vec(), foo2.clone())?;
+        keymap.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
+        keymap.insert(&mut storage, &b"key2".to_vec(), &foo2)?;
 
         let mut x = keymap.iter(&storage)?;
         let (len, _) = x.size_hint();
@@ -1312,8 +1312,8 @@ mod tests {
         let key1 = "key1".to_string();
         let key2 = "key2".to_string();
 
-        keymap.insert(&mut storage, &key1, foo1)?;
-        keymap.insert(&mut storage, &key2, foo2)?;
+        keymap.insert(&mut storage, &key1, &foo1)?;
+        keymap.insert(&mut storage, &key2, &foo2)?;
 
         let mut x = keymap.iter_keys(&storage)?;
         let (len, _) = x.size_hint();
@@ -1340,8 +1340,8 @@ mod tests {
             number: 2222,
         };
 
-        keymap.insert(&mut storage, &b"key1".to_vec(), foo1)?;
-        keymap.insert(&mut storage, &b"key1".to_vec(), foo2.clone())?;
+        keymap.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
+        keymap.insert(&mut storage, &b"key1".to_vec(), &foo2)?;
 
         let foo3 = keymap.get(&storage, &b"key1".to_vec()).unwrap();
 
@@ -1364,8 +1364,8 @@ mod tests {
             string: "string one".to_string(),
             number: 1111,
         };
-        keymap.insert(&mut storage, &"key1".to_string(), foo1.clone())?;
-        keymap.insert(&mut storage, &"key2".to_string(), foo2.clone())?;
+        keymap.insert(&mut storage, &"key1".to_string(), &foo1)?;
+        keymap.insert(&mut storage, &"key2".to_string(), &foo2)?;
 
         let read_foo1 = keymap.get(&storage, &"key1".to_string()).unwrap();
         let read_foo2 = keymap.get(&storage, &"key2".to_string()).unwrap();
@@ -1415,12 +1415,12 @@ mod tests {
         let key1 = "k1".to_string();
         let key2 = "k2".to_string();
 
-        keymap.insert(&mut storage, &key1, foo1.clone())?;
+        keymap.insert(&mut storage, &key1, &foo1)?;
         assert_eq!(keymap.get_len(&storage)?, 1);
         assert!(keymap.length.lock().unwrap().eq(&Some(1)));
 
         // add another item
-        keymap.insert(&mut storage, &key2, foo2)?;
+        keymap.insert(&mut storage, &key2, &foo2)?;
         assert_eq!(keymap.get_len(&storage)?, 2);
         assert!(keymap.length.lock().unwrap().eq(&Some(2)));
 
@@ -1430,7 +1430,7 @@ mod tests {
         assert!(keymap.length.lock().unwrap().eq(&Some(1)));
 
         // override item (should not change length)
-        keymap.insert(&mut storage, &key2, foo1)?;
+        keymap.insert(&mut storage, &key2, &foo1)?;
         assert_eq!(keymap.get_len(&storage)?, 1);
         assert!(keymap.length.lock().unwrap().eq(&Some(1)));
 
