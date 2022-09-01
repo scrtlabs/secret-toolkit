@@ -11,6 +11,7 @@ use std::sync::Mutex;
 use serde::{de::DeserializeOwned, Serialize};
 
 use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
+use cosmwasm_storage::to_length_prefixed;
 
 use secret_toolkit_serialization::{Bincode2, Serde};
 
@@ -45,11 +46,10 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     /// This is used to produce a new AppendListStorage. This can be used when you want to associate an AppendListStorage to each user
     /// and you still get to define the AppendListStorage as a static constant
     pub fn add_suffix(&self, suffix: &[u8]) -> Self {
-        let prefix = if let Some(prefix) = &self.prefix {
-            [prefix.clone(), suffix.to_vec()].concat()
-        } else {
-            [self.namespace.to_vec(), suffix.to_vec()].concat()
-        };
+        let suffix = to_length_prefixed(suffix);
+        let prefix = self.prefix.as_ref().map(Vec::as_slice);
+        let prefix = prefix.unwrap_or(self.namespace);
+        let prefix = [prefix, suffix.as_slice()].concat();
         Self {
             namespace: self.namespace,
             prefix: Some(prefix),
