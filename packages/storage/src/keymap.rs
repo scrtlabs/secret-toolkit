@@ -452,21 +452,6 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 }
 
-impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde> Clone
-    for Keymap<'a, K, T, Ser>
-{
-    fn clone(&self) -> Self {
-        Self {
-            namespace: self.namespace,
-            prefix: self.prefix.clone(),
-            length: Mutex::new(None),
-            key_type: PhantomData,
-            item_type: PhantomData,
-            serialization_type: PhantomData,
-        }
-    }
-}
-
 /// An iterator over the keys of the Keymap.
 pub struct KeyIter<'a, K, T, S, Ser>
 where
