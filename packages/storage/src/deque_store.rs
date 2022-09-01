@@ -51,8 +51,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// and you still get to define the DequeStorage as a static constant
     pub fn add_suffix(&self, suffix: &[u8]) -> Self {
         let suffix = to_length_prefixed(suffix);
-        let prefix = self.prefix.as_ref().map(Vec::as_slice);
-        let prefix = prefix.unwrap_or(self.namespace);
+        let prefix = self.prefix.as_deref().unwrap_or(self.namespace);
         let prefix = [prefix, suffix.as_slice()].concat();
         Self {
             namespace: self.namespace,

@@ -34,8 +34,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Item<'a, T, Ser> {
     /// and you still get to define the Item as a static constant
     pub fn add_suffix(&self, suffix: &[u8]) -> Self {
         let suffix = to_length_prefixed(suffix);
-        let prefix = self.prefix.as_ref().map(Vec::as_slice);
-        let prefix = prefix.unwrap_or(self.storage_key);
+        let prefix = self.prefix.as_deref().unwrap_or(self.storage_key);
         let prefix = [prefix, suffix.as_slice()].concat();
         Self {
             storage_key: self.storage_key,
