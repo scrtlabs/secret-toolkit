@@ -1,5 +1,17 @@
 # Release notes for the Secret Toolkit
 
+## v0.5.0
+This release includes some minor fixed to the storage package which required some breaking changes.
+We are releasing these breaking changes because we reached the conclusion that the current interfaces
+are prone to bugs, or inefficient. Unless you are using these specific interfaces, you should be able to upgrade from 0.4 without issues.
+
+### Breaking
+- Removed the implementations of Clone for storage types which are not useful and may cause data corruption if used incorrectly.
+- Changed `Keymap::insert` to take the item by reference rather than by value. This should reduce the cost of calling that function by avoiding cloning.
+
+### Features
+- Changed the implementation of the `add_prefix` methods in the storage package to use length prefixing, which should help avoid namespace collisions.
+
 ## secret-toolkit-storage v0.4.2
 
 * BUGFIX: implementation of `.clone` method fixed
