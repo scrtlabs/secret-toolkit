@@ -12,6 +12,7 @@ use std::sync::Mutex;
 use serde::{de::DeserializeOwned, Serialize};
 
 use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
+use cosmwasm_storage::to_length_prefixed;
 
 use secret_toolkit_serialization::{Bincode2, Serde};
 
@@ -45,14 +46,13 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             serialization_type: PhantomData,
         }
     }
+
     /// This is used to produce a new DequeStorage. This can be used when you want to associate an AppendListStorage to each user
     /// and you still get to define the DequeStorage as a static constant
     pub fn add_suffix(&self, suffix: &[u8]) -> Self {
-        let prefix = if let Some(prefix) = &self.prefix {
-            [prefix.clone(), suffix.to_vec()].concat()
-        } else {
-            [self.namespace.to_vec(), suffix.to_vec()].concat()
-        };
+        let suffix = to_length_prefixed(suffix);
+        let prefix = self.prefix.as_deref().unwrap_or(self.namespace);
+        let prefix = [prefix, suffix.as_slice()].concat();
         Self {
             namespace: self.namespace,
             prefix: Some(prefix),
@@ -79,6 +79,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             },
         }
     }
+
     /// gets the offset from storage, and otherwise sets it to 0
     pub fn get_off<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<u32> {
         let mut may_off = self.offset.lock().unwrap();
@@ -93,6 +94,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             },
         }
     }
+
     /// gets offset or length
     fn _get_u32<S: ReadonlyStorage>(&self, storage: &S, key: &[u8]) -> StdResult<u32> {
         let num_key = [self.as_slice(), key].concat();
@@ -107,10 +109,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             Ok(0)
         }
     }
+
     /// checks if the collection has any elements
     pub fn is_empty<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<bool> {
         Ok(self.get_len(storage)? == 0)
     }
+
     /// gets the element at pos if within bounds
     pub fn get_at<S: ReadonlyStorage>(&self, storage: &S, pos: u32) -> StdResult<T> {
         let len = self.get_len(storage)?;
@@ -119,37 +123,44 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         }
         self.get_at_unchecked(storage, pos)
     }
+
     /// tries to get the element at pos
     fn get_at_unchecked<S: ReadonlyStorage>(&self, storage: &S, pos: u32) -> StdResult<T> {
         self.load_impl(storage, &self._get_offset_pos(storage, pos)?.to_be_bytes())
     }
+
     /// add the offset to the pos
     fn _get_offset_pos<S: ReadonlyStorage>(&self, storage: &S, pos: u32) -> StdResult<u32> {
         let off = self.get_off(storage)?;
         Ok(pos.overflowing_add(off).0)
     }
+
     /// Set the length of the collection
     fn set_len<S: Storage>(&self, storage: &mut S, len: u32) {
         let mut may_len = self.length.lock().unwrap();
         *may_len = Some(len);
         self._set_u32(storage, LEN_KEY, len)
     }
+
     /// Set the offset of the collection
     fn set_off<S: Storage>(&self, storage: &mut S, off: u32) {
         let mut may_off = self.offset.lock().unwrap();
         *may_off = Some(off);
         self._set_u32(storage, OFFSET_KEY, off)
     }
+
     /// Set the length or offset of the collection
     fn _set_u32<S: Storage>(&self, storage: &mut S, key: &[u8], num: u32) {
         let num_key = [self.as_slice(), key].concat();
         storage.set(&num_key, &num.to_be_bytes());
     }
+
     /// Clear the collection
     pub fn clear<S: Storage>(&self, storage: &mut S) {
         self.set_len(storage, 0);
         self.set_off(storage, 0);
     }
+
     /// Replaces data at a position within bounds
     pub fn set_at<S: Storage>(&self, storage: &mut S, pos: u32, item: &T) -> StdResult<()> {
         let len = self.get_len(storage)?;
@@ -158,6 +169,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         }
         self.set_at_unchecked(storage, pos, item)
     }
+
     /// Sets data at a given index
     fn set_at_unchecked<S: Storage>(&self, storage: &mut S, pos: u32, item: &T) -> StdResult<()> {
         self.save_impl(
@@ -166,6 +178,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             item,
         )
     }
+
     /// Pushes an item to the back
     pub fn push_back<S: Storage>(&self, storage: &mut S, item: &T) -> StdResult<()> {
         let len = self.get_len(storage)?;
@@ -173,6 +186,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         self.set_len(storage, len + 1);
         Ok(())
     }
+
     /// Pushes an item to the front
     pub fn push_front<S: Storage>(&self, storage: &mut S, item: &T) -> StdResult<()> {
         let off = self.get_off(storage)?;
@@ -182,6 +196,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         self.set_len(storage, len + 1);
         Ok(())
     }
+
     /// Pops an item from the back
     pub fn pop_back<S: Storage>(&self, storage: &mut S) -> StdResult<T> {
         if let Some(len) = self.get_len(storage)?.checked_sub(1) {
@@ -192,6 +207,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             Err(StdError::generic_err("Can not pop from empty DequeStore"))
         }
     }
+
     /// Pops an item from the front
     pub fn pop_front<S: Storage>(&self, storage: &mut S) -> StdResult<T> {
         if let Some(len) = self.get_len(storage)?.checked_sub(1) {
@@ -204,6 +220,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             Err(StdError::generic_err("Can not pop from empty DequeStore"))
         }
     }
+
     /// Remove an element from the collection at the specified position.
     ///
     /// Removing an element from the head (first) or tail (last) has a constant cost.
@@ -238,12 +255,14 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         self.set_len(storage, len - 1);
         item
     }
+
     /// Returns a readonly iterator
     pub fn iter<S: ReadonlyStorage>(&self, storage: &'a S) -> StdResult<DequeStoreIter<T, S, Ser>> {
         let len = self.get_len(storage)?;
         let iter = DequeStoreIter::new(self, storage, 0, len);
         Ok(iter)
     }
+
     /// does paging with the given parameters
     pub fn paging<S: ReadonlyStorage>(
         &self,
@@ -294,19 +313,6 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         let prefixed_key = [self.as_slice(), key].concat();
         storage.set(&prefixed_key, &Ser::serialize(value)?);
         Ok(())
-    }
-}
-
-impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Clone for DequeStore<'a, T, Ser> {
-    fn clone(&self) -> Self {
-        Self {
-            namespace: self.namespace,
-            prefix: self.prefix.clone(),
-            length: Mutex::new(None),
-            offset: Mutex::new(None),
-            item_type: PhantomData,
-            serialization_type: PhantomData,
-        }
     }
 }
 

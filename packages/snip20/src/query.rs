@@ -241,6 +241,7 @@ pub enum AuthenticatedQueryResponse {
         msg: String,
     },
 }
+
 /// wrapper to deserialize TokenInfo response
 #[derive(Deserialize)]
 pub struct TokenInfoResponse {

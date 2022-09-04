@@ -3,6 +3,7 @@ use std::any::type_name;
 use std::marker::PhantomData;
 
 use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
+use cosmwasm_storage::to_length_prefixed;
 use secret_toolkit_serialization::{Bincode2, Serde};
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -28,14 +29,13 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Item<'a, T, Ser> {
             serialization_type: PhantomData,
         }
     }
+
     /// This is used to produce a new Item. This can be used when you want to associate an Item to each user
     /// and you still get to define the Item as a static constant
     pub fn add_suffix(&self, suffix: &[u8]) -> Self {
-        let prefix = if let Some(prefix) = &self.prefix {
-            [prefix.clone(), suffix.to_vec()].concat()
-        } else {
-            [self.storage_key.to_vec(), suffix.to_vec()].concat()
-        };
+        let suffix = to_length_prefixed(suffix);
+        let prefix = self.prefix.as_deref().unwrap_or(self.storage_key);
+        let prefix = [prefix, suffix.as_slice()].concat();
         Self {
             storage_key: self.storage_key,
             prefix: Some(prefix),
@@ -144,17 +144,6 @@ where
             prefix
         } else {
             self.storage_key
-        }
-    }
-}
-
-impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Clone for Item<'a, T, Ser> {
-    fn clone(&self) -> Self {
-        Self {
-            storage_key: self.storage_key,
-            prefix: self.prefix.clone(),
-            item_type: PhantomData,
-            serialization_type: PhantomData,
         }
     }
 }
