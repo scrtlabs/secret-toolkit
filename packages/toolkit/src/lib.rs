@@ -1,3 +1,5 @@
+#![doc = include_str!("../Readme.md")]
+
 #[cfg(feature = "crypto")]
 pub use secret_toolkit_crypto as crypto;
 #[cfg(feature = "incubator")]

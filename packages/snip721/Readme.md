@@ -11,7 +11,7 @@ You can create a HandleMsg variant and call the `to_cosmos_msg` function to gene
 Or you can call the individual function for each Handle message to generate the appropriate callback CosmosMsg.
 
 Example:
-```rust
+```ignore
     let recipient = HumanAddr("ADDRESS_TO_TRANSFER_TO".to_string());
     let token_id = "TOKEN_ID".to_string();
     let memo = Some("TRANSFER_MEMO".to_string());
@@ -43,7 +43,7 @@ You probably have also noticed that CreateViewingKey is not supported.  This is 
 ## Queries
 
 These are the types that the SNIP-721 toolkit queries can return
-```rust
+```ignore
 pub struct ContractInfo {
     pub name: String,
     pub symbol: String,
@@ -166,7 +166,7 @@ You can create a QueryMsg variant and call the `query` function to query a SNIP-
 Or you can call the individual function for each query.
 
 Example:
-```rust
+```ignore
     let token_id = "TOKEN_ID".to_string();
     let viewer = Some(ViewerInfo {
         address: HumanAddr("VIEWER'S_ADDRESS".to_string()),

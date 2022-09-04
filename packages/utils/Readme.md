@@ -12,14 +12,14 @@ elsewhere. There isn't an overarching theme for the items in this package.
 
 ## Calls module
 This module contains traits used to call another contract.  Do not forget to add the `use` statement for the traits you want.
-```rust
+```ignore
 use secret_toolkit::utils::{InitCallback, HandleCallback, Query};
 ```
 Also, don't forget to add the toolkit dependency to your Cargo.toml
 
 ### Instantiating another contract
-If you want to instantiate another contract, you should first copy/paste the InitMsg of that contract.  For example, if you wanted to create an instance of the counter contract at https://github.com/enigmampc/secret-template
-```rust
+If you want to instantiate another contract, you should first copy/paste the InitMsg of that contract.  For example, if you wanted to create an instance of the counter contract at <https://github.com/enigmampc/secret-template>
+```ignore
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CounterInitMsg {
     pub count: i32,
@@ -30,7 +30,7 @@ impl InitCallback for CounterInitMsg {
 }
 ```
 You would copy/paste its InitMsg, and rename it so that it does not conflict with the InitMsg you have defined for your own contract.  Then you would implement the `InitCallback` trait as above, setting the BLOCK_SIZE constant to the size of the blocks you want your instantiation message padded to.
-```rust
+```ignore
 let counter_init_msg = CounterInitMsg {
      count: 100 
 };
@@ -52,7 +52,7 @@ Next, in the init or handle function that will instantiate the other contract, y
 
 ### Calling a handle function of another contract
 You should first copy/paste the specific HandleMsg(s) you want to call.  For example, if you wanted to reset the counter you instantiated above
-```rust
+```ignore
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum CounterHandleMsg {
     Reset { count: i32 },
@@ -63,7 +63,7 @@ impl HandleCallback for CounterHandleMsg {
 }
 ```
 You would copy/paste the Reset variant of its HandleMsg enum, and rename the enum so that it does not conflict with the HandleMsg enum you have defined for your own contract.  Then you would implement the `HandleCallback` trait as above, setting the BLOCK_SIZE constant to the size of the blocks you want your Reset message padded to.  If you need to call multiple different Handle messages, even if they are to different contracts, you can include all the Handle messages as variants in the same enum (you can not have two variants with the same name within the same enum, though).
-```rust
+```ignore
 let reset_msg = CounterHandleMsg::Reset {
     count: 200,
 };
@@ -84,7 +84,7 @@ Next, in the init or handle function that will call the other contract, you will
 
 ### Querying another contract
 You should first copy/paste the specific QueryMsg(s) you want to call.  For example, if you wanted to get the count of the counter you instantiated above
-```rust
+```ignore
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum CounterQueryMsg {
@@ -96,7 +96,7 @@ impl Query for CounterQueryMsg {
 }
 ```
 You would copy/paste the GetCount variant of its QueryMsg enum, and rename the enum so that it does not conflict with the QueryMsg enum you have defined for your own contract.  Then you would implement the `Query` trait as above, setting the BLOCK_SIZE constant to the size of the blocks you want your query message padded to.  If you need to perform multiple different queries, even if they are to different contracts, you can include all the Query messages as variants in the same enum (you can not have two variants with the same name within the same enum, though).
-```rust
+```ignore
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CountResponse {
     pub count: i32,
@@ -105,7 +105,7 @@ pub struct CountResponse {
 Next, you will copy/paste the response of the query.  If the other contract defines its response to the query with a struct, you are good to go.
 
 If, however, the other contract returns an enum variant, one approach is to copy the fields of the variant and place them in a struct.  Because an enum variant gets serialized with the name of the variant, you will then also want to create a wrapper struct whose only field has the name of the variant, and whose type is the struct you defined with the variant's fields.  For example, if you wanted to do a token_info query of the [SNIP20 reference implementation](https://github.com/enigmampc/snip20-reference-impl), I would recommend using the SNIP20 toolkit function, but just for the sake of example, let's say you forgot that toolkit existed.
-```rust
+```ignore
 #[derive(Serialize, Deserialize, JsonSchema, Debug)]
 pub struct TokenInfo {
     pub name: String,
@@ -122,7 +122,7 @@ pub struct TokenInfoResponse {
 You would copy the QueryAnswer::TokenInfo enum variant and create a TokenInfo struct with those fields.  You should make all those fields public if you need to access them.  Then you would create the TokenInfoResponse wrapper struct, which has only one field whose name is the name of the QueryAnswer variant in snake case (token_info).  As a reminder, you only need to do this to properly deserialize the response if it was defined as an enum in the other contract.
 
 Now to perform the query
-```rust
+```ignore
 let get_count = CounterQueryMsg::GetCount {};
 let count_response: CountResponse = get_count.query(
     &deps.querier,
@@ -141,7 +141,7 @@ The feature toggles are designed to be flexible, so you can choose whether to pu
 ### Initializing Features
 
 Normally you'd want to initialize the features in the `init()` function:
-```rust
+```ignore
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
@@ -166,7 +166,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
 
 The feature field in `FeatureStatus` can be anything, as long as it's implementing `serde::Serialize`.
 In this example it's:
-```rust
+```ignore
 #[derive(Serialize)]
 pub enum Features {
     Feature1,
@@ -175,7 +175,7 @@ pub enum Features {
 ```
 
 For the `status` field, you should use the built-in `FeatureToggle::Status` enum: 
-```rust
+```ignore
 #[derive(Serialize, Debug, Deserialize, Clone, JsonSchema, PartialEq)]
 pub enum Status {
     NotPaused,
@@ -187,7 +187,7 @@ The defult value of `Status` is `Status::NotPaused`.
 ### Put a toggle on a message
 
 Putting a toggle on a message (or any code section of your choosing) is as easy as calling `FeatureToggle::require_not_paused()`. For example if we have a `Redeem` message in our contract, and we initialized the feature as `Features::Redeem`:
-```rust
+```ignore
 fn redeem<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
@@ -203,7 +203,7 @@ If the status of the `Features::Redeem` feature is `Paused`, the contract will e
 ### Pause/unpause a feature
 
 Firstly, we will need to add `Pause` and `Unpause` messages in our `HandleMsg` enum. We can simply use `FeatureToggle::FeatureToggleHandleMsg` - it's an enum that contains default messages that `FeatureToggle` also has default implementation for:
-```rust
+```ignore
 pub enum HandleMsg {
     // Contract messages
     Redeem {
@@ -217,7 +217,7 @@ pub enum HandleMsg {
 ```
 
 The `FeatureToggle` struct contains a default implementation for triggering (pausing/unpausing) a feature, so you can just call it from your `handle()` function:
-```rust
+```ignore
 pub fn handle<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
@@ -243,7 +243,7 @@ Similarly to the section above, add `FeatureToggleHandleMsg` to your `HandleMsg`
 Note: you should only add `Features(FeatureToggleHandleMsg)` to the `HandleMsg` enum once, and it'll add all the supported messages.
 
 `FeatureToggle` provides with default implementation for these too, but you can wrap it with your own logic like requiring the caller to be admin, etc.:
-```rust
+```ignore
 pub fn handle<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
@@ -292,7 +292,7 @@ Note: `set_pauser` and `remove_pauser` are permissionless by default.
 ### Overriding the default implementation
 
 If you don't like the default implementation or want to override it for any other reason (for example, using a different storage namespace), you can do that by defining your own struct and implement `FeatureToggleTrait` for it:
-```rust
+```ignore
 struct TrollFeatureToggle {}
 
 impl FeatureToggleTrait for TrollFeatureToggle {
@@ -322,7 +322,7 @@ impl FeatureToggleTrait for TrollFeatureToggle {
 ### Queries
 
 Similarly to `FeatureToggleHandleMsg`, query messages (and default implementations) are also provided:
-```rust
+```ignore
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum FeatureToggleQueryMsg<T: Serialize + DeserializeOwned> {

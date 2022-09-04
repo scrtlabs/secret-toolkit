@@ -1,3 +1,5 @@
+#![doc = include_str!("../Readme.md")]
+
 //#![allow(clippy::field_reassign_with_default)]
 pub mod expiration;
 pub mod handle;

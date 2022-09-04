@@ -16,7 +16,7 @@ pub struct Metadata {
 
 /// metadata extension
 /// You can add any metadata fields you need here.  These fields are based on
-/// https://docs.opensea.io/docs/metadata-standards and are the metadata fields that
+/// <https://docs.opensea.io/docs/metadata-standards> and are the metadata fields that
 /// Stashh uses for robust NFT display.  Urls should be prefixed with `http://`, `https://`, `ipfs://`, or
 /// `ar://`
 #[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug, Default)]
