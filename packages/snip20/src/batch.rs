@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Binary, Uint128};
 
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct TransferAction {
     pub recipient: String,
@@ -21,7 +21,7 @@ impl TransferAction {
     }
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct SendAction {
     pub recipient: String,
@@ -64,7 +64,7 @@ impl SendAction {
     }
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct TransferFromAction {
     pub owner: String,
@@ -84,7 +84,7 @@ impl TransferFromAction {
     }
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct SendFromAction {
     pub owner: String,
@@ -132,7 +132,7 @@ impl SendFromAction {
     }
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct MintAction {
     pub recipient: String,
@@ -150,7 +150,7 @@ impl MintAction {
     }
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct BurnFromAction {
     pub owner: String,

@@ -187,7 +187,7 @@ pub trait FeatureToggleTrait {
     }
 }
 
-#[derive(Serialize, Debug, Deserialize, Clone, JsonSchema, PartialEq)]
+#[derive(Serialize, Debug, Deserialize, Clone, JsonSchema, PartialEq, Eq)]
 pub enum Status {
     NotPaused,
     Paused,
@@ -199,7 +199,7 @@ impl Default for Status {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum FeatureToggleHandleMsg<T: Serialize + DeserializeOwned> {
     #[serde(bound = "")]
@@ -234,7 +234,7 @@ enum HandleAnswer {
     RemovePauser { status: ResponseStatus },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum FeatureToggleQueryMsg<T: Serialize + DeserializeOwned> {
     #[serde(bound = "")]

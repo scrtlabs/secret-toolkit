@@ -62,7 +62,7 @@ impl Index {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum Entry<T> {
     Free { next_free: u32 },
     Occupied { generation: u64, value: T },

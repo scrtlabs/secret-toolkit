@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::BlockInfo;
 use std::fmt;
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 /// at the given point in time and after, Expiration will be considered expired
 pub enum Expiration {

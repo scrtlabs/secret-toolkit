@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::pubkey_to_account;
 use cosmwasm_std::{Binary, CanonicalAddr, Uint128};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Permit<Permission: Permissions = TokenPermissions> {
     #[serde(bound = "")]
@@ -24,7 +24,7 @@ impl<Permission: Permissions> Permit<Permission> {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct PermitParams<Permission: Permissions = TokenPermissions> {
     pub allowed_tokens: Vec<String>,
@@ -34,14 +34,14 @@ pub struct PermitParams<Permission: Permissions = TokenPermissions> {
     pub permissions: Vec<Permission>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct PermitSignature {
     pub pub_key: PubKey,
     pub signature: Binary,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct PubKey {
     /// ignored, but must be "tendermint/PubKeySecp256k1" otherwise the verification will fail
@@ -58,7 +58,7 @@ impl PubKey {
 
 // Note: The order of fields in this struct is important for the permit signature verification!
 #[remain::sorted]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct SignedPermit<Permission: Permissions = TokenPermissions> {
     /// ignored
@@ -91,7 +91,7 @@ impl<Permission: Permissions> SignedPermit<Permission> {
 
 // Note: The order of fields in this struct is important for the permit signature verification!
 #[remain::sorted]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Fee {
     pub amount: Vec<Coin>,
@@ -115,7 +115,7 @@ impl Default for Fee {
 
 // Note: The order of fields in this struct is important for the permit signature verification!
 #[remain::sorted]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Coin {
     pub amount: Uint128,
@@ -139,7 +139,7 @@ impl Default for Coin {
 
 // Note: The order of fields in this struct is important for the permit signature verification!
 #[remain::sorted]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct PermitMsg<Permission: Permissions = TokenPermissions> {
     pub r#type: String,
@@ -158,7 +158,7 @@ impl<Permission: Permissions> PermitMsg<Permission> {
 
 // Note: The order of fields in this struct is important for the permit signature verification!
 #[remain::sorted]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct PermitContent<Permission: Permissions = TokenPermissions> {
     pub allowed_tokens: Vec<String>,
@@ -190,7 +190,7 @@ impl<T> Permissions for T where
 {
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TokenPermissions {
     /// Allowance for SNIP-20 - Permission to query allowance of the owner & spender
