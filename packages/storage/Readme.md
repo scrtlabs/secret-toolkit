@@ -1,6 +1,6 @@
 # Secret Contract Development Toolkit - Storage Tools
 
-⚠️ This package is a cw v1.0 fork of the `secret-toolkit` package. Please see its crate page for more context. You need Rust 1.63+ to compile this package.
+⚠️ This is a sub-package of the `secret-toolkit` package. Please see its crate page for more context. You need Rust 1.63+ to compile this package.
 
 This package contains many tools related to storage access patterns. This readme file assumes basic familiarity with basic cosmwasm storage, [click here to learn about this](https://docs.scrt.network/secret-network-documentation/development/secret-contracts/storage).
 
@@ -9,13 +9,13 @@ This package contains many tools related to storage access patterns. This readme
 To import this package, add one of the following lines to your `Cargo.toml` file
 
 ```toml
-secret-toolkit = { version = "0.4", default-features = false, features = ["utils", "storage", "serialization"] }
+secret-toolkit = { version = "0.5", default-features = false, features = ["utils", "storage", "serialization"] }
 ```
 
 for the release versions (when it is updated to cosmwasm 1.0), or
 
 ```toml
-secret-toolkit = { git = "https://github.com/scrtlabs/secret-toolkit", branch = "cosmwasm-v1.0", default-features = false, features = ["utils", "storage", "serialization"]}
+secret-toolkit = { git = "https://github.com/scrtlabs/secret-toolkit", branch = "master", default-features = false, features = ["utils", "storage", "serialization"]}
 ```
 
 for the github version. We also import the `serialization` feature in case we want to switch to using Json instead of Bincode2 to serialize/deserialize data.
@@ -40,7 +40,7 @@ And initialize it using the following lines:
 pub static OWNER: Item<HumanAddr> = Item::new(b"owner");
 ```
 
-This uses Bincode2 to serde HumanAddr by default. To specify the Serde algorithm as Json, first import it from `secret-toolkit-serialization`
+This uses Bincode2 to serde HumanAddr by default. To specify the Serde algorithm as Json, first import it from `secret-toolkit::serialization`
 
 ```ignore
 use secret_toolkit::serialization::{Bincode2, Json};
