@@ -10,7 +10,7 @@ use cosmwasm_std::{
 use secret_toolkit_utils::space_pad;
 
 /// TokenInfo response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct TokenInfo {
     pub name: String,
     pub symbol: String,
@@ -20,7 +20,7 @@ pub struct TokenInfo {
 }
 
 /// TokenConfig response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct TokenConfig {
     pub public_total_supply: bool,
     pub deposit_enabled: bool,
@@ -30,7 +30,7 @@ pub struct TokenConfig {
 }
 
 /// Contract status
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 pub enum ContractStatusLevel {
     NormalRun,
     StopAllButRedeems,
@@ -38,20 +38,20 @@ pub enum ContractStatusLevel {
 }
 
 /// ContractStatus Response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct ContractStatus {
     pub status: ContractStatusLevel,
 }
 
 /// ExchangeRate response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct ExchangeRate {
     pub rate: Uint128,
     pub denom: String,
 }
 
 /// Allowance response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Allowance {
     pub spender: String,
     pub owner: String,
@@ -61,7 +61,7 @@ pub struct Allowance {
 }
 
 /// Balance response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Balance {
     pub amount: Uint128,
 }
@@ -90,7 +90,7 @@ pub struct TransferHistory {
 }
 
 /// Types of transactions for RichTx
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TxAction {
     Transfer {
@@ -130,7 +130,7 @@ pub struct TransactionHistory {
 }
 
 /// Minters response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Minters {
     pub minters: Vec<String>,
 }

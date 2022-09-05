@@ -13,7 +13,7 @@ use secret_toolkit_utils::space_pad;
 //
 
 /// permission access level
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum AccessLevel {
     /// approve permission only for the specified token
@@ -32,7 +32,7 @@ pub enum AccessLevel {
 //
 
 /// token mint info used when doing a [`BatchMintNft`](HandleMsg::BatchMintNft)
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug)]
 pub struct Mint {
     /// optional token id. if omitted, use current token index
     pub token_id: Option<String>,
@@ -47,7 +47,7 @@ pub struct Mint {
 }
 
 /// token burn info used when doing a [`BatchBurnNft`](HandleMsg::BatchBurnNft)
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug)]
 pub struct Burn {
     /// tokens being burnt
     pub token_ids: Vec<String>,
@@ -56,7 +56,7 @@ pub struct Burn {
 }
 
 /// token transfer info used when doing a [`BatchTransferNft`](HandleMsg::BatchTransferNft)
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug)]
 pub struct Transfer {
     /// recipient of the transferred tokens
     pub recipient: String,
@@ -67,7 +67,7 @@ pub struct Transfer {
 }
 
 /// send token info used when doing a [`BatchSendNft`](HandleMsg::BatchSendNft)
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug)]
 pub struct Send {
     /// recipient of the sent tokens
     pub contract: String,
@@ -80,7 +80,7 @@ pub struct Send {
 }
 
 /// SNIP-721 contract handle messages
-#[derive(Serialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Clone, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
     //

@@ -8,7 +8,7 @@ use crate::batch::{
 use secret_toolkit_utils::space_pad;
 
 /// SNIP20 token handle messages
-#[derive(Serialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Clone, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
     // Native coin interactions
