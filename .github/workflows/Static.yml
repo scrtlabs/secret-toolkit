@@ -13,7 +13,7 @@ jobs:
         rust: [stable]
         make:
           - name: Clippy
-            task: "cargo clippy --all --all-features"
+            task: "cargo clippy --all --all-features -- -D warnings"
           - name: Unit tests
             task: "cargo test --all --all-features"
         include:
