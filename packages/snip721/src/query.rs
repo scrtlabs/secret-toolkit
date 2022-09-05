@@ -15,7 +15,7 @@ use secret_toolkit_utils::space_pad;
 //
 
 /// the address and viewing key making an authenticated query request
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct ViewerInfo {
     /// querying address
     pub address: String,
@@ -30,7 +30,7 @@ pub struct ViewerInfo {
 /// [`ContractInfo`](QueryMsg::ContractInfo) response
 ///
 /// display the contract's name and symbol
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct ContractInfo {
     pub name: String,
     pub symbol: String,
@@ -40,7 +40,7 @@ pub struct ContractInfo {
 ///
 /// display the number of tokens controlled by the contract.  The token supply must
 /// either be public, or the querier must be authorized to view
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct NumTokens {
     pub count: u32,
 }
@@ -53,14 +53,14 @@ pub struct NumTokens {
 /// * Tokens:
 /// displays a list of all the tokens belonging to the input owner in which the viewer
 /// has view_owner permission
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct TokenList {
     /// list of token IDs
     pub tokens: Vec<String>,
 }
 
 /// CW-721 Approval
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Cw721Approval {
     /// address that can transfer the token
     pub spender: String,
@@ -74,7 +74,7 @@ pub struct Cw721Approval {
 /// is also the token's owner, the response will also include a list of any addresses
 /// that can transfer this token.  The transfer approval list is for CW721 compliance,
 /// but the [`NftDossier`](QueryMsg::NftDossier) query will be more complete by showing viewing approvals as well
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct OwnerOf {
     /// Owner of the token if permitted to view it
     pub owner: Option<String>,
@@ -85,7 +85,7 @@ pub struct OwnerOf {
 /// response of [`AllNftInfo`](QueryMsg::AllNftInfo)
 ///
 /// displays all the information contained in the [`OwnerOf`](QueryMsg::OwnerOf) and [`NftInfo`](QueryMsg::NftInfo) queries
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct AllNftInfo {
     /// OwnerOf response
     pub access: OwnerOf,
@@ -94,7 +94,7 @@ pub struct AllNftInfo {
 }
 
 /// SNIP721 Approval
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Snip721Approval {
     /// whitelisted address
     pub address: String,
@@ -111,7 +111,7 @@ pub struct Snip721Approval {
 /// displays all the information about a token that the viewer has permission to
 /// see.  This may include the owner, the public metadata, the private metadata, and
 /// the token and inventory approvals
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct NftDossier {
     /// owner of the token if permitted to view it
     pub owner: Option<String>,
@@ -140,7 +140,7 @@ pub struct NftDossier {
 ///
 /// list all the [`Approvals`](Snip721Approval) in place for a specified token if given the owner's viewing
 /// key
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct TokenApprovals {
     /// true if the owner is publicly viewable
     pub owner_is_public: bool,
@@ -160,7 +160,7 @@ pub struct TokenApprovals {
 /// approval to transfer all of the owner's tokens).  This query is provided to maintain
 /// CW-721 compliance, however, approvals are private on secret network, so only the
 /// owner's viewing key will authorize the ability to see the list of operators
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct ApprovedForAll {
     pub operators: Vec<Cw721Approval>,
 }
@@ -169,7 +169,7 @@ pub struct ApprovedForAll {
 ///
 /// list all the inventory-wide [`Approvals`](Snip721Approval) in place for the specified address if given the
 /// the correct viewing key for the address
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InventoryApprovals {
     /// true if the owner is publicly viewable
     pub owner_is_public: bool,
@@ -184,7 +184,7 @@ pub struct InventoryApprovals {
 }
 
 /// tx type and specifics
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum TxAction {
     /// transferred token ownership
@@ -213,7 +213,7 @@ pub enum TxAction {
 }
 
 /// tx for display
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug)]
 #[serde(rename_all = "snake_case")]
 pub struct Tx {
     /// tx id
@@ -234,7 +234,7 @@ pub struct Tx {
 ///
 /// display the transaction history for the specified address in reverse
 /// chronological order
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct TransactionHistory {
     /// total transaction count
     pub total: u64,
@@ -249,7 +249,7 @@ pub struct TransactionHistory {
 /// response of [`Minters`](QueryMsg::Minters)
 ///
 /// display the list of authorized minters
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Minters {
     pub minters: Vec<String>,
 }
@@ -257,7 +257,7 @@ pub struct Minters {
 /// response of [`IsUnwrapped`](QueryMsg::IsUnwrapped)
 ///
 /// display if a token is unwrapped
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct IsUnwrapped {
     pub token_is_unwrapped: bool,
 }
@@ -265,7 +265,7 @@ pub struct IsUnwrapped {
 /// response of [`VerifyTransferApproval`](QueryMsg::VerifyTransferApproval)
 ///
 /// verify that the specified address has approval to transfer every listed token
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct VerifyTransferApproval {
     /// true if `address` has transfer approval for all tokens in the list
     pub approved_for_all: bool,
@@ -274,7 +274,7 @@ pub struct VerifyTransferApproval {
 }
 
 /// SNIP-721 queries
-#[derive(Serialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Clone, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     //
