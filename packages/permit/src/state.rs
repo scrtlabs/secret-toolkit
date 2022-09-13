@@ -24,6 +24,9 @@ impl RevokedPermits {
 
         // Since cosmwasm V1.0 it's not possible to set an empty value, hence set some unimportant
         // character '_'
+        //
+        // Here is the line of the new panic that was added when trying to insert an empty value:
+        // https://github.com/scrtlabs/cosmwasm/blob/f7e2b1dbf11e113e258d796288752503a5012367/packages/std/src/storage.rs#L30
         storage.set(storage_key.as_bytes(), "_".as_bytes())
     }
 }
