@@ -22,6 +22,8 @@ impl RevokedPermits {
     ) {
         let storage_key = storage_prefix.to_string() + account + permit_name;
 
-        storage.set(storage_key.as_bytes(), &[])
+        // Since cosmwasm V1.0 it's not possible to set an empty value, hence set some unimportant
+        // character '_'
+        storage.set(storage_key.as_bytes(), "_".as_bytes())
     }
 }
