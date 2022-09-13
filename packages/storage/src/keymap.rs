@@ -7,6 +7,7 @@ use serde::Deserialize;
 use serde::{de::DeserializeOwned, Serialize};
 
 use cosmwasm_std::{StdError, StdResult, Storage};
+use cosmwasm_storage::to_length_prefixed;
 
 use secret_toolkit_serialization::{Bincode2, Serde};
 
@@ -40,6 +41,7 @@ impl<T: Serialize + DeserializeOwned, Ser: Serde> InternalItem<T, Ser> {
             serialization_type: PhantomData,
         })
     }
+
     fn get_item(&self) -> StdResult<T> {
         Ser::deserialize(&self.item_vec)
     }
@@ -75,14 +77,13 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             serialization_type: PhantomData,
         }
     }
+
     /// This is used to produce a new Keymap. This can be used when you want to associate an Keymap to each user
     /// and you still get to define the Keymap as a static constant
     pub fn add_suffix(&self, suffix: &[u8]) -> Self {
-        let prefix = if let Some(prefix) = &self.prefix {
-            [prefix.clone(), suffix.to_vec()].concat()
-        } else {
-            [self.namespace.to_vec(), suffix.to_vec()].concat()
-        };
+        let suffix = to_length_prefixed(suffix);
+        let prefix = self.prefix.as_deref().unwrap_or(self.namespace);
+        let prefix = [prefix, suffix.as_slice()].concat();
         Self {
             namespace: self.namespace,
             prefix: Some(prefix),
@@ -101,10 +102,12 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     fn serialize_key(&self, key: &K) -> StdResult<Vec<u8>> {
         Ser::serialize(key)
     }
+
     /// Deserialize key
     fn deserialize_key(&self, key_data: &[u8]) -> StdResult<K> {
         Ser::deserialize(key_data)
     }
+
     /// get total number of objects saved
     pub fn get_len(&self, storage: &dyn Storage) -> StdResult<u32> {
         let mut may_len = self.length.lock().unwrap();
@@ -127,10 +130,12 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             }
         }
     }
+
     /// checks if the collection has any elements
     pub fn is_empty(&self, storage: &dyn Storage) -> StdResult<bool> {
         Ok(self.get_len(storage)? == 0)
     }
+
     /// set length of the map
     fn set_len(&self, storage: &mut dyn Storage, len: u32) -> StdResult<()> {
         let len_key = [self.as_slice(), MAP_LENGTH].concat();
@@ -141,6 +146,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 
         Ok(())
     }
+
     /// Used to get the indexes stored in the given page number
     fn _get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<Vec<Vec<u8>>> {
         let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
@@ -150,6 +156,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             None => Ok(vec![]),
         }
     }
+
     /// Set an indexes page
     fn _set_indexes_page(
         &self,
@@ -161,6 +168,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         storage.set(&indexes_key, &Bincode2::serialize(indexes)?);
         Ok(())
     }
+
     /// user facing get function
     pub fn get(&self, storage: &dyn Storage, key: &K) -> Option<T> {
         if let Ok(internal_item) = self._get_from_key(storage, key) {
@@ -169,11 +177,13 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             None
         }
     }
+
     /// internal item get function
     fn _get_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<InternalItem<T, Ser>> {
         let key_vec = self.serialize_key(key)?;
         self.load_impl(storage, &key_vec)
     }
+
     /// user facing remove function
     pub fn remove(&self, storage: &mut dyn Storage, key: &K) -> StdResult<()> {
         let key_vec = self.serialize_key(key)?;
@@ -234,6 +244,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 
         Ok(())
     }
+
     /// user facing insert function
     pub fn insert(&self, storage: &mut dyn Storage, key: &K, item: &T) -> StdResult<()> {
         let key_vec = self.serialize_key(key)?;
@@ -258,6 +269,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             }
         }
     }
+
     /// user facing method that checks if any item is stored with this key.
     pub fn contains(&self, storage: &dyn Storage, key: &K) -> bool {
         match self.serialize_key(key) {
@@ -265,6 +277,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             Err(_) => false,
         }
     }
+
     /// paginates (key, item) pairs.
     pub fn paging(
         &self,
@@ -290,6 +303,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         }
         self.get_pairs_at_positions(storage, start_pos, end_pos)
     }
+
     /// paginates only the keys. More efficient than paginating both items and keys
     pub fn paging_keys(
         &self,
@@ -315,6 +329,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         }
         self.get_keys_at_positions(storage, start_pos, end_pos)
     }
+
     /// tries to list keys without checking start/end bounds
     fn get_keys_at_positions(
         &self,
@@ -347,6 +362,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         }
         Ok(res)
     }
+
     /// tries to list (key, item) pairs without checking start/end bounds
     fn get_pairs_at_positions(
         &self,
@@ -380,6 +396,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         }
         Ok(res)
     }
+
     /// gets a key from a specific position in indexes
     fn get_key_from_pos(&self, storage: &dyn Storage, pos: u32) -> StdResult<K> {
         let page = _page_from_position(pos);
@@ -388,6 +405,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         let key_vec = &indexes[index as usize];
         self.deserialize_key(key_vec)
     }
+
     /// gets a key from a specific position in indexes
     fn get_pair_from_pos(&self, storage: &dyn Storage, pos: u32) -> StdResult<(K, T)> {
         let page = _page_from_position(pos);
@@ -398,12 +416,14 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         let item = self.load_impl(storage, key_vec)?.get_item()?;
         Ok((key, item))
     }
+
     /// Returns a readonly iterator only for keys. More efficient than iter().
     pub fn iter_keys(&self, storage: &'a dyn Storage) -> StdResult<KeyIter<K, T, Ser>> {
         let len = self.get_len(storage)?;
         let iter = KeyIter::new(self, storage, 0, len);
         Ok(iter)
     }
+
     /// Returns a readonly iterator for (key-item) pairs
     pub fn iter(&self, storage: &'a dyn Storage) -> StdResult<KeyItemIter<K, T, Ser>> {
         let len = self.get_len(storage)?;
@@ -420,21 +440,6 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             prefix
         } else {
             self.namespace
-        }
-    }
-}
-
-impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde> Clone
-    for Keymap<'a, K, T, Ser>
-{
-    fn clone(&self) -> Self {
-        Self {
-            namespace: self.namespace,
-            prefix: self.prefix.clone(),
-            length: Mutex::new(None),
-            key_type: PhantomData,
-            item_type: PhantomData,
-            serialization_type: PhantomData,
         }
     }
 }
