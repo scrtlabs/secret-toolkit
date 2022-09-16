@@ -1254,7 +1254,7 @@ mod tests {
         keymap.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
         let contains_k1 = keymap.contains(&storage, &b"key1".to_vec());
 
-        assert_eq!(contains_k1, true);
+        assert!(contains_k1);
 
         Ok(())
     }

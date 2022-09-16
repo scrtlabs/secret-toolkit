@@ -362,7 +362,7 @@ mod tests {
         let append_store: AppendStore<i32> = AppendStore::new(b"test");
 
         assert!(append_store.length.lock().unwrap().eq(&None));
-        assert_eq!(append_store.get_len(&mut storage)?, 0);
+        assert_eq!(append_store.get_len(&storage)?, 0);
         assert!(append_store.length.lock().unwrap().eq(&Some(0)));
 
         append_store.push(&mut storage, &1234)?;
@@ -370,21 +370,21 @@ mod tests {
         append_store.push(&mut storage, &3412)?;
         append_store.push(&mut storage, &4321)?;
         assert!(append_store.length.lock().unwrap().eq(&Some(4)));
-        assert_eq!(append_store.get_len(&mut storage)?, 4);
+        assert_eq!(append_store.get_len(&storage)?, 4);
 
         assert_eq!(append_store.pop(&mut storage), Ok(4321));
         assert_eq!(append_store.pop(&mut storage), Ok(3412));
         assert!(append_store.length.lock().unwrap().eq(&Some(2)));
-        assert_eq!(append_store.get_len(&mut storage)?, 2);
+        assert_eq!(append_store.get_len(&storage)?, 2);
 
         assert_eq!(append_store.pop(&mut storage), Ok(2143));
         assert_eq!(append_store.pop(&mut storage), Ok(1234));
         assert!(append_store.length.lock().unwrap().eq(&Some(0)));
-        assert_eq!(append_store.get_len(&mut storage)?, 0);
+        assert_eq!(append_store.get_len(&storage)?, 0);
 
         assert!(append_store.pop(&mut storage).is_err());
         assert!(append_store.length.lock().unwrap().eq(&Some(0)));
-        assert_eq!(append_store.get_len(&mut storage)?, 0);
+        assert_eq!(append_store.get_len(&storage)?, 0);
 
         Ok(())
     }

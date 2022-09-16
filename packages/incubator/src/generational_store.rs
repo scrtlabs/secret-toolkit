@@ -881,7 +881,7 @@ mod tests {
         assert_eq!(gen_store.get(delta.clone()), Some(String::from("Delta")));
         // check that the generation has updated
         assert_ne!(
-            delta.clone(),
+            delta,
             Index {
                 index: 1,
                 generation: 0
