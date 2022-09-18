@@ -31,16 +31,16 @@ This is the simplest storage object in this toolkit. It based on the similarly n
 This object is meant to be initialized as a static constant in `state.rs`. However, it would also work perfectly fine if it was initialized during run time with a variable key (in this case though, you'd have to remind it what type of object is stored and its serde). Import it using the following lines:
 
 ```ignore
-use secret_toolkit_storage::{Item}
+use secret_toolkit::storage::{Item}
 ```
 
 And initialize it using the following lines:
 
 ```ignore
-pub static OWNER: Item<HumanAddr> = Item::new(b"owner");
+pub static OWNER: Item<Addr> = Item::new(b"owner");
 ```
 
-This uses Bincode2 to serde HumanAddr by default. To specify the Serde algorithm as Json, first import it from `secret-toolkit::serialization`
+This uses Bincode2 to serde Addr by default. To specify the Serde algorithm as Json, first import it from `secret-toolkit::serialization`
 
 ```ignore
 use secret_toolkit::serialization::{Bincode2, Json};
@@ -57,7 +57,7 @@ pub static SOME_ENUM: Item<SomeEnum, Json> = Item::new(b"some_enum");
 The way to read/write to/from strorage is to use its methods. These methods are `save`, `load`, `may_load`, `remove`, `update`. Here is an example usecase for each in execution inside `contract.rs`:
 
 ```ignore
-// The compiler knows that owner_addr is HumanAddr
+// The compiler knows that owner_addr is Addr
 let owner_addr = OWNER.load(&deps.storage)?;
 ```
 
@@ -66,17 +66,17 @@ OWNER.save(&mut deps.storage, &env.message.sender)?;
 ```
 
 ```ignore
-// The compiler knows that may_addr is Option<HumanAddr>
+// The compiler knows that may_addr is Option<Addr>
 let may_addr = OWNER.may_load(&deps.storage)?;
 ```
 
 ```ignore
-// The compiler knows that may_addr is Option<HumanAddr>
+// The compiler knows that may_addr is Option<Addr>
 let may_addr = OWNER.remove(&mut deps.storage)?;
 ```
 
 ```ignore
-// The compiler knows that may_addr is Option<HumanAddr>
+// The compiler knows that may_addr is Option<Addr>
 let may_addr = OWNER.update(&mut deps.storage, |_x| Ok(env.message.sender))?;
 ```
 
@@ -177,13 +177,13 @@ use secret_toolkit::storage::{Keymap}
 ```
 
 ```ignore
-pub static ADDR_VOTE: Keymap<HumanAddr, Foo> = Keymap::new(b"vote");
+pub static ADDR_VOTE: Keymap<Addr, Foo> = Keymap::new(b"vote");
 pub static BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"bet");
 ```
 
 > ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
 
-You can use Json serde algorithm by changing the signature to `Keymap<HumanAddr, Uint128, Json>`, similar to all the other storage objects above. However, keep in mind that the Serde algorthm is used to serde both the stored object (`Uint128`) AND the key (`HumanAddr`).
+You can use Json serde algorithm by changing the signature to `Keymap<Addr, Uint128, Json>`, similar to all the other storage objects above. However, keep in mind that the Serde algorthm is used to serde both the stored object (`Uint128`) AND the key (`Addr`).
 
 If you need to associate a keymap to a user address (or any other variable), then you can also do this using the `.add_suffix` method.
 
@@ -194,6 +194,33 @@ For example suppose that in your contract, a user can make multiple bets. Then, 
 let user_count_store = BET_STORE.add_suffix(env.message.sender.to_string().as_bytes());
 ```
 
+#### **Advanced Init**
+
+It is also possible to modify some of the configuration settings of the Keymap structure so that it suits better to a specific usecase. In this case, we use a struct called `KeymapBuilder` to build a keymap with specialized config. Currently, we can use KeymapBuilder to modify two attributes of keymaps.
+
+One is to be able disable the iterator feature altogether using `.without_iter()`. This basically turns a keymap into a typed PrefixedStorage, but it also saves a ton of gas by not storing the keys and the length of the keymap.
+
+The other feature is to modify the page size of the internal indexer (only if the iterator feature is enabled, i.e. this setting is irrelevant if `.without_iter()` is used). Keymap iterates by using internal index pages allowing it to load the next 5 objects at the same time. You can change the default 5 to any `u32` greater than zero by using `.with_page_size(num)`. This allows the user to optimize the gas usage of Keymap.
+
+The following is used to produce a Keymap without an iterator in `state.rs`
+
+```ignore
+pub static JSON_ADDR_VOTE: Keymap<String, Foo, Json, _> =
+            KeymapBuilder::new(b"json_vote").without_iter().build();
+
+pub static BINCODE_ADDR_VOTE: Keymap<String, Foo, Bincode2, _> =
+            KeymapBuilder::new(b"bincode_vote").without_iter().build();
+```
+
+The following is used to produce a Keymap with modified index page size:
+
+```ignore
+pub static ADDR_VOTE: Keymap<Addr, Foo> = KeymapBuilder::new(b"page_vote").with_page_size(13).build();
+
+pub static JSON_VOTE: Keymap<Addr, Foo, Json> =
+            KeymapBuilder::new(b"page_vote").with_page_size(3).build();
+```
+
 #### **Read/Write**
 
 You can find more examples of using keymaps in the unit tests of Keymap in `keymap.rs`.
@@ -201,7 +228,7 @@ You can find more examples of using keymaps in the unit tests of Keymap in `keym
 To insert, remove, read from the keymap, do the following:
 
 ```ignore
-let user_addr: HumanAddr = env.message.sender;
+let user_addr: Addr = env.message.sender;
 
 let foo = Foo {
     message: "string one".to_string(),
@@ -284,3 +311,8 @@ fn test_keymap_iter() -> StdResult<()> {
     Ok(())
 }
 ```
+
+### **Keyset**
+
+This hashset-like storage structure allows the user to store typed objects. Allows iteration with paging over values (without guaranteed ordering, although the order of insertion is preserved until you start removing objects).
+An example use-case for such a structure is if you have a set of whitelisted users (that you might want to iterate over).

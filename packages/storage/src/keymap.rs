@@ -14,11 +14,14 @@ use secret_toolkit_serialization::{Bincode2, Serde};
 const INDEXES: &[u8] = b"indexes";
 const MAP_LENGTH: &[u8] = b"length";
 
-const PAGE_SIZE: u32 = 5;
+const DEFAULT_PAGE_SIZE: u32 = 5;
 
-fn _page_from_position(position: u32) -> u32 {
-    position / PAGE_SIZE
-}
+pub struct WithIter;
+pub struct WithNoIter;
+pub trait IterOption {}
+
+impl IterOption for WithIter {}
+impl IterOption for WithNoIter {}
 
 #[derive(Serialize, Deserialize)]
 struct InternalItem<T, Ser>
@@ -27,13 +30,14 @@ where
     Ser: Serde,
 {
     item_vec: Vec<u8>,
-    index_pos: u32,
+    // only Some if we enabled iterator
+    index_pos: Option<u32>,
     item_type: PhantomData<T>,
     serialization_type: PhantomData<Ser>,
 }
 
 impl<T: Serialize + DeserializeOwned, Ser: Serde> InternalItem<T, Ser> {
-    fn new(index_pos: u32, item: &T) -> StdResult<Self> {
+    fn new(index_pos: Option<u32>, item: &T) -> StdResult<Self> {
         Ok(Self {
             item_vec: Ser::serialize(item)?,
             index_pos,
@@ -47,19 +51,110 @@ impl<T: Serialize + DeserializeOwned, Ser: Serde> InternalItem<T, Ser> {
     }
 }
 
-pub struct Keymap<'a, K, T, Ser = Bincode2>
+pub struct KeymapBuilder<'a, K, T, Ser = Bincode2, I = WithIter> {
+    /// namespace of the newly constructed Storage
+    namespace: &'a [u8],
+    page_size: u32,
+    key_type: PhantomData<K>,
+    item_type: PhantomData<T>,
+    serialization_type: PhantomData<Ser>,
+    iter_option: PhantomData<I>,
+}
+
+impl<'a, K, T, Ser> KeymapBuilder<'a, K, T, Ser, WithIter>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
+    /// Creates a KeymapBuilder with default features
+    pub const fn new(namespace: &'a [u8]) -> Self {
+        Self {
+            namespace,
+            page_size: DEFAULT_PAGE_SIZE,
+            key_type: PhantomData,
+            item_type: PhantomData,
+            serialization_type: PhantomData,
+            iter_option: PhantomData,
+        }
+    }
+    /// Modifies the number of keys stored in one page of indexing, for the iterator
+    pub const fn with_page_size(&self, indexes_size: u32) -> Self {
+        if indexes_size == 0 {
+            panic!("Zero index page size used in keymap")
+        }
+        Self {
+            namespace: self.namespace,
+            page_size: indexes_size,
+            key_type: self.key_type,
+            item_type: self.item_type,
+            serialization_type: self.serialization_type,
+            iter_option: self.iter_option,
+        }
+    }
+    /// Disables the iterator of the keymap, saving at least 4000 gas in each insertion.
+    pub const fn without_iter(&self) -> KeymapBuilder<'a, K, T, Ser, WithNoIter> {
+        KeymapBuilder {
+            namespace: self.namespace,
+            page_size: self.page_size,
+            key_type: PhantomData,
+            item_type: PhantomData,
+            serialization_type: PhantomData,
+            iter_option: PhantomData,
+        }
+    }
+    /// Returns a keymap with the given configuration
+    pub const fn build(&self) -> Keymap<'a, K, T, Ser, WithIter> {
+        Keymap {
+            namespace: self.namespace,
+            prefix: None,
+            page_size: self.page_size,
+            length: Mutex::new(None),
+            key_type: self.key_type,
+            item_type: self.item_type,
+            iter_option: self.iter_option,
+            serialization_type: self.serialization_type,
+        }
+    }
+}
+
+// This enables writing `append_store.iter().skip(n).rev()`
+impl<'a, K, T, Ser> KeymapBuilder<'a, K, T, Ser, WithNoIter>
+where
+    K: Serialize + DeserializeOwned,
+    T: Serialize + DeserializeOwned,
+    Ser: Serde,
+{
+    pub const fn build(&self) -> Keymap<'a, K, T, Ser, WithNoIter> {
+        Keymap {
+            namespace: self.namespace,
+            prefix: None,
+            page_size: self.page_size,
+            length: Mutex::new(None),
+            key_type: self.key_type,
+            item_type: self.item_type,
+            iter_option: self.iter_option,
+            serialization_type: self.serialization_type,
+        }
+    }
+}
+
+pub struct Keymap<'a, K, T, Ser = Bincode2, I = WithIter>
+where
+    K: Serialize + DeserializeOwned,
+    T: Serialize + DeserializeOwned,
+    Ser: Serde,
+    I: IterOption,
+{
     /// prefix of the newly constructed Storage
     namespace: &'a [u8],
     /// needed if any suffixes were added to the original namespace.
     prefix: Option<Vec<u8>>,
+    page_size: u32,
     length: Mutex<Option<u32>>,
     key_type: PhantomData<K>,
     item_type: PhantomData<T>,
+    iter_option: PhantomData<I>,
     serialization_type: PhantomData<Ser>,
 }
 
@@ -67,14 +162,16 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     Keymap<'a, K, T, Ser>
 {
     /// constructor
-    pub const fn new(prefix: &'a [u8]) -> Self {
+    pub const fn new(namespace: &'a [u8]) -> Self {
         Self {
-            namespace: prefix,
+            namespace,
             prefix: None,
+            page_size: DEFAULT_PAGE_SIZE,
             length: Mutex::new(None),
             key_type: PhantomData,
             item_type: PhantomData,
             serialization_type: PhantomData,
+            iter_option: PhantomData,
         }
     }
 
@@ -87,16 +184,60 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Self {
             namespace: self.namespace,
             prefix: Some(prefix),
+            page_size: self.page_size,
             length: Mutex::new(None),
             key_type: self.key_type,
             item_type: self.item_type,
             serialization_type: self.serialization_type,
+            iter_option: self.iter_option,
         }
     }
 }
 
 impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
-    Keymap<'a, K, T, Ser>
+    Keymap<'a, K, T, Ser, WithNoIter>
+{
+    /// Serialize key
+    fn serialize_key(&self, key: &K) -> StdResult<Vec<u8>> {
+        Ser::serialize(key)
+    }
+
+    /// user facing get function
+    pub fn get(&self, storage: &dyn Storage, key: &K) -> Option<T> {
+        self._get_from_key(storage, key).ok()
+    }
+
+    /// internal item get function
+    fn _get_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<T> {
+        let key_vec = self.serialize_key(key)?;
+        self.load_impl(storage, &key_vec)
+    }
+
+    /// user facing remove function
+    pub fn remove(&self, storage: &mut dyn Storage, key: &K) -> StdResult<()> {
+        let key_vec = self.serialize_key(key)?;
+        self.remove_impl(storage, &key_vec);
+
+        Ok(())
+    }
+
+    /// user facing insert function
+    pub fn insert(&self, storage: &mut dyn Storage, key: &K, item: &T) -> StdResult<()> {
+        let key_vec = self.serialize_key(key)?;
+        self.save_impl(storage, &key_vec, item)
+    }
+
+    /// user facing method that checks if any item is stored with this key.
+    pub fn contains(&self, storage: &dyn Storage, key: &K) -> bool {
+        match self.serialize_key(key) {
+            Ok(key_vec) => self.contains_impl(storage, &key_vec),
+            Err(_) => false,
+        }
+    }
+}
+
+impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
+    Keymap<'a, K, T, Ser, WithIter>
 {
     /// Serialize key
     fn serialize_key(&self, key: &K) -> StdResult<Vec<u8>> {
@@ -106,6 +247,10 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     /// Deserialize key
     fn deserialize_key(&self, key_data: &[u8]) -> StdResult<K> {
         Ser::deserialize(key_data)
+    }
+
+    fn _page_from_position(&self, position: u32) -> u32 {
+        position / self.page_size
     }
 
     /// get total number of objects saved
@@ -187,10 +332,10 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     /// user facing remove function
     pub fn remove(&self, storage: &mut dyn Storage, key: &K) -> StdResult<()> {
         let key_vec = self.serialize_key(key)?;
-        let removed_pos = self._get_from_key(storage, key)?.index_pos;
 
-        self.remove_impl(storage, &key_vec);
-        let page = _page_from_position(removed_pos);
+        let removed_pos = self._get_from_key(storage, key)?.index_pos.unwrap();
+
+        let page = self._page_from_position(removed_pos);
 
         let mut len = self.get_len(storage)?;
         len -= 1;
@@ -198,7 +343,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 
         let mut indexes = self._get_indexes(storage, page)?;
 
-        let pos_in_indexes = (removed_pos % PAGE_SIZE) as usize;
+        let pos_in_indexes = (removed_pos % self.page_size) as usize;
 
         if indexes[pos_in_indexes] != key_vec {
             return Err(StdError::generic_err(
@@ -214,7 +359,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         }
 
         // max page should use previous_len - 1 which is exactly the current len
-        let max_page = _page_from_position(len);
+        let max_page = self._page_from_position(len);
         if max_page == page {
             // last page indexes is the same as indexes
             let last_key = indexes.pop().ok_or_else(|| {
@@ -222,7 +367,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             })?;
             // modify last item
             let mut last_internal_item = self.load_impl(storage, &last_key)?;
-            last_internal_item.index_pos = removed_pos;
+            last_internal_item.index_pos = Some(removed_pos);
             self.save_impl(storage, &last_key, &last_internal_item)?;
             // save to indexes
             indexes[pos_in_indexes] = last_key;
@@ -234,7 +379,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             })?;
             // modify last item
             let mut last_internal_item = self.load_impl(storage, &last_key)?;
-            last_internal_item.index_pos = removed_pos;
+            last_internal_item.index_pos = Some(removed_pos);
             self.save_impl(storage, &last_key, &last_internal_item)?;
             // save indexes
             indexes[pos_in_indexes] = last_key;
@@ -242,12 +387,15 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             self._set_indexes_page(storage, max_page, &last_page_indexes)?;
         }
 
+        self.remove_impl(storage, &key_vec);
+
         Ok(())
     }
 
     /// user facing insert function
     pub fn insert(&self, storage: &mut dyn Storage, key: &K, item: &T) -> StdResult<()> {
         let key_vec = self.serialize_key(key)?;
+
         match self.may_load_impl(storage, &key_vec)? {
             Some(existing_internal_item) => {
                 // if item already exists
@@ -258,9 +406,9 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
                 // not already saved
                 let pos = self.get_len(storage)?;
                 self.set_len(storage, pos + 1)?;
-                let page = _page_from_position(pos);
+                let page = self._page_from_position(pos);
                 // save the item
-                let internal_item = InternalItem::new(pos, item)?;
+                let internal_item = InternalItem::new(Some(pos), item)?;
                 self.save_impl(storage, &key_vec, &internal_item)?;
                 // add index
                 let mut indexes = self._get_indexes(storage, page)?;
@@ -337,22 +485,22 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         start: u32,
         end: u32,
     ) -> StdResult<Vec<K>> {
-        let start_page = _page_from_position(start);
-        let end_page = _page_from_position(end);
+        let start_page = self._page_from_position(start);
+        let end_page = self._page_from_position(end);
 
         let mut res = vec![];
 
         for page in start_page..=end_page {
             let indexes = self._get_indexes(storage, page)?;
             let start_page_pos = if page == start_page {
-                start % PAGE_SIZE
+                start % self.page_size
             } else {
                 0
             };
             let end_page_pos = if page == end_page {
-                end % PAGE_SIZE
+                end % self.page_size
             } else {
-                PAGE_SIZE - 1
+                self.page_size - 1
             };
             for i in start_page_pos..=end_page_pos {
                 let key_vec = &indexes[i as usize];
@@ -370,22 +518,22 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         start: u32,
         end: u32,
     ) -> StdResult<Vec<(K, T)>> {
-        let start_page = _page_from_position(start);
-        let end_page = _page_from_position(end);
+        let start_page = self._page_from_position(start);
+        let end_page = self._page_from_position(end);
 
         let mut res = vec![];
 
         for page in start_page..=end_page {
             let indexes = self._get_indexes(storage, page)?;
             let start_page_pos = if page == start_page {
-                start % PAGE_SIZE
+                start % self.page_size
             } else {
                 0
             };
             let end_page_pos = if page == end_page {
-                end % PAGE_SIZE
+                end % self.page_size
             } else {
-                PAGE_SIZE - 1
+                self.page_size - 1
             };
             for i in start_page_pos..=end_page_pos {
                 let key_vec = &indexes[i as usize];
@@ -399,18 +547,18 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 
     /// gets a key from a specific position in indexes
     fn get_key_from_pos(&self, storage: &dyn Storage, pos: u32) -> StdResult<K> {
-        let page = _page_from_position(pos);
+        let page = self._page_from_position(pos);
         let indexes = self._get_indexes(storage, page)?;
-        let index = pos % PAGE_SIZE;
+        let index = pos % self.page_size;
         let key_vec = &indexes[index as usize];
         self.deserialize_key(key_vec)
     }
 
     /// gets a key from a specific position in indexes
     fn get_pair_from_pos(&self, storage: &dyn Storage, pos: u32) -> StdResult<(K, T)> {
-        let page = _page_from_position(pos);
+        let page = self._page_from_position(pos);
         let indexes = self._get_indexes(storage, page)?;
-        let index = pos % PAGE_SIZE;
+        let index = pos % self.page_size;
         let key_vec = &indexes[index as usize];
         let key = self.deserialize_key(key_vec)?;
         let item = self.load_impl(storage, key_vec)?.get_item()?;
@@ -433,7 +581,19 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 }
 
 impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
-    PrefixedTypedStorage<InternalItem<T, Ser>, Bincode2> for Keymap<'a, K, T, Ser>
+    PrefixedTypedStorage<InternalItem<T, Ser>, Bincode2> for Keymap<'a, K, T, Ser, WithIter>
+{
+    fn as_slice(&self) -> &[u8] {
+        if let Some(prefix) = &self.prefix {
+            prefix
+        } else {
+            self.namespace
+        }
+    }
+}
+
+impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
+    PrefixedTypedStorage<T, Ser> for Keymap<'a, K, T, Ser, WithNoIter>
 {
     fn as_slice(&self) -> &[u8] {
         if let Some(prefix) = &self.prefix {
@@ -501,9 +661,9 @@ where
         }
         let res: Option<Self::Item>;
         if let (Some(page), Some(indexes)) = (&self.saved_index_page, &self.saved_indexes) {
-            let current_page = _page_from_position(self.start);
+            let current_page = self.keymap._page_from_position(self.start);
             if *page == current_page {
-                let current_idx = (self.start % PAGE_SIZE) as usize;
+                let current_idx = (self.start % self.keymap.page_size) as usize;
                 if current_idx + 1 > indexes.len() {
                     res = None;
                 } else {
@@ -520,7 +680,7 @@ where
             } else {
                 match self.keymap._get_indexes(self.storage, current_page) {
                     Ok(new_indexes) => {
-                        let current_idx = (self.start % PAGE_SIZE) as usize;
+                        let current_idx = (self.start % self.keymap.page_size) as usize;
                         if current_idx + 1 > new_indexes.len() {
                             res = None;
                         } else {
@@ -548,12 +708,12 @@ where
                 }
             }
         } else {
-            let next_page = _page_from_position(self.start + 1);
-            let current_page = _page_from_position(self.start);
+            let next_page = self.keymap._page_from_position(self.start + 1);
+            let current_page = self.keymap._page_from_position(self.start);
             match self.keymap._get_indexes(self.storage, next_page) {
                 Ok(next_index) => {
                     if current_page == next_page {
-                        let current_idx = (self.start % PAGE_SIZE) as usize;
+                        let current_idx = (self.start % self.keymap.page_size) as usize;
                         if current_idx + 1 > next_index.len() {
                             res = None;
                         } else {
@@ -626,9 +786,9 @@ where
         let res;
         if let (Some(page), Some(indexes)) = (&self.saved_back_index_page, &self.saved_back_indexes)
         {
-            let current_page = _page_from_position(self.end);
+            let current_page = self.keymap._page_from_position(self.end);
             if *page == current_page {
-                let current_idx = (self.end % PAGE_SIZE) as usize;
+                let current_idx = (self.end % self.keymap.page_size) as usize;
                 if current_idx + 1 > indexes.len() {
                     res = None;
                 } else {
@@ -645,7 +805,7 @@ where
             } else {
                 match self.keymap._get_indexes(self.storage, current_page) {
                     Ok(new_indexes) => {
-                        let current_idx = (self.end % PAGE_SIZE) as usize;
+                        let current_idx = (self.end % self.keymap.page_size) as usize;
                         if current_idx + 1 > new_indexes.len() {
                             res = None;
                         } else {
@@ -673,12 +833,12 @@ where
                 }
             }
         } else {
-            let next_page = _page_from_position(self.end - 1);
-            let current_page = _page_from_position(self.end);
+            let next_page = self.keymap._page_from_position(self.end - 1);
+            let current_page = self.keymap._page_from_position(self.end);
             match self.keymap._get_indexes(self.storage, next_page) {
                 Ok(next_index) => {
                     if current_page == next_page {
-                        let current_idx = (self.end % PAGE_SIZE) as usize;
+                        let current_idx = (self.end % self.keymap.page_size) as usize;
                         if current_idx + 1 > next_index.len() {
                             res = None;
                         } else {
@@ -798,9 +958,9 @@ where
         }
         let res: Option<Self::Item>;
         if let (Some(page), Some(indexes)) = (&self.saved_index_page, &self.saved_indexes) {
-            let current_page = _page_from_position(self.start);
+            let current_page = self.keymap._page_from_position(self.start);
             if *page == current_page {
-                let current_idx = (self.start % PAGE_SIZE) as usize;
+                let current_idx = (self.start % self.keymap.page_size) as usize;
                 if current_idx + 1 > indexes.len() {
                     res = None;
                 } else {
@@ -818,7 +978,7 @@ where
             } else {
                 match self.keymap._get_indexes(self.storage, current_page) {
                     Ok(new_indexes) => {
-                        let current_idx = (self.start % PAGE_SIZE) as usize;
+                        let current_idx = (self.start % self.keymap.page_size) as usize;
                         if current_idx + 1 > new_indexes.len() {
                             res = None;
                         } else {
@@ -847,12 +1007,12 @@ where
                 }
             }
         } else {
-            let next_page = _page_from_position(self.start + 1);
-            let current_page = _page_from_position(self.start);
+            let next_page = self.keymap._page_from_position(self.start + 1);
+            let current_page = self.keymap._page_from_position(self.start);
             match self.keymap._get_indexes(self.storage, next_page) {
                 Ok(next_index) => {
                     if current_page == next_page {
-                        let current_idx = (self.start % PAGE_SIZE) as usize;
+                        let current_idx = (self.start % self.keymap.page_size) as usize;
                         if current_idx + 1 > next_index.len() {
                             res = None;
                         } else {
@@ -926,9 +1086,9 @@ where
         let res;
         if let (Some(page), Some(indexes)) = (&self.saved_back_index_page, &self.saved_back_indexes)
         {
-            let current_page = _page_from_position(self.end);
+            let current_page = self.keymap._page_from_position(self.end);
             if *page == current_page {
-                let current_idx = (self.end % PAGE_SIZE) as usize;
+                let current_idx = (self.end % self.keymap.page_size) as usize;
                 if current_idx + 1 > indexes.len() {
                     res = None;
                 } else {
@@ -946,7 +1106,7 @@ where
             } else {
                 match self.keymap._get_indexes(self.storage, current_page) {
                     Ok(new_indexes) => {
-                        let current_idx = (self.end % PAGE_SIZE) as usize;
+                        let current_idx = (self.end % self.keymap.page_size) as usize;
                         if current_idx + 1 > new_indexes.len() {
                             res = None;
                         } else {
@@ -975,12 +1135,12 @@ where
                 }
             }
         } else {
-            let next_page = _page_from_position(self.end - 1);
-            let current_page = _page_from_position(self.end);
+            let next_page = self.keymap._page_from_position(self.end - 1);
+            let current_page = self.keymap._page_from_position(self.end);
             match self.keymap._get_indexes(self.storage, next_page) {
                 Ok(next_index) => {
                     if current_page == next_page {
-                        let current_idx = (self.end % PAGE_SIZE) as usize;
+                        let current_idx = (self.end % self.keymap.page_size) as usize;
                         if current_idx + 1 > next_index.len() {
                             res = None;
                         } else {
@@ -1114,6 +1274,7 @@ trait PrefixedTypedStorage<T: Serialize + DeserializeOwned, Ser: Serde> {
 
 #[cfg(test)]
 mod tests {
+    use secret_toolkit_serialization::Json;
     use serde::{Deserialize, Serialize};
 
     use cosmwasm_std::testing::MockStorage;
@@ -1430,6 +1591,131 @@ mod tests {
         keymap.remove(&mut storage, &key2)?;
         assert_eq!(keymap.get_len(&storage)?, 0);
         assert!(keymap.length.lock().unwrap().eq(&Some(0)));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_keymap_without_iter() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+
+        let keymap: Keymap<String, Foo, Json, _> =
+            KeymapBuilder::new(b"test").without_iter().build();
+
+        let foo1 = Foo {
+            string: "string one".to_string(),
+            number: 1111,
+        };
+        let foo2 = Foo {
+            string: "string one".to_string(),
+            number: 1111,
+        };
+        keymap.insert(&mut storage, &"key1".to_string(), &foo1)?;
+        keymap.insert(&mut storage, &"key2".to_string(), &foo2)?;
+
+        let read_foo1 = keymap.get(&storage, &"key1".to_string()).unwrap();
+        let read_foo2 = keymap.get(&storage, &"key2".to_string()).unwrap();
+
+        assert_eq!(foo1, read_foo1);
+        assert_eq!(foo2, read_foo2);
+        assert!(keymap.contains(&storage, &"key1".to_string()));
+
+        keymap.remove(&mut storage, &"key1".to_string())?;
+
+        let read_foo1 = keymap.get(&storage, &"key1".to_string());
+        let read_foo2 = keymap.get(&storage, &"key2".to_string()).unwrap();
+
+        assert!(read_foo1.is_none());
+        assert_eq!(foo2, read_foo2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_keymap_custom_paging() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+
+        let page_size: u32 = 5;
+        let total_items: u32 = 50;
+        let keymap: Keymap<Vec<u8>, u32> = KeymapBuilder::new(b"test").with_page_size(13).build();
+
+        for i in 0..total_items {
+            let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
+            keymap.insert(&mut storage, &key, &i)?;
+        }
+
+        for i in 0..((total_items / page_size) - 1) {
+            let start_page = i;
+
+            let values = keymap.paging(&storage, start_page, page_size)?;
+
+            for (index, (key_value, value)) in values.iter().enumerate() {
+                let i = page_size * start_page + index as u32;
+                let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
+                assert_eq!(key_value, &key);
+                assert_eq!(value, &i);
+            }
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_keymap_custom_paging_overflow() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+
+        let page_size = 50;
+        let total_items = 10;
+        let keymap: Keymap<i32, u32, Json> = KeymapBuilder::new(b"test").with_page_size(3).build();
+
+        for i in 0..total_items {
+            keymap.insert(&mut storage, &(i as i32), &i)?;
+        }
+
+        let values = keymap.paging_keys(&storage, 0, page_size)?;
+
+        assert_eq!(values.len(), total_items as usize);
+
+        for (index, value) in values.iter().enumerate() {
+            assert_eq!(value, &(index as i32))
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_keymap_custom_page_iter() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+
+        let keymap: Keymap<Vec<u8>, Foo> = KeymapBuilder::new(b"test").with_page_size(2).build();
+        let foo1 = Foo {
+            string: "string one".to_string(),
+            number: 1111,
+        };
+        let foo2 = Foo {
+            string: "string two".to_string(),
+            number: 1111,
+        };
+        let foo3 = Foo {
+            string: "string three".to_string(),
+            number: 1111,
+        };
+
+        keymap.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
+        keymap.insert(&mut storage, &b"key2".to_vec(), &foo2)?;
+        keymap.insert(&mut storage, &b"key3".to_vec(), &foo3)?;
+
+        let mut x = keymap.iter(&storage)?;
+        let (len, _) = x.size_hint();
+        assert_eq!(len, 3);
+
+        assert_eq!(x.next().unwrap()?, (b"key1".to_vec(), foo1));
+
+        assert_eq!(x.next().unwrap()?, (b"key2".to_vec(), foo2));
+
+        assert_eq!(x.next().unwrap()?, (b"key3".to_vec(), foo3));
+
+        assert_eq!(x.next(), None);
 
         Ok(())
     }

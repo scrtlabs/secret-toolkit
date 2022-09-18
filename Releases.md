@@ -1,5 +1,10 @@
 # Release notes for the Secret Toolkit
 
+## secret-toolkit-storage v0.5.1
+
+- Added `Keyset` storage object (A hashset like storage object).
+- Allowed further customization of Keymap and Keyset with new constructor structs called `KeymapBuilder` and `KeysetBuilder`.
+
 ## v0.5.0
 
 This release includes some minor fixed to the storage package which required some breaking changes.
