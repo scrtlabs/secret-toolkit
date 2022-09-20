@@ -1146,45 +1146,6 @@ mod tests {
     }
 
     #[test]
-    fn test_keymap_reverse_iterator() -> StdResult<()> {
-        let mut storage = MockStorage::new();
-        let keymap: Keymap<i32, i32> = Keymap::new(b"test");
-        keymap.insert(&mut storage, &1234, &1234)?;
-        keymap.insert(&mut storage, &2143, &2143)?;
-        keymap.insert(&mut storage, &3412, &3412)?;
-        keymap.insert(&mut storage, &4321, &4321)?;
-
-        let mut iter = keymap.iter(&storage)?.rev();
-        assert_eq!(iter.next(), Some(Ok((4321, 4321))));
-        assert_eq!(iter.next(), Some(Ok((3412, 3412))));
-        assert_eq!(iter.next(), Some(Ok((2143, 2143))));
-        assert_eq!(iter.next(), Some(Ok((1234, 1234))));
-        assert_eq!(iter.next(), None);
-
-        // iterate twice to make sure nothing changed
-        let mut iter = keymap.iter(&storage)?.rev();
-        assert_eq!(iter.next(), Some(Ok((4321, 4321))));
-        assert_eq!(iter.next(), Some(Ok((3412, 3412))));
-        assert_eq!(iter.next(), Some(Ok((2143, 2143))));
-        assert_eq!(iter.next(), Some(Ok((1234, 1234))));
-        assert_eq!(iter.next(), None);
-
-        // make sure our implementation of `nth_back` doesn't break anything
-        let mut iter = keymap.iter(&storage)?.rev().skip(2);
-        assert_eq!(iter.next(), Some(Ok((2143, 2143))));
-        assert_eq!(iter.next(), Some(Ok((1234, 1234))));
-        assert_eq!(iter.next(), None);
-
-        // make sure our implementation of `ExactSizeIterator` works well
-        let mut iter = keymap.iter(&storage)?.skip(2).rev();
-        assert_eq!(iter.next(), Some(Ok((4321, 4321))));
-        assert_eq!(iter.next(), Some(Ok((3412, 3412))));
-        assert_eq!(iter.next(), None);
-
-        Ok(())
-    }
-
-    #[test]
     fn test_keymap_iter_keys() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
@@ -1457,9 +1418,19 @@ mod tests {
     }
 
     #[test]
-    fn test_keymap_custom_page_reverse_iterator() -> StdResult<()> {
+    fn test_keymap_reverse_iter() -> StdResult<()> {
+        test_keymap_custom_page_reverse_iterator(1)?;
+        test_keymap_custom_page_reverse_iterator(2)?;
+        test_keymap_custom_page_reverse_iterator(5)?;
+        test_keymap_custom_page_reverse_iterator(25)?;
+        Ok(())
+    }
+
+    fn test_keymap_custom_page_reverse_iterator(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let keymap: Keymap<i32, i32> = KeymapBuilder::new(b"test").with_page_size(1).build();
+        let keymap: Keymap<i32, i32> = KeymapBuilder::new(b"test")
+            .with_page_size(page_size)
+            .build();
         keymap.insert(&mut storage, &1234, &1234)?;
         keymap.insert(&mut storage, &2143, &2143)?;
         keymap.insert(&mut storage, &3412, &3412)?;
