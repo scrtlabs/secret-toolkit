@@ -114,6 +114,12 @@ Often times we need these storage objects to be associated to a user address or 
 let user_count_store = COUNT_STORE.add_suffix(env.message.sender.to_string().as_bytes());
 ```
 
+Sometimes when iterating these objects, we may want to load the next `n` objects at once. This may be prefered if the objects we are iterating over are cheap to store or if we know that multiple objects will need to be accessed back to back. In such cases we may want to change the internal indexing size (default of 1). We do this in `state.rs`:
+
+```ignore
+pub static COUNT_STORE: AppendStore<i32> = AppendStore::new_with_page_size(b"count", 5);
+```
+
 #### **Read/Write**
 
 The main user facing methods to read/write to AppendStore are `pop`, `push`, `get_len`, `set_at` (which replaces data at a position within the length bound), `clear` (which deletes all data in the storage), `remove` (which removes an item in an arbitrary position, this is very inefficient). An extensive list of examples of these being used can be found inside the unit tests of AppendStore found in `append_store.rs`.
@@ -153,6 +159,8 @@ pub static COUNT_STORE: DequeStore<i32> = DequeStore::new(b"count");
 
 > ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
 
+> new_with_page_size works similarly to that of AppendStore's
+
 #### **Read/Write**
 
 The main user facing methods to read/write to DequeStore are `pop_back`, `pop_front`, `push_back`, `push_front`, `get_len`, `get_off`, `set_at` (which replaces data at a position within the length bound), `clear` (which deletes all data in the storage), `remove` (which removes an item in an arbitrary position, this is very inefficient). An extensive list of examples of these being used can be found inside the unit tests of DequeStore found in `deque_store.rs`.
@@ -173,7 +181,7 @@ be returned in each page.
 To import and intialize this storage object as a static constant in `state.rs`, do the following:
 
 ```ignore
-use secret_toolkit::storage::{Keymap}
+use secret_toolkit::storage::{Keymap, KeymapBuilder}
 ```
 
 ```ignore
@@ -316,3 +324,31 @@ fn test_keymap_iter() -> StdResult<()> {
 
 This hashset-like storage structure allows the user to store typed objects. Allows iteration with paging over values (without guaranteed ordering, although the order of insertion is preserved until you start removing objects).
 An example use-case for such a structure is if you have a set of whitelisted users (that you might want to iterate over).
+
+#### **Init**
+
+To import and intialize this storage object as a static constant in `state.rs`, do the following:
+
+```ignore
+use secret_toolkit::storage::{Keyset, KeysetBuilder}
+```
+
+```ignore
+pub static WHITELIST: Keyset<Addr> = Keyset::new(b"whitelist");
+```
+
+> ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
+
+> add_suffix and KeysetBuilder methods function similarly to that of Keymap's.
+
+#### **Storage Methods**
+
+The following are the methods used to interact with the Keyset:
+
+- `.remove(storage, value)` returns `StdResult<()>`
+- `.insert(storage, value)` returns `StdResult<()>` if iter is disabled, but returns `StdResult<bool>` if iter is enabled depending on whether or not the value was already stored (false if already stored).
+- (only if iterator is enabled) `.is_empty(storage)` returns `StdResult<bool>`
+- (only if iterator is enabled) `.get_len(storage)` returns `StdResult<u32>`
+- `.contains(storage, value)` returns `bool`
+- (only if iterator is enabled) `.paging(storage, start_page, size)` returns `StdResult<Vec<K>>` where `K` is the stored object's type.
+- (only if iterator is enabled) `.iter(storage)` returns `StdResult<ValueIter<K, Ser>>` where `ValueIter` is an iterator of the stored values.

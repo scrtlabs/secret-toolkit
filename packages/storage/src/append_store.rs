@@ -591,9 +591,16 @@ mod tests {
 
     #[test]
     fn test_suffixed_reverse_iter() -> StdResult<()> {
+        test_suffixed_reverse_iter_with_size(1)?;
+        test_suffixed_reverse_iter_with_size(3)?;
+        test_suffixed_reverse_iter_with_size(5)?;
+        Ok(())
+    }
+
+    fn test_suffixed_reverse_iter_with_size(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
         let suffix: &[u8] = b"test_suffix";
-        let original_store: AppendStore<i32> = AppendStore::new(b"test");
+        let original_store: AppendStore<i32> = AppendStore::new_with_page_size(b"test", page_size);
         let append_store = original_store.add_suffix(suffix);
 
         append_store.push(&mut storage, &1234)?;
@@ -697,8 +704,18 @@ mod tests {
 
     #[test]
     fn test_removes() -> StdResult<()> {
+        test_removes_with_size(1)?;
+        test_removes_with_size(2)?;
+        test_removes_with_size(7)?;
+        test_removes_with_size(8)?;
+        test_removes_with_size(13)?;
+
+        Ok(())
+    }
+
+    fn test_removes_with_size(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: AppendStore<i32> = AppendStore::new(b"test");
+        let deque_store: AppendStore<i32> = AppendStore::new_with_page_size(b"test", page_size);
         deque_store.push(&mut storage, &1)?;
         deque_store.push(&mut storage, &2)?;
         deque_store.push(&mut storage, &3)?;
