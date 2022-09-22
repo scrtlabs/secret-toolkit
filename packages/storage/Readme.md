@@ -213,10 +213,10 @@ The other feature is to modify the page size of the internal indexer (only if th
 The following is used to produce a Keymap without an iterator in `state.rs`
 
 ```ignore
-pub static JSON_ADDR_VOTE: Keymap<String, Foo, Json, _> =
+pub static JSON_ADDR_VOTE: Keymap<String, Foo, Json, WithoutIter> =
             KeymapBuilder::new(b"json_vote").without_iter().build();
 
-pub static BINCODE_ADDR_VOTE: Keymap<String, Foo, Bincode2, _> =
+pub static BINCODE_ADDR_VOTE: Keymap<String, Foo, Bincode2, WithoutIter> =
             KeymapBuilder::new(b"bincode_vote").without_iter().build();
 ```
 

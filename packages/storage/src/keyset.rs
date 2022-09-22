@@ -15,11 +15,11 @@ const MAP_LENGTH: &[u8] = b"length";
 const DEFAULT_PAGE_SIZE: u32 = 5;
 
 pub struct WithIter;
-pub struct WithNoIter;
+pub struct WithoutIter;
 pub trait IterOption {}
 
 impl IterOption for WithIter {}
-impl IterOption for WithNoIter {}
+impl IterOption for WithoutIter {}
 
 pub struct KeysetBuilder<'a, K, Ser = Bincode2, I = WithIter> {
     /// prefix of the newly constructed Storage
@@ -59,7 +59,7 @@ where
         }
     }
     /// Disables the iterator of the keyset, saving at least 4000 gas in each insertion.
-    pub const fn without_iter(&self) -> KeysetBuilder<'a, K, Ser, WithNoIter> {
+    pub const fn without_iter(&self) -> KeysetBuilder<'a, K, Ser, WithoutIter> {
         KeysetBuilder {
             namespace: self.namespace,
             page_size: self.page_size,
@@ -83,12 +83,12 @@ where
 }
 
 // This enables writing `append_store.iter().skip(n).rev()`
-impl<'a, K, Ser> KeysetBuilder<'a, K, Ser, WithNoIter>
+impl<'a, K, Ser> KeysetBuilder<'a, K, Ser, WithoutIter>
 where
     K: Serialize + DeserializeOwned,
     Ser: Serde,
 {
-    pub const fn build(&self) -> Keyset<'a, K, Ser, WithNoIter> {
+    pub const fn build(&self) -> Keyset<'a, K, Ser, WithoutIter> {
         Keyset {
             namespace: self.namespace,
             prefix: None,
@@ -150,7 +150,7 @@ impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser> {
     }
 }
 
-impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser, WithNoIter> {
+impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser, WithoutIter> {
     fn as_slice(&self) -> &[u8] {
         if let Some(prefix) = &self.prefix {
             prefix

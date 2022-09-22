@@ -18,11 +18,11 @@ const MAP_LENGTH: &[u8] = b"length";
 const DEFAULT_PAGE_SIZE: u32 = 5;
 
 pub struct WithIter;
-pub struct WithNoIter;
+pub struct WithoutIter;
 pub trait IterOption {}
 
 impl IterOption for WithIter {}
-impl IterOption for WithNoIter {}
+impl IterOption for WithoutIter {}
 
 #[derive(Serialize, Deserialize)]
 struct InternalItem<T, Ser>
@@ -94,7 +94,7 @@ where
         }
     }
     /// Disables the iterator of the keymap, saving at least 4000 gas in each insertion.
-    pub const fn without_iter(&self) -> KeymapBuilder<'a, K, T, Ser, WithNoIter> {
+    pub const fn without_iter(&self) -> KeymapBuilder<'a, K, T, Ser, WithoutIter> {
         KeymapBuilder {
             namespace: self.namespace,
             page_size: self.page_size,
@@ -120,13 +120,13 @@ where
 }
 
 // This enables writing `append_store.iter().skip(n).rev()`
-impl<'a, K, T, Ser> KeymapBuilder<'a, K, T, Ser, WithNoIter>
+impl<'a, K, T, Ser> KeymapBuilder<'a, K, T, Ser, WithoutIter>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
-    pub const fn build(&self) -> Keymap<'a, K, T, Ser, WithNoIter> {
+    pub const fn build(&self) -> Keymap<'a, K, T, Ser, WithoutIter> {
         Keymap {
             namespace: self.namespace,
             prefix: None,
@@ -196,7 +196,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 }
 
 impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
-    Keymap<'a, K, T, Ser, WithNoIter>
+    Keymap<'a, K, T, Ser, WithoutIter>
 {
     /// Serialize key
     fn serialize_key(&self, key: &K) -> StdResult<Vec<u8>> {
@@ -574,7 +574,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 }
 
 impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
-    PrefixedTypedStorage<T, Ser> for Keymap<'a, K, T, Ser, WithNoIter>
+    PrefixedTypedStorage<T, Ser> for Keymap<'a, K, T, Ser, WithoutIter>
 {
     fn as_slice(&self) -> &[u8] {
         if let Some(prefix) = &self.prefix {
