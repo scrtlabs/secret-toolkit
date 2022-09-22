@@ -12,17 +12,12 @@ use cosmwasm_storage::to_length_prefixed;
 
 use secret_toolkit_serialization::{Bincode2, Serde};
 
+use crate::{IterOption, WithIter, WithoutIter};
+
 const INDEXES: &[u8] = b"indexes";
 const MAP_LENGTH: &[u8] = b"length";
 
 const DEFAULT_PAGE_SIZE: u32 = 5;
-
-pub struct WithIter;
-pub struct WithoutIter;
-pub trait IterOption {}
-
-impl IterOption for WithIter {}
-impl IterOption for WithoutIter {}
 
 #[derive(Serialize, Deserialize)]
 struct InternalItem<T, Ser>

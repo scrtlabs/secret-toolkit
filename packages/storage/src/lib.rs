@@ -10,3 +10,10 @@ pub use deque_store::DequeStore;
 pub use item::Item;
 pub use keymap::{Keymap, KeymapBuilder};
 pub use keyset::{Keyset, KeysetBuilder};
+
+pub struct WithIter;
+pub struct WithoutIter;
+pub trait IterOption {}
+
+impl IterOption for WithIter {}
+impl IterOption for WithoutIter {}
