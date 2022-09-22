@@ -12,7 +12,7 @@ use cosmwasm_storage::to_length_prefixed;
 
 use secret_toolkit_serialization::{Bincode2, Serde};
 
-use crate::iter_options::{IterOption, WithIter, WithoutIter};
+use crate::{IterOption, WithIter, WithoutIter};
 
 const INDEXES: &[u8] = b"indexes";
 const MAP_LENGTH: &[u8] = b"length";

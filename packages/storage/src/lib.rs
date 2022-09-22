@@ -9,6 +9,7 @@ pub use append_store::AppendStore;
 pub use deque_store::DequeStore;
 pub use item::Item;
 pub use iter_options::WithoutIter;
+use iter_options::{IterOption, WithIter};
 pub use keymap::{Keymap, KeymapBuilder};
 pub use keyset::{Keyset, KeysetBuilder};
 
