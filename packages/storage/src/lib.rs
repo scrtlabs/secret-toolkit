@@ -8,12 +8,15 @@ pub mod keyset;
 pub use append_store::AppendStore;
 pub use deque_store::DequeStore;
 pub use item::Item;
+pub use iter_options::WithoutIter;
 pub use keymap::{Keymap, KeymapBuilder};
 pub use keyset::{Keyset, KeysetBuilder};
 
-pub struct WithIter;
-pub struct WithoutIter;
-pub trait IterOption {}
+pub mod iter_options {
+    pub struct WithIter;
+    pub struct WithoutIter;
+    pub trait IterOption {}
 
-impl IterOption for WithIter {}
-impl IterOption for WithoutIter {}
+    impl IterOption for WithIter {}
+    impl IterOption for WithoutIter {}
+}
