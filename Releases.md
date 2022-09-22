@@ -3,7 +3,7 @@
 ## secret-toolkit-storage v0.5.1
 
 - Added the `Keyset` storage object (A hashset like storage object).
-- Allowed further customization of Keymap and Keyset with new constructor structs called `KeymapBuilder` and `KeysetBuilder` which allow the user to disable the iterator feature (saving gas) or adjust the internal indexes' page size so that the user may determine how many objects are to be stored/loaded together in the iterator.
+- Allowed further customisation of Keymap and Keyset with new constructor structs called `KeymapBuilder` and `KeysetBuilder` which allow the user to disable the iterator feature (saving gas) or adjust the internal indexes' page size so that the user may determine how many objects are to be stored/loaded together in the iterator.
 - `::new_with_page_size(namespace, page_size)` method was added to `AppendStore` and `DequeStore` so that the user may adjust the internal indexes' page size which determine how many objects are to be stored/loaded together in the iterator.
 - Minor performance upgrades to `Keymap`, `AppendStore`, and `DequeStore`.
 
