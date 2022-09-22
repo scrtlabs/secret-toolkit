@@ -8,5 +8,5 @@ pub mod keyset;
 pub use append_store::AppendStore;
 pub use deque_store::DequeStore;
 pub use item::Item;
-pub use keymap::{Keymap, KeymapBuilder, WithoutIter};
+pub use keymap::{Keymap, KeymapBuilder};
 pub use keyset::{Keyset, KeysetBuilder};

@@ -9,19 +9,17 @@ use cosmwasm_storage::to_length_prefixed;
 
 use secret_toolkit_serialization::{Bincode2, Serde};
 
-use crate::keymap::{IterOption, WithIter, WithoutIter};
-
 const INDEXES: &[u8] = b"indexes";
 const MAP_LENGTH: &[u8] = b"length";
 
 const DEFAULT_PAGE_SIZE: u32 = 5;
 
-//pub struct WithIter;
-//pub struct WithoutIter;
-//pub trait IterOption {}
+pub struct WithIter;
+pub struct WithoutIter;
+pub trait IterOption {}
 
-//impl IterOption for WithIter {}
-//impl IterOption for WithoutIter {}
+impl IterOption for WithIter {}
+impl IterOption for WithoutIter {}
 
 pub struct KeysetBuilder<'a, K, Ser = Bincode2, I = WithIter> {
     /// prefix of the newly constructed Storage
