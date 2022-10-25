@@ -1,6 +1,6 @@
 # Secret Contract Development Toolkit - Storage Tools
 
-⚠️ This is a sub-package of the `secret-toolkit` package. Please see its crate page for more context. You need Rust 1.63+ to compile this package.
+⚠️ This package is a sub-package of the `secret-toolkit` package. Please see its crate page for more context. You need Rust 1.63+ to compile this package.
 
 This package contains many tools related to storage access patterns. This readme file assumes basic familiarity with basic cosmwasm storage, [click here to learn about this](https://docs.scrt.network/secret-network-documentation/development/secret-contracts/storage).
 
@@ -9,10 +9,10 @@ This package contains many tools related to storage access patterns. This readme
 To import this package, add one of the following lines to your `Cargo.toml` file
 
 ```toml
-secret-toolkit = { version = "0.5", default-features = false, features = ["utils", "storage", "serialization"] }
+secret-toolkit = { version = "0.6", default-features = false, features = ["utils", "storage", "serialization"] }
 ```
 
-for the release versions (when it is updated to cosmwasm 1.0), or
+for the release versions, or
 
 ```toml
 secret-toolkit = { git = "https://github.com/scrtlabs/secret-toolkit", branch = "master", default-features = false, features = ["utils", "storage", "serialization"]}

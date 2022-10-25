@@ -1,3 +1,5 @@
+#![doc = include_str!("../Readme.md")]
+
 use serde::{de::DeserializeOwned, Serialize};
 
 use cosmwasm_std::StdResult;

@@ -30,3 +30,4 @@ secp256k1-test = { package = "secp256k1", version = "0.17", features = [
     "rand-std",
     "recovery",
 ] }
+base64 = "0.11"

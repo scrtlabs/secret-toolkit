@@ -11,7 +11,7 @@ You can create a HandleMsg variant and call the `to_cosmos_msg` function to gene
 Or you can call the individual function for each Handle message to generate the appropriate callback CosmosMsg.
 
 Example:
-```rust
+```ignore
     let recipient = HumanAddr("ADDRESS_TO_TRANSFER_TO".to_string());
     let amount = Uint128(10000);
     let padding = None;
@@ -41,7 +41,7 @@ You probably have also noticed that CreateViewingKey is not supported.  This is 
 ## Queries
 
 These are the types that SNIP20 tokens can return from queries
-```rust
+```ignore
 pub struct TokenInfo {
     pub name: String,
     pub symbol: String,
@@ -127,7 +127,7 @@ You can create a QueryMsg variant and call the `query` function to query a SNIP2
 Or you can call the individual function for each query.
 
 Example:
-```rust
+```ignore
     let address = HumanAddr("ADDRESS_WHOSE_BALANCE_IS_BEING_REQUESTED".to_string());
     let key = "THE_VIEWING_KEY_PREVIOUSLY_SET_BY_THE_ADDRESS".to_string();
     let block_size = 256;

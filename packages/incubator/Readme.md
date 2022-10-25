@@ -4,50 +4,11 @@
 
 This package contains tools that are not yet final and may change or contain unknown bugs, and are pending more testing or reviews.
 
-## Cashmap
-
-A hashmap-like structure, that allows iteration with paging over keys without guaranteed ordering.
-An example use-case for such a structure is if you want to contain a large amount of votes, deposits, or bets and iterate over them at some time in the future.
-Since iterating over large amounts of data at once may be prohibitive, this structure allows you to specify the amount of data that will
-be returned in each page.
-
-This structure may also be used as a hashmap structure without the fancy bells and whistles, though gas-costs will be more expensive than simple storage.
-
-### Usage
-
-#### Initialization
-
-You can open/initialize the cashmap directly using 
-
-```rust
-let mut storage = MockStorage::new();
-let mut cmap = CashMap::init(b"cashmap-name", &mut storage);
-```
-
-#### Access pattern
-
-Todo: improve this section
-
-```rust
-let foo1 = Foo {
-    string: "string one".to_string(),
-    number: 1111,
-};
-
-cmap.insert(b"key1", foo1.clone())?;
-let read_foo1 = cmap.get(b"key1").unwrap();
-cmap.remove(b"key1")?;
-```
-
-### Todo
-
-Generalize keys to allow any hashable type, not just &[u8]
-
 ## Max heap storage
 
 A "max heap store" is a storage wrapper that implements a binary tree maxheap data structure.
-https://en.wikipedia.org/wiki/Min-max_heap
-Implementation based on https://algorithmtutor.com/Data-Structures/Tree/Binary-Heaps/
+<https://en.wikipedia.org/wiki/Min-max_heap>
+Implementation based on <https://algorithmtutor.com/Data-Structures/Tree/Binary-Heaps/>
 
 * Insertion O(log n)
 * Remove max O(log n)
@@ -56,7 +17,7 @@ Implementation based on https://algorithmtutor.com/Data-Structures/Tree/Binary-H
 
 The usage of `MaxHeapStoreMut` and `MaxHeapStore` are modeled on `AppendStoreMut` and `AppendStore`, respectively. To add an item to the heap use `insert` and to take the top value off use `remove`, which also returns the item that was removed. To peek at the max value without removing, use the `get_max` function. Duplicate items can be added to the heap.
 
-```rust
+```ignore
 let mut storage = MockStorage::new();
 let mut heap_store = MaxHeapStoreMut::attach_or_create(&mut storage)?;
 heap_store.insert(&1234)?;
@@ -74,7 +35,7 @@ assert_eq!(heap_store.remove(), Ok(1234));
 
 In order to use a custom struct with `MaxHeapStore` you will need to implement the appropriate Ordering traits. The following is an example with a custom struct `Tx` that uses the `amount` field to determine order in the heap:
 
-```rust
+```ignore
 #[derive(Serialize, Deserialize, Clone, Debug, Eq)]
 pub struct Tx {
     address: HumanAddr,
@@ -149,7 +110,7 @@ In effect, this example is a graph structure where the nodes are elements and th
 
 See tests in `generational_store.rs` for more examples, including iteration.
 
-```rust
+```ignore
 let mut storage = MockStorage::new();
 let mut gen_store = GenerationalStoreMut::attach_or_create(&mut storage)?;
 let alpha = gen_store.insert(String::from("Alpha"));

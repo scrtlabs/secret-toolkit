@@ -179,6 +179,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 
     /// internal item get function
+ cosmwasm-v1.0
     fn _get_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<InternalItem<T, Ser>> {
         let key_vec = self.serialize_key(key)?;
         self.load_impl(storage, &key_vec)
