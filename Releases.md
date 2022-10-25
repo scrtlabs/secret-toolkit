@@ -1,5 +1,14 @@
 # Release notes for the Secret Toolkit
 
+## v0.6.0
+
+This release upgrades all `secret-toolkit` packages to be compatible with Cosmwasm v1.0 (Secret Network v1.4).
+The APIs remains the same, but it is necessary to upgrade the contract's `cosmwasm` dependencies to `v1.0.0`.
+
+### Breaking
+
+- This version will not work with `cosmwasm v0.10`. It is necessary to upgrade to `cosmwasm v1` in order to use this release.
+
 ## v0.5.0
 
 This release includes some minor fixed to the storage package which required some breaking changes.
