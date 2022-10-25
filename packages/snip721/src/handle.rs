@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{to_binary, Binary, Coin, CosmosMsg, HumanAddr, StdResult, Uint128, WasmMsg};
+use cosmwasm_std::{to_binary, Binary, Coin, CosmosMsg, StdResult, Uint128, WasmMsg};
 
 use crate::expiration::Expiration;
 use crate::metadata::Metadata;
@@ -13,7 +13,7 @@ use secret_toolkit_utils::space_pad;
 //
 
 /// permission access level
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum AccessLevel {
     /// approve permission only for the specified token
@@ -32,12 +32,12 @@ pub enum AccessLevel {
 //
 
 /// token mint info used when doing a [`BatchMintNft`](HandleMsg::BatchMintNft)
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug)]
 pub struct Mint {
     /// optional token id. if omitted, use current token index
     pub token_id: Option<String>,
     /// optional owner address. if omitted, owned by the message sender
-    pub owner: Option<HumanAddr>,
+    pub owner: Option<String>,
     /// optional public metadata that can be seen by everyone
     pub public_metadata: Option<Metadata>,
     /// optional private metadata that can only be seen by the owner and whitelist
@@ -47,7 +47,7 @@ pub struct Mint {
 }
 
 /// token burn info used when doing a [`BatchBurnNft`](HandleMsg::BatchBurnNft)
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug)]
 pub struct Burn {
     /// tokens being burnt
     pub token_ids: Vec<String>,
@@ -56,10 +56,10 @@ pub struct Burn {
 }
 
 /// token transfer info used when doing a [`BatchTransferNft`](HandleMsg::BatchTransferNft)
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug)]
 pub struct Transfer {
     /// recipient of the transferred tokens
-    pub recipient: HumanAddr,
+    pub recipient: String,
     /// tokens being transferred
     pub token_ids: Vec<String>,
     /// optional memo for the tx
@@ -67,10 +67,10 @@ pub struct Transfer {
 }
 
 /// send token info used when doing a [`BatchSendNft`](HandleMsg::BatchSendNft)
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug)]
 pub struct Send {
     /// recipient of the sent tokens
-    pub contract: HumanAddr,
+    pub contract: String,
     /// tokens being sent
     pub token_ids: Vec<String>,
     /// optional message to send with the (Batch)RecieveNft callback
@@ -80,7 +80,7 @@ pub struct Send {
 }
 
 /// SNIP-721 contract handle messages
-#[derive(Serialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Clone, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
     //
@@ -89,7 +89,7 @@ pub enum HandleMsg {
     /// transfer a token
     TransferNft {
         /// recipient of the transfer
-        recipient: HumanAddr,
+        recipient: String,
         /// id of the token to transfer
         token_id: String,
         /// optional memo for the tx
@@ -100,7 +100,7 @@ pub enum HandleMsg {
     /// send a token and call receiving contract's (Batch)ReceiveNft
     SendNft {
         /// address to send the token to
-        contract: HumanAddr,
+        contract: String,
         /// id of the token to send
         token_id: String,
         /// optional message to send with the (Batch)RecieveNft callback
@@ -115,7 +115,7 @@ pub enum HandleMsg {
     /// you are an operator, you can only use Approve
     Approve {
         /// address being granted the permission
-        spender: HumanAddr,
+        spender: String,
         /// id of the token that the spender can transfer
         token_id: String,
         /// optional expiration for this approval
@@ -129,7 +129,7 @@ pub enum HandleMsg {
     /// of another operator
     Revoke {
         /// address whose permission is revoked
-        spender: HumanAddr,
+        spender: String,
         /// id of the token that the spender can no longer transfer
         token_id: String,
         /// optional message length padding
@@ -139,7 +139,7 @@ pub enum HandleMsg {
     /// gives the operator permission to transfer all of the message sender's tokens
     ApproveAll {
         /// address being granted permission to transfer
-        operator: HumanAddr,
+        operator: String,
         /// optional expiration for this approval
         expires: Option<Expiration>,
         /// optional message length padding
@@ -149,7 +149,7 @@ pub enum HandleMsg {
     /// revokes the operator's permission to transfer any of the message sender's tokens
     RevokeAll {
         /// address whose permissions are revoked
-        operator: HumanAddr,
+        operator: String,
         /// optional message length padding
         padding: Option<String>,
     },
@@ -157,7 +157,7 @@ pub enum HandleMsg {
     /// that are omitted will keep the current permission setting for that whitelist address
     SetWhitelistedApproval {
         /// address being granted/revoked permission
-        address: HumanAddr,
+        address: String,
         /// optional token id to apply approval/revocation to
         token_id: Option<String>,
         /// optional permission level for viewing the owner
@@ -201,7 +201,7 @@ pub enum HandleMsg {
         /// optional token id. if omitted, uses current token index
         token_id: Option<String>,
         /// optional owner address. if omitted, owned by the message sender
-        owner: Option<HumanAddr>,
+        owner: Option<String>,
         /// optional public metadata that can be seen by everyone
         public_metadata: Option<Metadata>,
         /// optional private metadata that can only be seen by the owner and whitelist
@@ -214,21 +214,21 @@ pub enum HandleMsg {
     /// add addresses with minting authority
     AddMinters {
         /// list of addresses that can now mint
-        minters: Vec<HumanAddr>,
+        minters: Vec<String>,
         /// optional message length padding
         padding: Option<String>,
     },
     /// revoke minting authority from addresses
     RemoveMinters {
         /// list of addresses no longer allowed to mint
-        minters: Vec<HumanAddr>,
+        minters: Vec<String>,
         /// optional message length padding
         padding: Option<String>,
     },
     /// define list of addresses with minting authority
     SetMinters {
         /// list of addresses with minting authority
-        minters: Vec<HumanAddr>,
+        minters: Vec<String>,
         /// optional message length padding
         padding: Option<String>,
     },
@@ -324,7 +324,7 @@ impl HandleMsg {
     /// # Arguments
     ///
     /// * `block_size` - pad the message to blocks of this size
-    /// * `callback_code_hash` - String holding the code hash of the contract being called
+    /// * `code_hash` - String holding the code hash of the contract being called
     /// * `contract_addr` - address of the contract being called
     /// * `send_amount` - Optional Uint128 amount of native coin to send with the callback message
     ///                 NOTE: No SNIP721 messages send native coin, but the parameter is
@@ -332,8 +332,8 @@ impl HandleMsg {
     pub fn to_cosmos_msg(
         &self,
         mut block_size: usize,
-        callback_code_hash: String,
-        contract_addr: HumanAddr,
+        code_hash: String,
+        contract_addr: String,
         send_amount: Option<Uint128>,
     ) -> StdResult<CosmosMsg> {
         // can not have block size of 0
@@ -342,9 +342,9 @@ impl HandleMsg {
         }
         let mut msg = to_binary(self)?;
         space_pad(&mut msg.0, block_size);
-        let mut send = Vec::new();
+        let mut funds = Vec::new();
         if let Some(amount) = send_amount {
-            send.push(Coin {
+            funds.push(Coin {
                 amount,
                 denom: String::from("uscrt"),
             });
@@ -352,8 +352,8 @@ impl HandleMsg {
         let execute = WasmMsg::Execute {
             msg,
             contract_addr,
-            callback_code_hash,
-            send,
+            code_hash,
+            funds,
         };
         Ok(execute.into())
     }
@@ -372,16 +372,16 @@ impl HandleMsg {
 /// * `memo` - Optional String memo for the tx
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn transfer_nft_msg(
-    recipient: HumanAddr,
+    recipient: String,
     token_id: String,
     memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::TransferNft {
         recipient,
@@ -389,7 +389,7 @@ pub fn transfer_nft_msg(
         memo,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute [`SendNft`](HandleMsg::SendNft)
@@ -404,18 +404,18 @@ pub fn transfer_nft_msg(
 /// * `memo` - Optional String memo for the tx
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 #[allow(clippy::too_many_arguments)]
 pub fn send_nft_msg(
-    contract: HumanAddr,
+    contract: String,
     token_id: String,
     msg: Option<Binary>,
     memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::SendNft {
         contract,
@@ -424,7 +424,7 @@ pub fn send_nft_msg(
         memo,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute [`Approve`](HandleMsg::Approve)
@@ -436,16 +436,16 @@ pub fn send_nft_msg(
 /// * `expires` - Optional Expiration of this approval
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn approve_msg(
-    spender: HumanAddr,
+    spender: String,
     token_id: String,
     expires: Option<Expiration>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::Approve {
         spender,
@@ -453,7 +453,7 @@ pub fn approve_msg(
         expires,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute [`Revoke`](HandleMsg::Revoke)
@@ -464,22 +464,22 @@ pub fn approve_msg(
 /// * `token_id` - ID String of the token that can no longer be transferred
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn revoke_msg(
-    spender: HumanAddr,
+    spender: String,
     token_id: String,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::Revoke {
         spender,
         token_id,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute [`ApproveAll`](HandleMsg::ApproveAll)
@@ -490,22 +490,22 @@ pub fn revoke_msg(
 /// * `expires` - Optional Expiration of this approval
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn approve_all_msg(
-    operator: HumanAddr,
+    operator: String,
     expires: Option<Expiration>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::ApproveAll {
         operator,
         expires,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute [`RevokeAll`](HandleMsg::RevokeAll)
@@ -515,18 +515,18 @@ pub fn approve_all_msg(
 /// * `operator` - the address whose permission to transfer tokens is being revoked
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn revoke_all_msg(
-    operator: HumanAddr,
+    operator: String,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::RevokeAll { operator, padding }.to_cosmos_msg(
         block_size,
-        callback_code_hash,
+        code_hash,
         contract_addr,
         None,
     )
@@ -544,11 +544,11 @@ pub fn revoke_all_msg(
 /// * `expires` - Optional Expiration of any approvals in this message
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 #[allow(clippy::too_many_arguments)]
 pub fn set_whitelisted_approval_msg(
-    address: HumanAddr,
+    address: String,
     token_id: Option<String>,
     view_owner: Option<AccessLevel>,
     view_private_metadata: Option<AccessLevel>,
@@ -556,8 +556,8 @@ pub fn set_whitelisted_approval_msg(
     expires: Option<Expiration>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::SetWhitelistedApproval {
         address,
@@ -568,7 +568,7 @@ pub fn set_whitelisted_approval_msg(
         expires,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute [`RegisterReceiveNft`](HandleMsg::RegisterReceiveNft)
@@ -580,22 +580,22 @@ pub fn set_whitelisted_approval_msg(
 ///               implements BatchReceiveNft.  Defaults to false if omitted
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn register_receive_nft_msg(
     your_contracts_code_hash: String,
     also_implements_batch_receive_nft: Option<bool>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::RegisterReceiveNft {
         code_hash: your_contracts_code_hash,
         also_implements_batch_receive_nft,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute [`SetViewingKey`](HandleMsg::SetViewingKey)
@@ -605,18 +605,18 @@ pub fn register_receive_nft_msg(
 /// * `key` - String holding the authentication key used for later queries
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn set_viewing_key_msg(
     key: String,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::SetViewingKey { key, padding }.to_cosmos_msg(
         block_size,
-        callback_code_hash,
+        code_hash,
         contract_addr,
         None,
     )
@@ -640,19 +640,19 @@ pub fn set_viewing_key_msg(
 /// * `memo` - Optional String memo for the tx
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 #[allow(clippy::too_many_arguments)]
 pub fn mint_nft_msg(
     token_id: Option<String>,
-    owner: Option<HumanAddr>,
+    owner: Option<String>,
     public_metadata: Option<Metadata>,
     private_metadata: Option<Metadata>,
     memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::MintNft {
         token_id,
@@ -662,7 +662,7 @@ pub fn mint_nft_msg(
         memo,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute [`AddMinters`](HandleMsg::AddMinters)
@@ -672,18 +672,18 @@ pub fn mint_nft_msg(
 /// * `minters` - list of new addresses that will be allowed to mint
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn add_minters_msg(
-    minters: Vec<HumanAddr>,
+    minters: Vec<String>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::AddMinters { minters, padding }.to_cosmos_msg(
         block_size,
-        callback_code_hash,
+        code_hash,
         contract_addr,
         None,
     )
@@ -696,18 +696,18 @@ pub fn add_minters_msg(
 /// * `minters` - list of addresses that are no longer allowed to mint
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn remove_minters_msg(
-    minters: Vec<HumanAddr>,
+    minters: Vec<String>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::RemoveMinters { minters, padding }.to_cosmos_msg(
         block_size,
-        callback_code_hash,
+        code_hash,
         contract_addr,
         None,
     )
@@ -720,18 +720,18 @@ pub fn remove_minters_msg(
 /// * `minters` - list of the only addresses that are allowed to mint
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn set_minters_msg(
-    minters: Vec<HumanAddr>,
+    minters: Vec<String>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::SetMinters { minters, padding }.to_cosmos_msg(
         block_size,
-        callback_code_hash,
+        code_hash,
         contract_addr,
         None,
     )
@@ -746,7 +746,7 @@ pub fn set_minters_msg(
 /// * `private_metadata` - optional new Metadata that only the owner and whitelist can view
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn set_metadata_msg(
     token_id: String,
@@ -754,8 +754,8 @@ pub fn set_metadata_msg(
     private_metadata: Option<Metadata>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::SetMetadata {
         token_id,
@@ -763,7 +763,7 @@ pub fn set_metadata_msg(
         private_metadata,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, code_hash, contract_addr, None)
 }
 
 //
@@ -777,18 +777,18 @@ pub fn set_metadata_msg(
 /// * `mints` - list of mint operations to perform
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn batch_mint_nft_msg(
     mints: Vec<Mint>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::BatchMintNft { mints, padding }.to_cosmos_msg(
         block_size,
-        callback_code_hash,
+        code_hash,
         contract_addr,
         None,
     )
@@ -801,18 +801,18 @@ pub fn batch_mint_nft_msg(
 /// * `transfers` - list of Transfers to perform
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn batch_transfer_nft_msg(
     transfers: Vec<Transfer>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::BatchTransferNft { transfers, padding }.to_cosmos_msg(
         block_size,
-        callback_code_hash,
+        code_hash,
         contract_addr,
         None,
     )
@@ -825,18 +825,18 @@ pub fn batch_transfer_nft_msg(
 /// * `sends` - list of Sends to perform
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn batch_send_nft_msg(
     sends: Vec<Send>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::BatchSendNft { sends, padding }.to_cosmos_msg(
         block_size,
-        callback_code_hash,
+        code_hash,
         contract_addr,
         None,
     )
@@ -854,22 +854,22 @@ pub fn batch_send_nft_msg(
 /// * `memo` - Optional String memo for the tx
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn burn_nft_msg(
     token_id: String,
     memo: Option<String>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::BurnNft {
         token_id,
         memo,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, code_hash, contract_addr, None)
 }
 
 /// Returns a StdResult<CosmosMsg> used to execute [`BatchBurnNft`](HandleMsg::BatchBurnNft)
@@ -879,18 +879,18 @@ pub fn burn_nft_msg(
 /// * `burns` - list of Burns to perform
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn batch_burn_nft_msg(
     burns: Vec<Burn>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::BatchBurnNft { burns, padding }.to_cosmos_msg(
         block_size,
-        callback_code_hash,
+        code_hash,
         contract_addr,
         None,
     )
@@ -910,7 +910,7 @@ pub fn batch_burn_nft_msg(
 /// * `expires` - Optional Expiration of any approvals in this message
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 #[allow(clippy::too_many_arguments)]
 pub fn set_global_approval_msg(
@@ -920,8 +920,8 @@ pub fn set_global_approval_msg(
     expires: Option<Expiration>,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::SetGlobalApproval {
         token_id,
@@ -930,7 +930,7 @@ pub fn set_global_approval_msg(
         expires,
         padding,
     }
-    .to_cosmos_msg(block_size, callback_code_hash, contract_addr, None)
+    .to_cosmos_msg(block_size, code_hash, contract_addr, None)
 }
 
 //
@@ -944,18 +944,18 @@ pub fn set_global_approval_msg(
 /// * `token_id` - ID String of the token to unwrap
 /// * `padding` - Optional String used as padding if you don't want to use block padding
 /// * `block_size` - pad the message to blocks of this size
-/// * `callback_code_hash` - String holding the code hash of the contract being called
+/// * `code_hash` - String holding the code hash of the contract being called
 /// * `contract_addr` - address of the contract being called
 pub fn reveal_msg(
     token_id: String,
     padding: Option<String>,
     block_size: usize,
-    callback_code_hash: String,
-    contract_addr: HumanAddr,
+    code_hash: String,
+    contract_addr: String,
 ) -> StdResult<CosmosMsg> {
     HandleMsg::Reveal { token_id, padding }.to_cosmos_msg(
         block_size,
-        callback_code_hash,
+        code_hash,
         contract_addr,
         None,
     )
@@ -969,12 +969,12 @@ mod tests {
 
     #[test]
     fn test_transfer_nft_msg() -> StdResult<()> {
-        let recipient = HumanAddr("alice".to_string());
+        let recipient = "alice".to_string();
         let token_id = "NFT1".to_string();
         let memo = Some("memo".to_string());
         let padding = Some("padding".to_string());
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = transfer_nft_msg(
             recipient.clone(),
@@ -982,7 +982,7 @@ mod tests {
             memo.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::TransferNft {
@@ -995,8 +995,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1004,13 +1004,13 @@ mod tests {
 
     #[test]
     fn test_send_nft_msg() -> StdResult<()> {
-        let contract = HumanAddr("alice".to_string());
-        let recipient = HumanAddr("bob".to_string());
+        let contract = "alice".to_string();
+        let recipient = "bob".to_string();
         let token_id = "NFT1".to_string();
         let memo = Some("memo".to_string());
         let padding = Some("padding".to_string());
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
         // just using an arbitrary msg
         let send_msg = Some(to_binary(&HandleMsg::TransferNft {
             recipient,
@@ -1025,7 +1025,7 @@ mod tests {
             memo.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::SendNft {
@@ -1039,8 +1039,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1048,12 +1048,12 @@ mod tests {
 
     #[test]
     fn test_approve_msg() -> StdResult<()> {
-        let spender = HumanAddr("alice".to_string());
+        let spender = "alice".to_string();
         let token_id = "NFT1".to_string();
         let expires = Some(Expiration::AtHeight(1000000));
         let padding = Some("padding".to_string());
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = approve_msg(
             spender.clone(),
@@ -1061,7 +1061,7 @@ mod tests {
             expires.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::Approve {
@@ -1074,8 +1074,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1083,18 +1083,18 @@ mod tests {
 
     #[test]
     fn test_revoke_msg() -> StdResult<()> {
-        let spender = HumanAddr("alice".to_string());
+        let spender = "alice".to_string();
         let token_id = "NFT1".to_string();
         let padding = Some("padding".to_string());
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = revoke_msg(
             spender.clone(),
             token_id.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::Revoke {
@@ -1106,8 +1106,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1115,18 +1115,18 @@ mod tests {
 
     #[test]
     fn test_approve_all_msg() -> StdResult<()> {
-        let operator = HumanAddr("alice".to_string());
+        let operator = "alice".to_string();
         let expires = Some(Expiration::AtHeight(1000000));
         let padding = Some("padding".to_string());
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = approve_all_msg(
             operator.clone(),
             expires.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::ApproveAll {
@@ -1138,8 +1138,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1147,16 +1147,16 @@ mod tests {
 
     #[test]
     fn test_revoke_all_msg() -> StdResult<()> {
-        let operator = HumanAddr("alice".to_string());
+        let operator = "alice".to_string();
         let padding = Some("padding".to_string());
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = revoke_all_msg(
             operator.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::RevokeAll { operator, padding })?;
@@ -1164,8 +1164,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1173,15 +1173,15 @@ mod tests {
 
     #[test]
     fn test_set_whitelisted_approval_msg() -> StdResult<()> {
-        let address = HumanAddr("alice".to_string());
+        let address = "alice".to_string();
         let token_id = Some("NFT1".to_string());
         let view_owner = Some(AccessLevel::All);
         let view_private_metadata = None;
         let transfer = Some(AccessLevel::RevokeToken);
         let expires = Some(Expiration::AtTime(1000000000));
         let padding = Some("padding".to_string());
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = set_whitelisted_approval_msg(
             address.clone(),
@@ -1192,7 +1192,7 @@ mod tests {
             expires.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::SetWhitelistedApproval {
@@ -1208,8 +1208,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1221,7 +1221,7 @@ mod tests {
         let also_implements_batch_receive_nft = Some(true);
         let padding = Some("padding".to_string());
         let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let contract_addr = "contract".to_string();
 
         let test_msg = register_receive_nft_msg(
             code_hash.clone(),
@@ -1240,8 +1240,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash: callback_code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1251,14 +1251,14 @@ mod tests {
     fn test_set_viewing_key_msg() -> StdResult<()> {
         let key = "key".to_string();
         let padding = Some("padding".to_string());
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = set_viewing_key_msg(
             key.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::SetViewingKey { key, padding })?;
@@ -1266,8 +1266,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1275,7 +1275,7 @@ mod tests {
 
     #[test]
     fn test_mint_nft_msg() -> StdResult<()> {
-        let owner = Some(HumanAddr("alice".to_string()));
+        let owner = Some("alice".to_string());
         let token_id = Some("NFT1".to_string());
         let public_metadata = Some(Metadata {
             token_uri: Some("token uri".to_string()),
@@ -1321,8 +1321,8 @@ mod tests {
         });
         let memo = Some("memo".to_string());
         let padding = None;
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = mint_nft_msg(
             token_id.clone(),
@@ -1332,7 +1332,7 @@ mod tests {
             memo.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::MintNft {
@@ -1347,8 +1347,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1356,16 +1356,16 @@ mod tests {
 
     #[test]
     fn test_add_minters_msg() -> StdResult<()> {
-        let minters = vec![HumanAddr("alice".to_string()), HumanAddr("bob".to_string())];
+        let minters = vec!["alice".to_string(), "bob".to_string()];
         let padding = Some("padding".to_string());
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = add_minters_msg(
             minters.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::AddMinters { minters, padding })?;
@@ -1373,8 +1373,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1383,19 +1383,19 @@ mod tests {
     #[test]
     fn test_remove_minters_msg() -> StdResult<()> {
         let minters = vec![
-            HumanAddr("alice".to_string()),
-            HumanAddr("bob".to_string()),
-            HumanAddr("charlie".to_string()),
+            "alice".to_string(),
+            "bob".to_string(),
+            "charlie".to_string(),
         ];
         let padding = Some("padding".to_string());
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = remove_minters_msg(
             minters.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::RemoveMinters { minters, padding })?;
@@ -1403,8 +1403,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1413,19 +1413,19 @@ mod tests {
     #[test]
     fn test_set_minters_msg() -> StdResult<()> {
         let minters = vec![
-            HumanAddr("alice".to_string()),
-            HumanAddr("bob".to_string()),
-            HumanAddr("charlie".to_string()),
+            "alice".to_string(),
+            "bob".to_string(),
+            "charlie".to_string(),
         ];
         let padding = Some("padding".to_string());
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = set_minters_msg(
             minters.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::SetMinters { minters, padding })?;
@@ -1433,8 +1433,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1486,8 +1486,8 @@ mod tests {
             }),
         });
         let padding = None;
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = set_metadata_msg(
             token_id.clone(),
@@ -1495,7 +1495,7 @@ mod tests {
             private_metadata.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::SetMetadata {
@@ -1508,8 +1508,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1520,7 +1520,7 @@ mod tests {
         let mints = vec![
             Mint {
                 token_id: None,
-                owner: Some(HumanAddr("alice".to_string())),
+                owner: Some("alice".to_string()),
                 public_metadata: Some(Metadata {
                     token_uri: Some("token uri".to_string()),
                     extension: Some(Extension {
@@ -1594,7 +1594,7 @@ mod tests {
             },
             Mint {
                 token_id: Some("NFT3".to_string()),
-                owner: Some(HumanAddr("bob".to_string())),
+                owner: Some("bob".to_string()),
                 public_metadata: None,
                 private_metadata: Some(Metadata {
                     token_uri: Some("token uri3".to_string()),
@@ -1621,14 +1621,14 @@ mod tests {
             },
         ];
         let padding = None;
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = batch_mint_nft_msg(
             mints.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::BatchMintNft { mints, padding })?;
@@ -1636,8 +1636,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1647,25 +1647,25 @@ mod tests {
     fn test_batch_transfer_nft_msg() -> StdResult<()> {
         let transfers = vec![
             Transfer {
-                recipient: HumanAddr("alice".to_string()),
+                recipient: "alice".to_string(),
                 token_ids: vec!["NFT1".to_string()],
                 memo: Some("memo 1".to_string()),
             },
             Transfer {
-                recipient: HumanAddr("bob".to_string()),
+                recipient: "bob".to_string(),
                 token_ids: vec!["NFT2".to_string(), "NFT3".to_string(), "NFT4".to_string()],
                 memo: None,
             },
         ];
         let padding = None;
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = batch_transfer_nft_msg(
             transfers.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::BatchTransferNft { transfers, padding })?;
@@ -1673,8 +1673,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1684,10 +1684,10 @@ mod tests {
     fn test_batch_send_nft_msg() -> StdResult<()> {
         let sends = vec![
             Send {
-                contract: HumanAddr("alice".to_string()),
+                contract: "alice".to_string(),
                 token_ids: vec!["NFT1".to_string()],
                 msg: Some(to_binary(&HandleMsg::TransferNft {
-                    recipient: HumanAddr("bob".to_string()),
+                    recipient: "bob".to_string(),
                     token_id: "NFT1".to_string(),
                     memo: Some("send msg memo".to_string()),
                     padding: None,
@@ -1695,21 +1695,21 @@ mod tests {
                 memo: Some("memo 1".to_string()),
             },
             Send {
-                contract: HumanAddr("bob".to_string()),
+                contract: "bob".to_string(),
                 token_ids: vec!["NFT2".to_string(), "NFT3".to_string(), "NFT4".to_string()],
                 msg: None,
                 memo: None,
             },
         ];
         let padding = None;
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = batch_send_nft_msg(
             sends.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::BatchSendNft { sends, padding })?;
@@ -1717,8 +1717,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1729,15 +1729,15 @@ mod tests {
         let token_id = "NFT1".to_string();
         let memo = Some("memo".to_string());
         let padding = Some("padding".to_string());
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = burn_nft_msg(
             token_id.clone(),
             memo.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::BurnNft {
@@ -1749,8 +1749,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1769,14 +1769,14 @@ mod tests {
             },
         ];
         let padding = None;
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = batch_burn_nft_msg(
             burns.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::BatchBurnNft { burns, padding })?;
@@ -1784,8 +1784,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1798,8 +1798,8 @@ mod tests {
         let view_private_metadata = None;
         let expires = Some(Expiration::AtTime(1000000000));
         let padding = Some("padding".to_string());
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = set_global_approval_msg(
             token_id.clone(),
@@ -1808,7 +1808,7 @@ mod tests {
             expires.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::SetGlobalApproval {
@@ -1822,8 +1822,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())
@@ -1833,14 +1833,14 @@ mod tests {
     fn test_reveal_msg() -> StdResult<()> {
         let token_id = "NFT1".to_string();
         let padding = Some("padding".to_string());
-        let callback_code_hash = "code hash".to_string();
-        let contract_addr = HumanAddr("contract".to_string());
+        let code_hash = "code hash".to_string();
+        let contract_addr = "contract".to_string();
 
         let test_msg = reveal_msg(
             token_id.clone(),
             padding.clone(),
             256usize,
-            callback_code_hash.clone(),
+            code_hash.clone(),
             contract_addr.clone(),
         )?;
         let mut msg = to_binary(&HandleMsg::Reveal { token_id, padding })?;
@@ -1848,8 +1848,8 @@ mod tests {
         let expected_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             msg: Binary(msg.to_vec()),
             contract_addr,
-            callback_code_hash,
-            send: vec![],
+            code_hash,
+            funds: vec![],
         });
         assert_eq!(test_msg, expected_msg);
         Ok(())

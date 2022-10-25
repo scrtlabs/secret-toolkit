@@ -1,15 +1,27 @@
 # Release notes for the Secret Toolkit
 
+## v0.6.0
+
+This release upgrades all `secret-toolkit` packages to be compatible with Cosmwasm v1.0 (Secret Network v1.4).
+The APIs remains the same, but it is necessary to upgrade the contract's `cosmwasm` dependencies to `v1.0.0`.
+
+### Breaking
+
+- This version will not work with `cosmwasm v0.10`. It is necessary to upgrade to `cosmwasm v1` in order to use this release.
+
 ## v0.5.0
+
 This release includes some minor fixed to the storage package which required some breaking changes.
 We are releasing these breaking changes because we reached the conclusion that the current interfaces
 are prone to bugs, or inefficient. Unless you are using these specific interfaces, you should be able to upgrade from 0.4 without issues.
 
 ### Breaking
+
 - Removed the implementations of Clone for storage types which are not useful and may cause data corruption if used incorrectly.
 - Changed `Keymap::insert` to take the item by reference rather than by value. This should reduce the cost of calling that function by avoiding cloning.
 
 ### Features
+
 - Changed the implementation of the `add_prefix` methods in the storage package to use length prefixing, which should help avoid namespace collisions.
 
 ## secret-toolkit-storage v0.4.2
@@ -65,12 +77,12 @@ A full guide to using the new `storage` types can be found
 * docs.rs documentation now includes all sub-crates.
 * BUGFIX: `secret-toolkit::snip721::Metadata` was severely out of date with the SNIP-721 specification, and not useful.
   It is now compatible with deployed SNIP-721 contracts.
-* Added `types` module under the `util` package, to standardize often used types.
-* Added `secret-toolkit::viewing_key`, which can be imported by enabling the `viewing-key` feature.
-* Added `secret-toolkit::permit::PubKey::canonical_address()`.
-* Types in `secret-toolkit::permit::Permit` are now generic over the type of permissions they accept.
-* Added the `maxheap` type to the incubator.
-* Added `secret-toolkit::utils::feature_toggle` which allow managing feature flags in your contract.
+- Added `types` module under the `util` package, to standardize often used types.
+- Added `secret-toolkit::viewing_key`, which can be imported by enabling the `viewing-key` feature.
+- Added `secret-toolkit::permit::PubKey::canonical_address()`.
+- Types in `secret-toolkit::permit::Permit` are now generic over the type of permissions they accept.
+- Added the `maxheap` type to the incubator.
+- Added `secret-toolkit::utils::feature_toggle` which allow managing feature flags in your contract.
 
 ### Breaking
 
@@ -78,15 +90,15 @@ A full guide to using the new `storage` types can be found
 Interface changes: Now takes a reference to the current token address instead
 of taking it by value and an optional hrp string.
 In addition, it returns a String and not HumanAddr.
-* Renamed `secret-toolkit::permit::Permission` to `secret-toolkit::permit::TokenPermission`.
-* `secret-toolkit-crypto` now has features `["hash", "rng" and "ecc-secp256k1"]` which are all off by default - enable those you need.
-* `secret-toolkit-crypto::secp256k1::PublicKey::parse` now returns `StdResult<Self>`.
-* Changes to `secret-toolkit::crypto::secp256k1::PrivateKey::sign`:
-  * The `data` argument is now any slice of bytes, and not the hash of a slice of data.
-  * the `Api` from `deps.api` is now required as the second argument as we now use the precompiled implementation.
-* Changes to `secret-toolkit::crypto::secp256k1::PublicKey::verify`:
-  * the `Api` from `deps.api` is now required as the third argument as we now use the precompiled implementation.
-* `secret-toolkit-incubator` now has features `["cashmap", "generational-store"]` which are all off by default.
+- Renamed `secret-toolkit::permit::Permission` to `secret-toolkit::permit::TokenPermission`.
+- `secret-toolkit-crypto` now has features `["hash", "rng" and "ecc-secp256k1"]` which are all off by default - enable those you need.
+- `secret-toolkit-crypto::secp256k1::PublicKey::parse` now returns `StdResult<Self>`.
+- Changes to `secret-toolkit::crypto::secp256k1::PrivateKey::sign`:
+  - The `data` argument is now any slice of bytes, and not the hash of a slice of data.
+  - the `Api` from `deps.api` is now required as the second argument as we now use the precompiled implementation.
+- Changes to `secret-toolkit::crypto::secp256k1::PublicKey::verify`:
+  - the `Api` from `deps.api` is now required as the third argument as we now use the precompiled implementation.
+- `secret-toolkit-incubator` now has features `["cashmap", "generational-store"]` which are all off by default.
 
 ## v0.2.0
 
@@ -103,11 +115,11 @@ This version is also the first released to [crates.io](https://crates.io)!
     which are wrappers that automatically deserializes base64 strings to `T`.
     It can be used in message types' fields instead of `Binary` when the contents of the string
     should have more specific contents.
-* Added `storage::DequeStore` - Similar to `AppendStore` but allows pushing and popping on both ends
-* Added the `secret-toolkit::incubator` package intended for experimental features. It contains:
-  * `CashMap` - A hashmap like storage abstraction
-  * `GenerationalIndex` - A generational index storage abstraction
-* The various subpackages can now be selected using feature flags. The default flags are `["serialization", "snip20", "snip721", "storage", "utils"]`
+- Added `storage::DequeStore` - Similar to `AppendStore` but allows pushing and popping on both ends
+- Added the `secret-toolkit::incubator` package intended for experimental features. It contains:
+  - `CashMap` - A hashmap like storage abstraction
+  - `GenerationalIndex` - A generational index storage abstraction
+- The various subpackages can now be selected using feature flags. The default flags are `["serialization", "snip20", "snip721", "storage", "utils"]`
     while `["crypto", "permit", "incubator"]` are left disabled by default.
 
 ## v0.1.1
@@ -118,16 +130,16 @@ This version is also the first released to [crates.io](https://crates.io)!
 
 This is the first release of `secret-toolkit`. It supports:
 
-* `secret-toolkit::snip20` - Helper types and functions for interaction with
+- `secret-toolkit::snip20` - Helper types and functions for interaction with
   SNIP-20 contracts.
-* `secret-toolkit::snip721` - Helper types and functions for interaction with
+- `secret-toolkit::snip721` - Helper types and functions for interaction with
   SNIP-721 contracts.
-* `secret-toolkit::crypto` - Wrappers for known-to-work crypto primitives from
+- `secret-toolkit::crypto` - Wrappers for known-to-work crypto primitives from
   ecosystem libraries. We include implementations for Sha256, Secp256k1 keys,
   and ChaChaRng.
-* `secret-toolkit::storage` - Types implementing useful storage managements
+- `secret-toolkit::storage` - Types implementing useful storage managements
   techniques: `AppendStore` and `TypedStore`, using `bincode2` by default.
-* `secret-toolkit::serialization` - marker types for overriding the storage
+- `secret-toolkit::serialization` - marker types for overriding the storage
   format used by types in `secret-toolkit::storage`. `Json` and `Bincode2`.
 * `secret-toolkit::utils` - General utilities for writing contract code.
   * `padding` - tools for padding queries and responses.

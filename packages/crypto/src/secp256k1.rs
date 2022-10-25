@@ -112,20 +112,20 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Crypto functions are not implemented in `MockApi`
     fn test_sign() {
         let s = Secp256k1::new();
         let (secp_privkey, _) = s.generate_keypair(&mut thread_rng());
-        let mock_api = MockApi::new(20);
+        let mock_api = MockApi::default();
 
         let mut privkey = [0u8; PRIVATE_KEY_SIZE];
         privkey.copy_from_slice(&secp_privkey[..]);
 
-        let data = sha_256(b"test");
+        let data = b"test";
+        let data_hash = sha_256(data);
         let pk = PrivateKey::parse(&privkey).unwrap();
-        let signature = pk.sign(&data, mock_api);
+        let signature = pk.sign(data, mock_api);
 
         let pubkey = pk.pubkey();
-        assert!(pubkey.verify(&data, signature, mock_api));
+        assert!(pubkey.verify(&data_hash, signature, mock_api));
     }
 }

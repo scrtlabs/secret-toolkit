@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 //
 
 /// token metadata
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug, Default)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Metadata {
     /// optional uri for off-chain metadata.  This should be prefixed with `http://`, `https://`, `ipfs://`, or
     /// `ar://`.  Only use this if you are not using `extension`
@@ -19,7 +19,7 @@ pub struct Metadata {
 /// <https://docs.opensea.io/docs/metadata-standards> and are the metadata fields that
 /// Stashh uses for robust NFT display.  Urls should be prefixed with `http://`, `https://`, `ipfs://`, or
 /// `ar://`
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug, Default)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Extension {
     /// url to the image
     pub image: Option<String>,
@@ -49,7 +49,7 @@ pub struct Extension {
 }
 
 /// attribute trait
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug, Default)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Trait {
     /// indicates how a trait should be displayed
     pub display_type: Option<String>,
@@ -62,7 +62,7 @@ pub struct Trait {
 }
 
 /// media file
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug, Default)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug, Default)]
 pub struct MediaFile {
     /// file type
     /// Stashh currently uses: "image", "video", "audio", "text", "font", "application"
@@ -76,7 +76,7 @@ pub struct MediaFile {
 }
 
 /// media file authentication
-#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Debug, Default)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Authentication {
     /// either a decryption key for encrypted files or a password for basic authentication
     pub key: Option<String>,

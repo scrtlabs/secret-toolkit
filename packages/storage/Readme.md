@@ -9,7 +9,7 @@ This package contains many tools related to storage access patterns. This readme
 To import this package, add one of the following lines to your `Cargo.toml` file
 
 ```toml
-secret-toolkit = { version = "0.4", default-features = false, features = ["utils", "storage", "serialization"] }
+secret-toolkit = { version = "0.6", default-features = false, features = ["utils", "storage", "serialization"] }
 ```
 
 for the release versions, or
@@ -31,7 +31,7 @@ This is the simplest storage object in this toolkit. It based on the similarly n
 This object is meant to be initialized as a static constant in `state.rs`. However, it would also work perfectly fine if it was initialized during run time with a variable key (in this case though, you'd have to remind it what type of object is stored and its serde). Import it using the following lines:
 
 ```ignore
-use secret_toolkit::storage::{Item}
+use secret_toolkit_storage::{Item}
 ```
 
 And initialize it using the following lines:
@@ -40,7 +40,7 @@ And initialize it using the following lines:
 pub static OWNER: Item<HumanAddr> = Item::new(b"owner");
 ```
 
-This uses Bincode2 to serde HumanAddr by default. To specify the Serde algorithm as Json, first import it from `secret-toolkit-serialization`
+This uses Bincode2 to serde HumanAddr by default. To specify the Serde algorithm as Json, first import it from `secret-toolkit::serialization`
 
 ```ignore
 use secret_toolkit::serialization::{Bincode2, Json};

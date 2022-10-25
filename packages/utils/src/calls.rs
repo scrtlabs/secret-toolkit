@@ -1,8 +1,8 @@
 use serde::{de::DeserializeOwned, Serialize};
 
 use cosmwasm_std::{
-    to_binary, Coin, CosmosMsg, HumanAddr, Querier, QueryRequest, StdResult, Uint128, WasmMsg,
-    WasmQuery,
+    to_binary, Coin, CosmosMsg, CustomQuery, QuerierWrapper, QueryRequest, StdResult, Uint128,
+    WasmMsg, WasmQuery,
 };
 
 use super::space_pad;
@@ -25,14 +25,14 @@ pub trait InitCallback: Serialize {
     ///
     /// * `label` - String holding the label for the new contract instance
     /// * `code_id` - code ID of the contract to be instantiated
-    /// * `callback_code_hash` - String holding the code hash of the contract to be instantiated
-    /// * `send_amount` - Optional Uint128 amount of native coin to send with instantiation message
+    /// * `code_hash` - String holding the code hash of the contract to be instantiated
+    /// * `funds_amount` - Optional Uint128 amount of native coin to send with instantiation message
     fn to_cosmos_msg(
         &self,
         label: String,
         code_id: u64,
-        callback_code_hash: String,
-        send_amount: Option<Uint128>,
+        code_hash: String,
+        funds_amount: Option<Uint128>,
     ) -> StdResult<CosmosMsg> {
         let mut msg = to_binary(self)?;
         // can not have 0 block size
@@ -42,9 +42,9 @@ pub trait InitCallback: Serialize {
             Self::BLOCK_SIZE
         };
         space_pad(&mut msg.0, padding);
-        let mut send = Vec::new();
-        if let Some(amount) = send_amount {
-            send.push(Coin {
+        let mut funds = Vec::new();
+        if let Some(amount) = funds_amount {
+            funds.push(Coin {
                 amount,
                 denom: String::from("uscrt"),
             });
@@ -52,8 +52,8 @@ pub trait InitCallback: Serialize {
         let init = WasmMsg::Instantiate {
             code_id,
             msg,
-            callback_code_hash,
-            send,
+            code_hash,
+            funds,
             label,
         };
         Ok(init.into())
@@ -76,14 +76,14 @@ pub trait HandleCallback: Serialize {
     ///
     /// # Arguments
     ///
-    /// * `callback_code_hash` - String holding the code hash of the contract to be executed
+    /// * `code_hash` - String holding the code hash of the contract to be executed
     /// * `contract_addr` - address of the contract being called
-    /// * `send_amount` - Optional Uint128 amount of native coin to send with the handle message
+    /// * `funds_amount` - Optional Uint128 amount of native coin to send with the handle message
     fn to_cosmos_msg(
         &self,
-        callback_code_hash: String,
-        contract_addr: HumanAddr,
-        send_amount: Option<Uint128>,
+        code_hash: String,
+        contract_addr: String,
+        funds_amount: Option<Uint128>,
     ) -> StdResult<CosmosMsg> {
         let mut msg = to_binary(self)?;
         // can not have 0 block size
@@ -93,9 +93,9 @@ pub trait HandleCallback: Serialize {
             Self::BLOCK_SIZE
         };
         space_pad(&mut msg.0, padding);
-        let mut send = Vec::new();
-        if let Some(amount) = send_amount {
-            send.push(Coin {
+        let mut funds = Vec::new();
+        if let Some(amount) = funds_amount {
+            funds.push(Coin {
                 amount,
                 denom: String::from("uscrt"),
             });
@@ -103,8 +103,8 @@ pub trait HandleCallback: Serialize {
         let execute = WasmMsg::Execute {
             msg,
             contract_addr,
-            callback_code_hash,
-            send,
+            code_hash,
+            funds,
         };
         Ok(execute.into())
     }
@@ -127,11 +127,11 @@ pub trait Query: Serialize {
     /// * `querier` - a reference to the Querier dependency of the querying contract
     /// * `callback_code_hash` - String holding the code hash of the contract to be queried
     /// * `contract_addr` - address of the contract being queried
-    fn query<Q: Querier, T: DeserializeOwned>(
+    fn query<C: CustomQuery, T: DeserializeOwned>(
         &self,
-        querier: &Q,
-        callback_code_hash: String,
-        contract_addr: HumanAddr,
+        querier: QuerierWrapper<C>,
+        code_hash: String,
+        contract_addr: String,
     ) -> StdResult<T> {
         let mut msg = to_binary(self)?;
         // can not have 0 block size
@@ -143,7 +143,7 @@ pub trait Query: Serialize {
         space_pad(&mut msg.0, padding);
         querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr,
-            callback_code_hash,
+            code_hash,
             msg,
         }))
     }
@@ -152,7 +152,9 @@ pub trait Query: Serialize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::{to_vec, Binary, Querier, QuerierResult};
+    use cosmwasm_std::{
+        to_vec, Binary, ContractResult, Empty, Querier, QuerierResult, SystemError, SystemResult,
+    };
     use serde::Deserialize;
 
     #[derive(Serialize)]
@@ -186,9 +188,9 @@ mod tests {
 
     #[test]
     fn test_handle_callback_implementation_works() -> StdResult<()> {
-        let address = HumanAddr("secret1xyzasdf".to_string());
+        let address = "secret1xyzasdf".to_string();
         let hash = "asdf".to_string();
-        let amount = Uint128(1234);
+        let amount = Uint128::new(1234);
 
         let cosmos_message: CosmosMsg = FooHandle::Var1 { f1: 1, f2: 2 }.to_cosmos_msg(
             hash.clone(),
@@ -199,16 +201,16 @@ mod tests {
         match cosmos_message {
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
-                callback_code_hash,
+                code_hash,
                 msg,
-                send,
+                funds,
             }) => {
                 assert_eq!(contract_addr, address);
-                assert_eq!(callback_code_hash, hash);
+                assert_eq!(code_hash, hash);
                 let mut expected_msg = r#"{"Var1":{"f1":1,"f2":2}}"#.as_bytes().to_vec();
                 space_pad(&mut expected_msg, 256);
                 assert_eq!(msg.0, expected_msg);
-                assert_eq!(send, vec![Coin::new(amount.0, "uscrt")])
+                assert_eq!(funds, vec![Coin::new(amount.u128(), "uscrt")])
             }
             other => panic!("unexpected CosmosMsg variant: {:?}", other),
         };
@@ -221,7 +223,7 @@ mod tests {
         let lbl = "testlabel".to_string();
         let id = 17u64;
         let hash = "asdf".to_string();
-        let amount = Uint128(1234);
+        let amount = Uint128::new(1234);
 
         let cosmos_message: CosmosMsg =
             FooInit { f1: 1, f2: 2 }.to_cosmos_msg(lbl.clone(), id, hash.clone(), Some(amount))?;
@@ -230,16 +232,16 @@ mod tests {
             CosmosMsg::Wasm(WasmMsg::Instantiate {
                 code_id,
                 msg,
-                callback_code_hash,
-                send,
+                code_hash,
+                funds,
                 label,
             }) => {
                 assert_eq!(code_id, id);
                 let mut expected_msg = r#"{"f1":1,"f2":2}"#.as_bytes().to_vec();
                 space_pad(&mut expected_msg, 256);
                 assert_eq!(msg.0, expected_msg);
-                assert_eq!(callback_code_hash, hash);
-                assert_eq!(send, vec![Coin::new(amount.0, "uscrt")]);
+                assert_eq!(code_hash, hash);
+                assert_eq!(funds, vec![Coin::new(amount.u128(), "uscrt")]);
                 assert_eq!(label, lbl)
             }
             other => panic!("unexpected CosmosMsg variant: {:?}", other),
@@ -264,22 +266,26 @@ mod tests {
                 space_pad(&mut expected_msg, 256);
                 let expected_request: QueryRequest<FooQuery> =
                     QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: HumanAddr("secret1xyzasdf".to_string()),
-                        callback_code_hash: "asdf".to_string(),
+                        contract_addr: "secret1xyzasdf".to_string(),
+                        code_hash: "asdf".to_string(),
                         msg: Binary(expected_msg),
                     });
                 let test_req: &[u8] = &to_vec(&expected_request).unwrap();
                 assert_eq!(request, test_req);
-                Ok(to_binary(&QueryResponse { bar1: 1, bar2: 2 }))
+                let response = match to_binary(&QueryResponse { bar1: 1, bar2: 2 }) {
+                    Ok(response) => ContractResult::Ok(response),
+                    Err(_e) => return SystemResult::Err(SystemError::Unknown {}),
+                };
+                SystemResult::Ok(response)
             }
         }
 
-        let querier = MyMockQuerier {};
-        let address = HumanAddr("secret1xyzasdf".to_string());
+        let querier = QuerierWrapper::<Empty>::new(&MyMockQuerier {});
+        let address = "secret1xyzasdf".to_string();
         let hash = "asdf".to_string();
 
         let response: QueryResponse =
-            FooQuery::Query1 { f1: 1, f2: 2 }.query(&querier, hash, address)?;
+            FooQuery::Query1 { f1: 1, f2: 2 }.query(querier, hash, address)?;
         assert_eq!(response, QueryResponse { bar1: 1, bar2: 2 });
 
         Ok(())

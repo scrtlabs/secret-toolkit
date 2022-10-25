@@ -10,7 +10,7 @@ use std::sync::Mutex;
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
+use cosmwasm_std::{StdError, StdResult, Storage};
 use cosmwasm_storage::to_length_prefixed;
 
 use secret_toolkit_serialization::{Bincode2, Serde};
@@ -61,7 +61,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
 
 impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     /// gets the length from storage, and otherwise sets it to 0
-    pub fn get_len<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<u32> {
+    pub fn get_len(&self, storage: &dyn Storage) -> StdResult<u32> {
         let mut may_len = self.length.lock().unwrap();
         match *may_len {
             Some(len) => Ok(len),
@@ -84,12 +84,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     }
 
     /// checks if the collection has any elements
-    pub fn is_empty<S: ReadonlyStorage>(&self, storage: &S) -> StdResult<bool> {
+    pub fn is_empty(&self, storage: &dyn Storage) -> StdResult<bool> {
         Ok(self.get_len(storage)? == 0)
     }
 
     /// gets the element at pos if within bounds
-    pub fn get_at<S: ReadonlyStorage>(&self, storage: &S, pos: u32) -> StdResult<T> {
+    pub fn get_at(&self, storage: &dyn Storage, pos: u32) -> StdResult<T> {
         let len = self.get_len(storage)?;
         if pos > len {
             return Err(StdError::generic_err("AppendStore access out of bounds"));
@@ -98,13 +98,13 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     }
 
     /// tries to get the element at pos
-    fn get_at_unchecked<S: ReadonlyStorage>(&self, storage: &S, pos: u32) -> StdResult<T> {
+    fn get_at_unchecked(&self, storage: &dyn Storage, pos: u32) -> StdResult<T> {
         let key = pos.to_be_bytes();
         self.load_impl(storage, &key)
     }
 
     /// Set the length of the collection
-    fn set_len<S: Storage>(&self, storage: &mut S, len: u32) {
+    fn set_len(&self, storage: &mut dyn Storage, len: u32) {
         let len_key = [self.as_slice(), LEN_KEY].concat();
         storage.set(&len_key, &len.to_be_bytes());
 
@@ -113,12 +113,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     }
 
     /// Clear the collection
-    pub fn clear<S: Storage>(&self, storage: &mut S) {
+    pub fn clear(&self, storage: &mut dyn Storage) {
         self.set_len(storage, 0);
     }
 
     /// Replaces data at a position within bounds
-    pub fn set_at<S: Storage>(&self, storage: &mut S, pos: u32, item: &T) -> StdResult<()> {
+    pub fn set_at(&self, storage: &mut dyn Storage, pos: u32, item: &T) -> StdResult<()> {
         let len = self.get_len(storage)?;
         if pos >= len {
             return Err(StdError::generic_err("AppendStore access out of bounds"));
@@ -127,12 +127,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     }
 
     /// Sets data at a given index
-    fn set_at_unchecked<S: Storage>(&self, storage: &mut S, pos: u32, item: &T) -> StdResult<()> {
+    fn set_at_unchecked(&self, storage: &mut dyn Storage, pos: u32, item: &T) -> StdResult<()> {
         self.save_impl(storage, &pos.to_be_bytes(), item)
     }
 
     /// Pushes an item to AppendStorage
-    pub fn push<S: Storage>(&self, storage: &mut S, item: &T) -> StdResult<()> {
+    pub fn push(&self, storage: &mut dyn Storage, item: &T) -> StdResult<()> {
         let len = self.get_len(storage)?;
         self.set_at_unchecked(storage, len, item)?;
         self.set_len(storage, len + 1);
@@ -140,7 +140,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     }
 
     /// Pops an item from AppendStore
-    pub fn pop<S: Storage>(&self, storage: &mut S) -> StdResult<T> {
+    pub fn pop(&self, storage: &mut dyn Storage) -> StdResult<T> {
         if let Some(len) = self.get_len(storage)?.checked_sub(1) {
             let item = self.get_at_unchecked(storage, len);
             self.set_len(storage, len);
@@ -158,7 +158,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     ///
     /// Removing an element from the start (head) of the collection
     /// has the worst runtime and gas cost.
-    pub fn remove<S: Storage>(&self, storage: &mut S, pos: u32) -> StdResult<T> {
+    pub fn remove(&self, storage: &mut dyn Storage, pos: u32) -> StdResult<T> {
         let len = self.get_len(storage)?;
 
         if pos >= len {
@@ -175,22 +175,14 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     }
 
     /// Returns a readonly iterator
-    pub fn iter<S: ReadonlyStorage>(
-        &self,
-        storage: &'a S,
-    ) -> StdResult<AppendStoreIter<T, S, Ser>> {
+    pub fn iter(&self, storage: &'a dyn Storage) -> StdResult<AppendStoreIter<T, Ser>> {
         let len = self.get_len(storage)?;
         let iter = AppendStoreIter::new(self, storage, 0, len);
         Ok(iter)
     }
 
     /// does paging with the given parameters
-    pub fn paging<S: ReadonlyStorage>(
-        &self,
-        storage: &S,
-        start_page: u32,
-        size: u32,
-    ) -> StdResult<Vec<T>> {
+    pub fn paging(&self, storage: &dyn Storage, start_page: u32, size: u32) -> StdResult<Vec<T>> {
         self.iter(storage)?
             .skip((start_page as usize) * (size as usize))
             .take(size as usize)
@@ -214,7 +206,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     ///
     /// * `storage` - a reference to the storage this item is in
     /// * `key` - a byte slice representing the key to access the stored item
-    fn load_impl<S: ReadonlyStorage>(&self, storage: &S, key: &[u8]) -> StdResult<T> {
+    fn load_impl(&self, storage: &dyn Storage, key: &[u8]) -> StdResult<T> {
         let prefixed_key = [self.as_slice(), key].concat();
         Ser::deserialize(
             &storage
@@ -230,7 +222,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     /// * `storage` - a mutable reference to the storage this item should go to
     /// * `key` - a byte slice representing the key to access the stored item
     /// * `value` - a reference to the item to store
-    fn save_impl<S: Storage>(&self, storage: &mut S, key: &[u8], value: &T) -> StdResult<()> {
+    fn save_impl(&self, storage: &mut dyn Storage, key: &[u8], value: &T) -> StdResult<()> {
         let prefixed_key = [self.as_slice(), key].concat();
         storage.set(&prefixed_key, &Ser::serialize(value)?);
         Ok(())
@@ -238,28 +230,26 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
 }
 
 /// An iterator over the contents of the append store.
-pub struct AppendStoreIter<'a, T, S, Ser>
+pub struct AppendStoreIter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     append_store: &'a AppendStore<'a, T, Ser>,
-    storage: &'a S,
+    storage: &'a dyn Storage,
     start: u32,
     end: u32,
 }
 
-impl<'a, T, S, Ser> AppendStoreIter<'a, T, S, Ser>
+impl<'a, T, Ser> AppendStoreIter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     /// constructor
     pub fn new(
         append_store: &'a AppendStore<'a, T, Ser>,
-        storage: &'a S,
+        storage: &'a dyn Storage,
         start: u32,
         end: u32,
     ) -> Self {
@@ -272,10 +262,9 @@ where
     }
 }
 
-impl<'a, T, S, Ser> Iterator for AppendStoreIter<'a, T, S, Ser>
+impl<'a, T, Ser> Iterator for AppendStoreIter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     type Item = StdResult<T>;
@@ -307,10 +296,9 @@ where
     }
 }
 
-impl<'a, T, S, Ser> DoubleEndedIterator for AppendStoreIter<'a, T, S, Ser>
+impl<'a, T, Ser> DoubleEndedIterator for AppendStoreIter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -335,10 +323,9 @@ where
 }
 
 // This enables writing `append_store.iter().skip(n).rev()`
-impl<'a, T, S, Ser> ExactSizeIterator for AppendStoreIter<'a, T, S, Ser>
+impl<'a, T, Ser> ExactSizeIterator for AppendStoreIter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
     Ser: Serde,
 {
 }
@@ -375,7 +362,7 @@ mod tests {
         let append_store: AppendStore<i32> = AppendStore::new(b"test");
 
         assert!(append_store.length.lock().unwrap().eq(&None));
-        assert_eq!(append_store.get_len(&storage)?, 0);
+        assert_eq!(append_store.get_len(&mut storage)?, 0);
         assert!(append_store.length.lock().unwrap().eq(&Some(0)));
 
         append_store.push(&mut storage, &1234)?;
@@ -383,21 +370,21 @@ mod tests {
         append_store.push(&mut storage, &3412)?;
         append_store.push(&mut storage, &4321)?;
         assert!(append_store.length.lock().unwrap().eq(&Some(4)));
-        assert_eq!(append_store.get_len(&storage)?, 4);
+        assert_eq!(append_store.get_len(&mut storage)?, 4);
 
         assert_eq!(append_store.pop(&mut storage), Ok(4321));
         assert_eq!(append_store.pop(&mut storage), Ok(3412));
         assert!(append_store.length.lock().unwrap().eq(&Some(2)));
-        assert_eq!(append_store.get_len(&storage)?, 2);
+        assert_eq!(append_store.get_len(&mut storage)?, 2);
 
         assert_eq!(append_store.pop(&mut storage), Ok(2143));
         assert_eq!(append_store.pop(&mut storage), Ok(1234));
         assert!(append_store.length.lock().unwrap().eq(&Some(0)));
-        assert_eq!(append_store.get_len(&storage)?, 0);
+        assert_eq!(append_store.get_len(&mut storage)?, 0);
 
         assert!(append_store.pop(&mut storage).is_err());
         assert!(append_store.length.lock().unwrap().eq(&Some(0)));
-        assert_eq!(append_store.get_len(&storage)?, 0);
+        assert_eq!(append_store.get_len(&mut storage)?, 0);
 
         Ok(())
     }
