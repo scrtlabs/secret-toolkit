@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-serialization"
-version = "0.3.0"
+version = "0.6.0"
 edition = "2018"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
