@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-crypto"
-version = "0.3.0"
+version = "0.6.0"
 edition = "2018"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -23,10 +23,11 @@ rand_chacha = { version = "0.2.2", default-features = false, optional = true }
 rand_core = { version = "0.5.1", default-features = false, optional = true }
 sha2 = { version = "0.9.1", default-features = false, optional = true }
 secp256k1 = { version = "0.21.3", optional = true }
-cosmwasm-std = { git = "https://github.com/scrtlabs/cosmwasm", branch = "secret" }
+cosmwasm-std = { package = "secret-cosmwasm-std", version = "1.0.0" }
 
 [dev-dependencies]
 secp256k1-test = { package = "secp256k1", version = "0.17", features = [
     "rand-std",
-    "recovery"
+    "recovery",
 ] }
+base64 = "0.11"

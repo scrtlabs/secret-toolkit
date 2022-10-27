@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2018"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -16,9 +16,18 @@ all-features = true
 [features]
 default = ["serialization", "snip20", "snip721", "storage", "utils"]
 
-crypto = ["secret-toolkit-crypto"] # Not in default features because this is slow to compile
-incubator = ["secret-toolkit-incubator", "serialization"] # Should never be in default features!
-permit = ["secret-toolkit-permit", "crypto", "utils"] # Not in default features because it requires "crypto"
+crypto = [
+    "secret-toolkit-crypto",
+] # Not in default features because this is slow to compile
+incubator = [
+    "secret-toolkit-incubator",
+    "serialization",
+] # Should never be in default features!
+permit = [
+    "secret-toolkit-permit",
+    "crypto",
+    "utils",
+] # Not in default features because it requires "crypto"
 serialization = ["secret-toolkit-serialization"]
 snip20 = ["secret-toolkit-snip20", "utils"]
 snip721 = ["secret-toolkit-snip721", "utils"]
@@ -27,12 +36,12 @@ utils = ["secret-toolkit-utils"]
 viewing-key = ["secret-toolkit-viewing-key"]
 
 [dependencies]
-secret-toolkit-crypto = { version = "0.3.0", path = "../crypto", optional = true }
-secret-toolkit-incubator = { version = "0.4.0", path = "../incubator", optional = true }
-secret-toolkit-permit = { version = "0.3.0", path = "../permit", optional = true }
-secret-toolkit-serialization = { version = "0.3", path = "../serialization", optional = true }
-secret-toolkit-snip20 = { version = "0.3", path = "../snip20", optional = true }
-secret-toolkit-snip721 = { version = "0.3", path = "../snip721", optional = true }
-secret-toolkit-storage = { version = "0.5", path = "../storage", optional = true }
-secret-toolkit-utils = { version = "0.3", path = "../utils", optional = true }
-secret-toolkit-viewing-key = { version = "0.3", path = "../viewing_key", optional = true }
+secret-toolkit-crypto = { version = "0.6.0", path = "../crypto", optional = true }
+secret-toolkit-incubator = { version = "0.6.0", path = "../incubator", optional = true }
+secret-toolkit-permit = { version = "0.6.0", path = "../permit", optional = true }
+secret-toolkit-serialization = { version = "0.6", path = "../serialization", optional = true }
+secret-toolkit-snip20 = { version = "0.6", path = "../snip20", optional = true }
+secret-toolkit-snip721 = { version = "0.6", path = "../snip721", optional = true }
+secret-toolkit-storage = { version = "0.6", path = "../storage", optional = true }
+secret-toolkit-utils = { version = "0.6", path = "../utils", optional = true }
+secret-toolkit-viewing-key = { version = "0.6", path = "../viewing_key", optional = true }
