@@ -1,3 +1,5 @@
+#![doc = include_str!("../Readme.md")]
+
 #[cfg(feature = "generational-store")]
 pub mod generational_store;
 #[cfg(feature = "generational-store")]

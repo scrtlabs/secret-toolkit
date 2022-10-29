@@ -1,4 +1,5 @@
-#[doc = include_str!("../Readme.md")]
+#![doc = include_str!("../Readme.md")]
+
 pub mod append_store;
 pub mod deque_store;
 pub mod item;

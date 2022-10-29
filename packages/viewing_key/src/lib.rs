@@ -1,3 +1,5 @@
+#![doc = include_str!("../Readme.md")]
+
 extern crate core;
 
 use subtle::ConstantTimeEq;

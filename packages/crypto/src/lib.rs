@@ -1,3 +1,5 @@
+#![doc = include_str!("../Readme.md")]
+
 #[cfg(feature = "hash")]
 mod hash;
 #[cfg(feature = "rand")]
