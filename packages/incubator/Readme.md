@@ -17,7 +17,7 @@ Implementation based on <https://algorithmtutor.com/Data-Structures/Tree/Binary-
 
 The usage of `MaxHeapStoreMut` and `MaxHeapStore` are modeled on `AppendStoreMut` and `AppendStore`, respectively. To add an item to the heap use `insert` and to take the top value off use `remove`, which also returns the item that was removed. To peek at the max value without removing, use the `get_max` function. Duplicate items can be added to the heap.
 
-```rust
+```ignore
 let mut storage = MockStorage::new();
 let mut heap_store = MaxHeapStoreMut::attach_or_create(&mut storage)?;
 heap_store.insert(&1234)?;
@@ -35,7 +35,7 @@ assert_eq!(heap_store.remove(), Ok(1234));
 
 In order to use a custom struct with `MaxHeapStore` you will need to implement the appropriate Ordering traits. The following is an example with a custom struct `Tx` that uses the `amount` field to determine order in the heap:
 
-```rust
+```ignore
 #[derive(Serialize, Deserialize, Clone, Debug, Eq)]
 pub struct Tx {
     address: HumanAddr,
@@ -110,7 +110,7 @@ In effect, this example is a graph structure where the nodes are elements and th
 
 See tests in `generational_store.rs` for more examples, including iteration.
 
-```rust
+```ignore
 let mut storage = MockStorage::new();
 let mut gen_store = GenerationalStoreMut::attach_or_create(&mut storage)?;
 let alpha = gen_store.insert(String::from("Alpha"));

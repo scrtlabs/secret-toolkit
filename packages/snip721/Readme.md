@@ -12,7 +12,7 @@ Or you can call the individual function for each Handle message to generate the 
 
 Example:
 
-```rust
+```ignore
     let recipient = "ADDRESS_TO_TRANSFER_TO".to_string();
     let token_id = "TOKEN_ID".to_string();
     let memo = Some("TRANSFER_MEMO".to_string());
@@ -42,7 +42,7 @@ You probably have also noticed that CreateViewingKey is not supported.  This is 
 
 These are the types that the SNIP-721 toolkit queries can return
 
-```rust
+```ignore
 pub struct ContractInfo {
     pub name: String,
     pub symbol: String,
@@ -167,7 +167,7 @@ Or you can call the individual function for each query.
 
 Example:
 
-```rust
+```ignore
     let token_id = "TOKEN_ID".to_string();
     let viewer = Some(ViewerInfo {
         address: "VIEWER'S_ADDRESS".to_string(),
