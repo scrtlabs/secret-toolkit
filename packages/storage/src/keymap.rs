@@ -1460,4 +1460,30 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_serializations() -> StdResult<()> {
+        // Check the default behavior is Bincode2
+        let mut storage = MockStorage::new();
+
+        let keymap: Keymap<i32, i32> = Keymap::new(b"test");
+        keymap.insert(&mut storage, &1234, &1234)?;
+
+        let page_key = [keymap.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
+        let page_bytes = storage.get(&page_key);
+        let expected_bincode2 = Bincode2::serialize(&vec![Bincode2::serialize(&1234)?])?;
+        assert_eq!(page_bytes, Some(expected_bincode2));
+
+        // Check that overriding the serializer with Json works
+        let mut storage = MockStorage::new();
+        let json_keymap: Keymap<i32, i32, Json> = Keymap::new(b"test2");
+        json_keymap.insert(&mut storage, &1234, &1234)?;
+
+        let key = [json_keymap.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
+        let bytes = storage.get(&key);
+        let expected = Bincode2::serialize(&vec![b"1234".to_vec()])?;
+        assert_eq!(bytes, Some(expected));
+
+        Ok(())
+    }
 }
