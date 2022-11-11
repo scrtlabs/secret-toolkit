@@ -17,7 +17,7 @@ use crate::{IterOption, WithIter, WithoutIter};
 const INDEXES: &[u8] = b"indexes";
 const MAP_LENGTH: &[u8] = b"length";
 
-const DEFAULT_PAGE_SIZE: u32 = 5;
+const DEFAULT_PAGE_SIZE: u32 = 1;
 
 #[derive(Serialize, Deserialize)]
 struct InternalItem<T, Ser>
@@ -291,10 +291,18 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     /// Used to get the indexes stored in the given page number
     fn get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<Vec<Vec<u8>>> {
         let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
-        let maybe_serialized = storage.get(&indexes_key);
-        match maybe_serialized {
-            Some(serialized) => Bincode2::deserialize(&serialized),
-            None => Ok(vec![]),
+        if self.page_size == 1 {
+            let maybe_item_data = storage.get(&indexes_key);
+            match maybe_item_data {
+                Some(item_data) => Ok(vec![item_data]),
+                None => Ok(vec![]),
+            }
+        } else {
+            let maybe_serialized = storage.get(&indexes_key);
+            match maybe_serialized {
+                Some(serialized) => Bincode2::deserialize(&serialized),
+                None => Ok(vec![]),
+            }
         }
     }
 
@@ -306,7 +314,15 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         indexes: &Vec<Vec<u8>>,
     ) -> StdResult<()> {
         let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
-        storage.set(&indexes_key, &Bincode2::serialize(indexes)?);
+        if self.page_size == 1 {
+            if let Some(item_data) = indexes.first() {
+                storage.set(&indexes_key, item_data);
+            } else {
+                storage.remove(&indexes_key);
+            }
+        } else {
+            storage.set(&indexes_key, &Bincode2::serialize(indexes)?);
+        }
         Ok(())
     }
 
@@ -971,8 +987,6 @@ mod tests {
 
     use super::*;
 
-    // TODO: add reverse iterator test
-
     #[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
     struct Foo {
         string: String,
@@ -1241,9 +1255,18 @@ mod tests {
 
     #[test]
     fn test_keymap_length() -> StdResult<()> {
+        test_keymap_length_with_page_size(1)?;
+        test_keymap_length_with_page_size(5)?;
+        test_keymap_length_with_page_size(13)?;
+        Ok(())
+    }
+
+    fn test_keymap_length_with_page_size(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let keymap: Keymap<String, Foo> = Keymap::new(b"test");
+        let keymap: Keymap<String, Foo> = KeymapBuilder::new(b"test")
+            .with_page_size(page_size)
+            .build();
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -1289,10 +1312,19 @@ mod tests {
 
     #[test]
     fn test_keymap_without_iter() -> StdResult<()> {
+        test_keymap_without_iter_custom_page(1)?;
+        test_keymap_without_iter_custom_page(2)?;
+        test_keymap_without_iter_custom_page(3)?;
+        Ok(())
+    }
+
+    fn test_keymap_without_iter_custom_page(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let keymap: Keymap<String, Foo, Json, _> =
-            KeymapBuilder::new(b"test").without_iter().build();
+        let keymap: Keymap<String, Foo, Json, _> = KeymapBuilder::new(b"test")
+            .with_page_size(page_size)
+            .without_iter()
+            .build();
 
         let foo1 = Foo {
             string: "string one".to_string(),
@@ -1463,26 +1495,49 @@ mod tests {
 
     #[test]
     fn test_serializations() -> StdResult<()> {
+        test_serializations_with_page_size(1)?;
+        test_serializations_with_page_size(3)?;
+        test_serializations_with_page_size(19)?;
+        Ok(())
+    }
+
+    fn test_serializations_with_page_size(page_size: u32) -> StdResult<()> {
         // Check the default behavior is Bincode2
         let mut storage = MockStorage::new();
 
-        let keymap: Keymap<i32, i32> = Keymap::new(b"test");
+        let keymap: Keymap<i32, i32> = KeymapBuilder::new(b"test")
+            .with_page_size(page_size)
+            .build();
         keymap.insert(&mut storage, &1234, &1234)?;
 
         let page_key = [keymap.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
-        let page_bytes = storage.get(&page_key);
-        let expected_bincode2 = Bincode2::serialize(&vec![Bincode2::serialize(&1234)?])?;
-        assert_eq!(page_bytes, Some(expected_bincode2));
+        if keymap.page_size == 1 {
+            let item_data = storage.get(&page_key);
+            let expected_data = Bincode2::serialize(&1234)?;
+            assert_eq!(item_data, Some(expected_data));
+        } else {
+            let page_bytes = storage.get(&page_key);
+            let expected_bincode2 = Bincode2::serialize(&vec![Bincode2::serialize(&1234)?])?;
+            assert_eq!(page_bytes, Some(expected_bincode2));
+        }
 
         // Check that overriding the serializer with Json works
         let mut storage = MockStorage::new();
-        let json_keymap: Keymap<i32, i32, Json> = Keymap::new(b"test2");
+        let json_keymap: Keymap<i32, i32, Json> = KeymapBuilder::new(b"test2")
+            .with_page_size(page_size)
+            .build();
         json_keymap.insert(&mut storage, &1234, &1234)?;
 
         let key = [json_keymap.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
-        let bytes = storage.get(&key);
-        let expected = Bincode2::serialize(&vec![b"1234".to_vec()])?;
-        assert_eq!(bytes, Some(expected));
+        if json_keymap.page_size == 1 {
+            let item_data = storage.get(&key);
+            let expected = b"1234".to_vec();
+            assert_eq!(item_data, Some(expected));
+        } else {
+            let bytes = storage.get(&key);
+            let expected = Bincode2::serialize(&vec![b"1234".to_vec()])?;
+            assert_eq!(bytes, Some(expected));
+        }
 
         Ok(())
     }
