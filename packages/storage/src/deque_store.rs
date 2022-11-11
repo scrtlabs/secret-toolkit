@@ -95,15 +95,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         }
     }
 
-    fn _page_from_position(&self, position: u32) -> u32 {
-        position / self.page_size
-    }
     /// gets the length from storage, and otherwise sets it to 0
     pub fn get_len(&self, storage: &dyn Storage) -> StdResult<u32> {
         let mut may_len = self.length.lock().unwrap();
         match *may_len {
             Some(len) => Ok(len),
-            None => match self._get_u32(storage, LEN_KEY) {
+            None => match self.get_u32(storage, LEN_KEY) {
                 Ok(len) => {
                     *may_len = Some(len);
                     Ok(len)
@@ -118,7 +115,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         let mut may_off = self.offset.lock().unwrap();
         match *may_off {
             Some(len) => Ok(len),
-            None => match self._get_u32(storage, OFFSET_KEY) {
+            None => match self.get_u32(storage, OFFSET_KEY) {
                 Ok(len) => {
                     *may_off = Some(len);
                     Ok(len)
@@ -129,7 +126,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 
     /// gets offset or length
-    fn _get_u32(&self, storage: &dyn Storage, key: &[u8]) -> StdResult<u32> {
+    fn get_u32(&self, storage: &dyn Storage, key: &[u8]) -> StdResult<u32> {
         let num_key = [self.as_slice(), key].concat();
         if let Some(num_vec) = storage.get(&num_key) {
             let num_bytes = num_vec
@@ -158,7 +155,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 
     /// Used to get the indexes stored in the given page number
-    fn _get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<HashMap<u32, Vec<u8>>> {
+    fn get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<HashMap<u32, Vec<u8>>> {
         let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
         let maybe_serialized = storage.get(&indexes_key);
         match maybe_serialized {
@@ -168,7 +165,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 
     /// Set an indexes page
-    fn _set_indexes_page(
+    fn set_indexes_page(
         &self,
         storage: &mut dyn Storage,
         page: u32,
@@ -184,7 +181,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         let offset_pos = self._get_offset_pos(storage, pos)?;
         let indexes_page = offset_pos / self.page_size;
         let index_pos = offset_pos % self.page_size;
-        let indexes = self._get_indexes(storage, indexes_page)?;
+        let indexes = self.get_indexes(storage, indexes_page)?;
         let item_data = indexes
             .get(&index_pos)
             .ok_or_else(|| StdError::generic_err("Item not found at this index."))?;
@@ -237,10 +234,10 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         let offset_pos = self._get_offset_pos(storage, pos)?;
         let indexes_page = offset_pos / self.page_size;
         let index_pos = offset_pos % self.page_size;
-        let mut indexes = self._get_indexes(storage, indexes_page)?;
+        let mut indexes = self.get_indexes(storage, indexes_page)?;
         let item_data = Ser::serialize(item)?;
         indexes.insert(index_pos, item_data);
-        self._set_indexes_page(storage, indexes_page, &indexes)
+        self.set_indexes_page(storage, indexes_page, &indexes)
     }
 
     /// Pushes an item to the back
@@ -248,10 +245,10 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         let len = self.get_len(storage)?;
         let offset_pos = self._get_offset_pos(storage, len)?;
         let indexes_page = offset_pos / self.page_size;
-        let mut indexes = self._get_indexes(storage, indexes_page)?;
+        let mut indexes = self.get_indexes(storage, indexes_page)?;
         let index_pos = offset_pos % self.page_size;
         indexes.insert(index_pos, Ser::serialize(item)?);
-        self._set_indexes_page(storage, indexes_page, &indexes)?;
+        self.set_indexes_page(storage, indexes_page, &indexes)?;
         self.set_len(storage, len + 1);
         Ok(())
     }
@@ -264,9 +261,9 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         let offset_pos = self._get_offset_pos(storage, 0)?;
         let indexes_page = offset_pos / self.page_size;
         let index_pos = offset_pos % self.page_size;
-        let mut indexes = self._get_indexes(storage, indexes_page)?;
+        let mut indexes = self.get_indexes(storage, indexes_page)?;
         indexes.insert(index_pos, Ser::serialize(item)?);
-        self._set_indexes_page(storage, indexes_page, &indexes)?;
+        self.set_indexes_page(storage, indexes_page, &indexes)?;
         self.set_len(storage, len + 1);
         Ok(())
     }
@@ -278,7 +275,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             let offset_pos = self._get_offset_pos(storage, len)?;
             let indexes_page = offset_pos / self.page_size;
             let index_pos = offset_pos % self.page_size;
-            let indexes = self._get_indexes(storage, indexes_page)?;
+            let indexes = self.get_indexes(storage, indexes_page)?;
             Ser::deserialize(
                 indexes
                     .get(&index_pos)
@@ -297,13 +294,13 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             let offset_pos = self._get_offset_pos(storage, 0)?;
             let indexes_page = offset_pos / self.page_size;
             let index_pos = offset_pos % self.page_size;
-            let indexes = self._get_indexes(storage, indexes_page)?;
+            let indexes = self.get_indexes(storage, indexes_page)?;
             let item = Ser::deserialize(
                 indexes
                     .get(&index_pos)
                     .ok_or_else(|| StdError::generic_err("Item not found at this index."))?,
             );
-            // self._set_indexes_page(storage, indexes_page, &indexes)?;
+            // self.set_indexes_page(storage, indexes_page, &indexes)?;
             self.set_off(storage, off.overflowing_add(1).0);
             item
         } else {
@@ -332,7 +329,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             let past_offset_pos = self._get_offset_pos(storage, pos)?;
             let mut past_indexes_page = past_offset_pos / self.page_size;
             let mut past_index_pos = past_offset_pos % self.page_size;
-            let mut past_indexes = self._get_indexes(storage, past_indexes_page)?;
+            let mut past_indexes = self.get_indexes(storage, past_indexes_page)?;
             res = Ser::deserialize(
                 &past_indexes
                     .remove(&past_index_pos)
@@ -344,12 +341,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
                 let current_page = offset_pos / self.page_size;
                 let index_pos = offset_pos % self.page_size;
                 if current_page != past_indexes_page {
-                    let mut indexes = self._get_indexes(storage, current_page)?;
+                    let mut indexes = self.get_indexes(storage, current_page)?;
                     let item_data = indexes
                         .remove(&index_pos)
                         .ok_or_else(|| StdError::generic_err("Item not found at this index."))?;
                     past_indexes.insert(past_index_pos, item_data);
-                    self._set_indexes_page(storage, past_indexes_page, &past_indexes)?;
+                    self.set_indexes_page(storage, past_indexes_page, &past_indexes)?;
                     past_indexes = indexes;
                 } else {
                     let item_data_move_down = past_indexes
@@ -360,12 +357,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
                 past_indexes_page = current_page;
                 past_index_pos = index_pos;
             }
-            self._set_indexes_page(storage, past_indexes_page, &past_indexes)?;
+            self.set_indexes_page(storage, past_indexes_page, &past_indexes)?;
         } else {
             let past_offset_pos = self._get_offset_pos(storage, pos)?;
             let mut past_indexes_page = past_offset_pos / self.page_size;
             let mut past_index_pos = past_offset_pos % self.page_size;
-            let mut past_indexes = self._get_indexes(storage, past_indexes_page)?;
+            let mut past_indexes = self.get_indexes(storage, past_indexes_page)?;
             res = Ser::deserialize(
                 &past_indexes
                     .remove(&past_index_pos)
@@ -377,12 +374,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
                 let current_page = offset_pos / self.page_size;
                 let index_pos = offset_pos % self.page_size;
                 if current_page != past_indexes_page {
-                    let mut indexes = self._get_indexes(storage, current_page)?;
+                    let mut indexes = self.get_indexes(storage, current_page)?;
                     let item_data = indexes
                         .remove(&index_pos)
                         .ok_or_else(|| StdError::generic_err("Item not found at this index."))?;
                     past_indexes.insert(past_index_pos, item_data);
-                    self._set_indexes_page(storage, past_indexes_page, &past_indexes)?;
+                    self.set_indexes_page(storage, past_indexes_page, &past_indexes)?;
                     past_indexes = indexes;
                 } else {
                     let item_data_move_up = past_indexes
@@ -393,7 +390,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
                 past_indexes_page = current_page;
                 past_index_pos = index_pos;
             }
-            self._set_indexes_page(storage, past_indexes_page, &past_indexes)?;
+            self.set_indexes_page(storage, past_indexes_page, &past_indexes)?;
             self.set_off(storage, off.overflowing_add(1).0);
         }
         self.set_len(storage, len - 1);
@@ -475,7 +472,7 @@ where
                             item = Err(StdError::generic_err("Item not found at this index."));
                         }
                     }
-                    None => match self.deque_store._get_indexes(self.storage, indexes_page) {
+                    None => match self.deque_store.get_indexes(self.storage, indexes_page) {
                         Ok(indexes) => {
                             if let Some(item_data) = indexes.get(&index_pos) {
                                 item = Ser::deserialize(item_data);
@@ -539,7 +536,7 @@ where
                             item = Err(StdError::generic_err("Item not found at this index."));
                         }
                     }
-                    None => match self.deque_store._get_indexes(self.storage, indexes_page) {
+                    None => match self.deque_store.get_indexes(self.storage, indexes_page) {
                         Ok(indexes) => {
                             if let Some(item_data) = indexes.get(&index_pos) {
                                 item = Ser::deserialize(item_data);

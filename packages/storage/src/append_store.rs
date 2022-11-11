@@ -87,12 +87,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         }
     }
 
-    fn _page_from_position(&self, position: u32) -> u32 {
+    fn page_from_position(&self, position: u32) -> u32 {
         position / self.page_size
     }
 
     /// Used to get the indexes stored in the given page number
-    fn _get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<Vec<Vec<u8>>> {
+    fn get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<Vec<Vec<u8>>> {
         let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
         let maybe_serialized = storage.get(&indexes_key);
         match maybe_serialized {
@@ -102,7 +102,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     }
 
     /// Set an indexes page
-    fn _set_indexes_page(
+    fn set_indexes_page(
         &self,
         storage: &mut dyn Storage,
         page: u32,
@@ -152,8 +152,8 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
 
     /// tries to get the element at pos
     fn get_at_unchecked(&self, storage: &dyn Storage, pos: u32) -> StdResult<T> {
-        let page = self._page_from_position(pos);
-        let indexes = self._get_indexes(storage, page)?;
+        let page = self.page_from_position(pos);
+        let indexes = self.get_indexes(storage, page)?;
         let index_pos = (pos % self.page_size) as usize;
         let item_data = &indexes[index_pos];
         Ser::deserialize(item_data)
@@ -184,8 +184,8 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
 
     /// Sets data at a given index
     fn set_at_unchecked(&self, storage: &mut dyn Storage, pos: u32, item: &T) -> StdResult<()> {
-        let page = self._page_from_position(pos);
-        let mut indexes = self._get_indexes(storage, page)?;
+        let page = self.page_from_position(pos);
+        let mut indexes = self.get_indexes(storage, page)?;
         let index_pos = (pos % self.page_size) as usize;
         let item_data = Ser::serialize(item)?;
         if indexes.len() > index_pos {
@@ -193,7 +193,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         } else {
             indexes.push(item_data)
         }
-        self._set_indexes_page(storage, page, &indexes)
+        self.set_indexes_page(storage, page, &indexes)
     }
 
     /// Pushes an item to AppendStorage
@@ -229,32 +229,32 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
             return Err(StdError::generic_err("AppendStore access out of bounds"));
         }
         let max_pos = len - 1;
-        let max_page = self._page_from_position(max_pos);
-        let pos_page = self._page_from_position(pos);
+        let max_page = self.page_from_position(max_pos);
+        let pos_page = self.page_from_position(pos);
 
         match pos_page.cmp(&max_page) {
             std::cmp::Ordering::Less => {
                 // shift items from indexes to indexes
-                let mut past_indexes: Vec<Vec<u8>> = self._get_indexes(storage, pos_page)?;
+                let mut past_indexes: Vec<Vec<u8>> = self.get_indexes(storage, pos_page)?;
                 let item_data = past_indexes.remove((pos % self.page_size) as usize);
                 // loop on
                 for page in (pos_page + 1)..=max_page {
-                    let mut indexes: Vec<Vec<u8>> = self._get_indexes(storage, page)?;
+                    let mut indexes: Vec<Vec<u8>> = self.get_indexes(storage, page)?;
                     let next_item_data = indexes.remove(0);
                     past_indexes.push(next_item_data);
-                    self._set_indexes_page(storage, page - 1, &past_indexes)?;
+                    self.set_indexes_page(storage, page - 1, &past_indexes)?;
                     past_indexes = indexes;
                 }
                 // here past_indexes will have become the max_page indexes
-                self._set_indexes_page(storage, max_page, &past_indexes)?;
+                self.set_indexes_page(storage, max_page, &past_indexes)?;
                 self.set_len(storage, max_pos);
                 Ser::deserialize(&item_data)
             }
             std::cmp::Ordering::Equal => {
                 // if the pos is in the last indexes page
-                let mut indexes = self._get_indexes(storage, pos_page)?;
+                let mut indexes = self.get_indexes(storage, pos_page)?;
                 let item_data = indexes.remove((pos % self.page_size) as usize);
-                self._set_indexes_page(storage, pos_page, &indexes)?;
+                self.set_indexes_page(storage, pos_page, &indexes)?;
                 self.set_len(storage, max_pos);
                 Ser::deserialize(&item_data)
             }
@@ -327,7 +327,7 @@ where
             return None;
         }
         let item;
-        let page = self.append_store._page_from_position(self.start);
+        let page = self.append_store.page_from_position(self.start);
         let indexes_pos = (self.start % self.append_store.page_size) as usize;
 
         match self.saved_indexes.get(&page) {
@@ -335,7 +335,7 @@ where
                 let item_data = &indexes[indexes_pos];
                 item = Ser::deserialize(item_data);
             }
-            None => match self.append_store._get_indexes(self.storage, page) {
+            None => match self.append_store.get_indexes(self.storage, page) {
                 Ok(indexes) => {
                     let item_data = &indexes[indexes_pos];
                     item = Ser::deserialize(item_data);
@@ -379,14 +379,14 @@ where
         }
         self.end -= 1;
         let item;
-        let page = self.append_store._page_from_position(self.end);
+        let page = self.append_store.page_from_position(self.end);
         let indexes_pos = (self.end % self.append_store.page_size) as usize;
         match self.saved_indexes.get(&page) {
             Some(indexes) => {
                 let item_data = &indexes[indexes_pos];
                 item = Ser::deserialize(item_data);
             }
-            None => match self.append_store._get_indexes(self.storage, page) {
+            None => match self.append_store.get_indexes(self.storage, page) {
                 Ok(indexes) => {
                     let item_data = &indexes[indexes_pos];
                     item = Ser::deserialize(item_data);

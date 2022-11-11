@@ -200,11 +200,11 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 
     /// user facing get function
     pub fn get(&self, storage: &dyn Storage, key: &K) -> Option<T> {
-        self._get_from_key(storage, key).ok()
+        self.get_from_key(storage, key).ok()
     }
 
     /// internal item get function
-    fn _get_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<T> {
+    fn get_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<T> {
         let key_vec = self.serialize_key(key)?;
         self.load_impl(storage, &key_vec)
     }
@@ -245,7 +245,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Ser::deserialize(key_data)
     }
 
-    fn _page_from_position(&self, position: u32) -> u32 {
+    fn page_from_position(&self, position: u32) -> u32 {
         position / self.page_size
     }
 
@@ -289,7 +289,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 
     /// Used to get the indexes stored in the given page number
-    fn _get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<Vec<Vec<u8>>> {
+    fn get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<Vec<Vec<u8>>> {
         let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
         let maybe_serialized = storage.get(&indexes_key);
         match maybe_serialized {
@@ -299,7 +299,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 
     /// Set an indexes page
-    fn _set_indexes_page(
+    fn set_indexes_page(
         &self,
         storage: &mut dyn Storage,
         page: u32,
@@ -312,7 +312,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 
     /// user facing get function
     pub fn get(&self, storage: &dyn Storage, key: &K) -> Option<T> {
-        if let Ok(internal_item) = self._get_from_key(storage, key) {
+        if let Ok(internal_item) = self.get_from_key(storage, key) {
             internal_item.get_item().ok()
         } else {
             None
@@ -320,7 +320,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 
     /// internal item get function
-    fn _get_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<InternalItem<T, Ser>> {
+    fn get_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<InternalItem<T, Ser>> {
         let key_vec = self.serialize_key(key)?;
         self.load_impl(storage, &key_vec)
     }
@@ -329,15 +329,15 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     pub fn remove(&self, storage: &mut dyn Storage, key: &K) -> StdResult<()> {
         let key_vec = self.serialize_key(key)?;
 
-        let removed_pos = self._get_from_key(storage, key)?.index_pos.unwrap();
+        let removed_pos = self.get_from_key(storage, key)?.index_pos.unwrap();
 
-        let page = self._page_from_position(removed_pos);
+        let page = self.page_from_position(removed_pos);
 
         let mut len = self.get_len(storage)?;
         len -= 1;
         self.set_len(storage, len)?;
 
-        let mut indexes = self._get_indexes(storage, page)?;
+        let mut indexes = self.get_indexes(storage, page)?;
 
         let pos_in_indexes = (removed_pos % self.page_size) as usize;
 
@@ -350,12 +350,12 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         // if our object is the last item, then just remove it
         if len == 0 || len == removed_pos {
             indexes.pop();
-            self._set_indexes_page(storage, page, &indexes)?;
+            self.set_indexes_page(storage, page, &indexes)?;
             return Ok(());
         }
 
         // max page should use previous_len - 1 which is exactly the current len
-        let max_page = self._page_from_position(len);
+        let max_page = self.page_from_position(len);
         if max_page == page {
             // last page indexes is the same as indexes
             let last_key = indexes.pop().ok_or_else(|| {
@@ -367,9 +367,9 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             self.save_impl(storage, &last_key, &last_internal_item)?;
             // save to indexes
             indexes[pos_in_indexes] = last_key;
-            self._set_indexes_page(storage, page, &indexes)?;
+            self.set_indexes_page(storage, page, &indexes)?;
         } else {
-            let mut last_page_indexes = self._get_indexes(storage, max_page)?;
+            let mut last_page_indexes = self.get_indexes(storage, max_page)?;
             let last_key = last_page_indexes.pop().ok_or_else(|| {
                 StdError::generic_err("Last item's key not found - should never happen")
             })?;
@@ -379,8 +379,8 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             self.save_impl(storage, &last_key, &last_internal_item)?;
             // save indexes
             indexes[pos_in_indexes] = last_key;
-            self._set_indexes_page(storage, page, &indexes)?;
-            self._set_indexes_page(storage, max_page, &last_page_indexes)?;
+            self.set_indexes_page(storage, page, &indexes)?;
+            self.set_indexes_page(storage, max_page, &last_page_indexes)?;
         }
 
         self.remove_impl(storage, &key_vec);
@@ -402,14 +402,14 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
                 // not already saved
                 let pos = self.get_len(storage)?;
                 self.set_len(storage, pos + 1)?;
-                let page = self._page_from_position(pos);
+                let page = self.page_from_position(pos);
                 // save the item
                 let internal_item = InternalItem::new(Some(pos), item)?;
                 self.save_impl(storage, &key_vec, &internal_item)?;
                 // add index
-                let mut indexes = self._get_indexes(storage, page)?;
+                let mut indexes = self.get_indexes(storage, page)?;
                 indexes.push(key_vec);
-                self._set_indexes_page(storage, page, &indexes)
+                self.set_indexes_page(storage, page, &indexes)
             }
         }
     }
@@ -481,13 +481,13 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         start: u32,
         end: u32,
     ) -> StdResult<Vec<K>> {
-        let start_page = self._page_from_position(start);
-        let end_page = self._page_from_position(end);
+        let start_page = self.page_from_position(start);
+        let end_page = self.page_from_position(end);
 
         let mut res = vec![];
 
         for page in start_page..=end_page {
-            let indexes = self._get_indexes(storage, page)?;
+            let indexes = self.get_indexes(storage, page)?;
             let start_page_pos = if page == start_page {
                 start % self.page_size
             } else {
@@ -514,13 +514,13 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         start: u32,
         end: u32,
     ) -> StdResult<Vec<(K, T)>> {
-        let start_page = self._page_from_position(start);
-        let end_page = self._page_from_position(end);
+        let start_page = self.page_from_position(start);
+        let end_page = self.page_from_position(end);
 
         let mut res = vec![];
 
         for page in start_page..=end_page {
-            let indexes = self._get_indexes(storage, page)?;
+            let indexes = self.get_indexes(storage, page)?;
             let start_page_pos = if page == start_page {
                 start % self.page_size
             } else {
@@ -631,7 +631,7 @@ where
         }
 
         let key;
-        let page = self.keymap._page_from_position(self.start);
+        let page = self.keymap.page_from_position(self.start);
         let indexes_pos = (self.start % self.keymap.page_size) as usize;
 
         match self.saved_indexes.get(&page) {
@@ -639,7 +639,7 @@ where
                 let key_data = &indexes[indexes_pos];
                 key = self.keymap.deserialize_key(key_data);
             }
-            None => match self.keymap._get_indexes(self.storage, page) {
+            None => match self.keymap.get_indexes(self.storage, page) {
                 Ok(indexes) => {
                     let key_data = &indexes[indexes_pos];
                     key = self.keymap.deserialize_key(key_data);
@@ -683,7 +683,7 @@ where
         self.end -= 1;
 
         let key;
-        let page = self.keymap._page_from_position(self.end);
+        let page = self.keymap.page_from_position(self.end);
         let indexes_pos = (self.end % self.keymap.page_size) as usize;
 
         match self.saved_indexes.get(&page) {
@@ -691,7 +691,7 @@ where
                 let key_data = &indexes[indexes_pos];
                 key = self.keymap.deserialize_key(key_data);
             }
-            None => match self.keymap._get_indexes(self.storage, page) {
+            None => match self.keymap.get_indexes(self.storage, page) {
                 Ok(indexes) => {
                     let key_data = &indexes[indexes_pos];
                     key = self.keymap.deserialize_key(key_data);
@@ -777,7 +777,7 @@ where
         }
 
         let key;
-        let page = self.keymap._page_from_position(self.start);
+        let page = self.keymap.page_from_position(self.start);
         let indexes_pos = (self.start % self.keymap.page_size) as usize;
 
         match self.saved_indexes.get(&page) {
@@ -785,7 +785,7 @@ where
                 let key_data = &indexes[indexes_pos];
                 key = self.keymap.deserialize_key(key_data);
             }
-            None => match self.keymap._get_indexes(self.storage, page) {
+            None => match self.keymap.get_indexes(self.storage, page) {
                 Ok(indexes) => {
                     let key_data = &indexes[indexes_pos];
                     key = self.keymap.deserialize_key(key_data);
@@ -797,7 +797,7 @@ where
         self.start += 1;
         // turn key into pair
         let pair = match key {
-            Ok(k) => match self.keymap._get_from_key(self.storage, &k) {
+            Ok(k) => match self.keymap.get_from_key(self.storage, &k) {
                 Ok(internal_item) => match internal_item.get_item() {
                     Ok(item) => Ok((k, item)),
                     Err(e) => Err(e),
@@ -840,7 +840,7 @@ where
         self.end -= 1;
 
         let key;
-        let page = self.keymap._page_from_position(self.end);
+        let page = self.keymap.page_from_position(self.end);
         let indexes_pos = (self.end % self.keymap.page_size) as usize;
 
         match self.saved_indexes.get(&page) {
@@ -848,7 +848,7 @@ where
                 let key_data = &indexes[indexes_pos];
                 key = self.keymap.deserialize_key(key_data);
             }
-            None => match self.keymap._get_indexes(self.storage, page) {
+            None => match self.keymap.get_indexes(self.storage, page) {
                 Ok(indexes) => {
                     let key_data = &indexes[indexes_pos];
                     key = self.keymap.deserialize_key(key_data);
@@ -859,7 +859,7 @@ where
         }
         // turn key into pair
         let pair = match key {
-            Ok(k) => match self.keymap._get_from_key(self.storage, &k) {
+            Ok(k) => match self.keymap.get_from_key(self.storage, &k) {
                 Ok(internal_item) => match internal_item.get_item() {
                     Ok(item) => Ok((k, item)),
                     Err(e) => Err(e),
