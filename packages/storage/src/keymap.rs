@@ -77,7 +77,7 @@ where
     /// Modifies the number of keys stored in one page of indexing, for the iterator
     pub const fn with_page_size(&self, indexes_size: u32) -> Self {
         if indexes_size == 0 {
-            panic!("Zero index page size used in keymap")
+            panic!("zero index page size used in keymap")
         }
         Self {
             namespace: self.namespace,
@@ -343,7 +343,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 
         if indexes[pos_in_indexes] != key_vec {
             return Err(StdError::generic_err(
-                "Tried to remove, but hash not found - should never happen",
+                "tried to remove from keymap, but key not found in indexes - should never happen",
             ));
         }
 
@@ -359,7 +359,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         if max_page == page {
             // last page indexes is the same as indexes
             let last_key = indexes.pop().ok_or_else(|| {
-                StdError::generic_err("Last item's key not found - should never happen")
+                StdError::generic_err("last item's key not found - should never happen")
             })?;
             // modify last item
             let mut last_internal_item = self.load_impl(storage, &last_key)?;
@@ -371,7 +371,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         } else {
             let mut last_page_indexes = self.get_indexes(storage, max_page)?;
             let last_key = last_page_indexes.pop().ok_or_else(|| {
-                StdError::generic_err("Last item's key not found - should never happen")
+                StdError::generic_err("last item's key not found - should never happen")
             })?;
             // modify last item
             let mut last_internal_item = self.load_impl(storage, &last_key)?;
@@ -440,7 +440,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 
         if start_pos > max_size {
             return Err(StdError::NotFound {
-                kind: "Out of bounds".to_string(),
+                kind: "out of bounds".to_string(),
             });
         } else if end_pos > max_size {
             end_pos = max_size - 1;
@@ -466,7 +466,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 
         if start_pos > max_size {
             return Err(StdError::NotFound {
-                kind: "Out of bounds".to_string(),
+                kind: "out of bounds".to_string(),
             });
         } else if end_pos > max_size {
             end_pos = max_size - 1;

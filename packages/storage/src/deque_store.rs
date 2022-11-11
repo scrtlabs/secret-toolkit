@@ -55,7 +55,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// constructor with indexes size
     pub const fn new_with_page_size(prefix: &'a [u8], page_size: u32) -> Self {
         if page_size == 0 {
-            panic!("Zero index page size used in AppendStore")
+            panic!("zero index page size used in deque_store")
         }
         Self {
             namespace: prefix,
@@ -149,7 +149,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     pub fn get_at(&self, storage: &dyn Storage, pos: u32) -> StdResult<T> {
         let len = self.get_len(storage)?;
         if pos >= len {
-            return Err(StdError::generic_err("DequeStore access out of bounds"));
+            return Err(StdError::generic_err("deque_store access out of bounds"));
         }
         self.get_at_unchecked(storage, pos)
     }
@@ -184,7 +184,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         let indexes = self.get_indexes(storage, indexes_page)?;
         let item_data = indexes
             .get(&index_pos)
-            .ok_or_else(|| StdError::generic_err("Item not found at this index."))?;
+            .ok_or_else(|| StdError::generic_err("item not found at this index"))?;
         Ser::deserialize(item_data)
     }
 
@@ -224,7 +224,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     pub fn set_at(&self, storage: &mut dyn Storage, pos: u32, item: &T) -> StdResult<()> {
         let len = self.get_len(storage)?;
         if pos >= len {
-            return Err(StdError::generic_err("DequeStore access out of bounds"));
+            return Err(StdError::generic_err("deque_store access out of bounds"));
         }
         self.set_at_unchecked(storage, pos, item)
     }
@@ -279,10 +279,10 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             Ser::deserialize(
                 indexes
                     .get(&index_pos)
-                    .ok_or_else(|| StdError::generic_err("Item not found at this index."))?,
+                    .ok_or_else(|| StdError::generic_err("item not found at this index"))?,
             )
         } else {
-            Err(StdError::generic_err("Can not pop from empty DequeStore"))
+            Err(StdError::generic_err("cannot pop from empty deque_store"))
         }
     }
 
@@ -298,13 +298,13 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             let item = Ser::deserialize(
                 indexes
                     .get(&index_pos)
-                    .ok_or_else(|| StdError::generic_err("Item not found at this index."))?,
+                    .ok_or_else(|| StdError::generic_err("item not found at this index"))?,
             );
             // self.set_indexes_page(storage, indexes_page, &indexes)?;
             self.set_off(storage, off.overflowing_add(1).0);
             item
         } else {
-            Err(StdError::generic_err("Can not pop from empty DequeStore"))
+            Err(StdError::generic_err("cannot pop from empty deque_store"))
         }
     }
 
@@ -321,7 +321,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         let off = self.get_off(storage)?;
         let len = self.get_len(storage)?;
         if pos >= len {
-            return Err(StdError::generic_err("DequeStorage access out of bounds"));
+            return Err(StdError::generic_err("deque_store access out of bounds"));
         }
         let res;
         let to_tail = len - pos;
@@ -333,7 +333,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             res = Ser::deserialize(
                 &past_indexes
                     .remove(&past_index_pos)
-                    .ok_or_else(|| StdError::generic_err("Item not found at this index."))?,
+                    .ok_or_else(|| StdError::generic_err("item not found at this index"))?,
             );
             // closer to the tail
             for i in (pos + 1)..len {
@@ -344,14 +344,14 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
                     let mut indexes = self.get_indexes(storage, current_page)?;
                     let item_data = indexes
                         .remove(&index_pos)
-                        .ok_or_else(|| StdError::generic_err("Item not found at this index."))?;
+                        .ok_or_else(|| StdError::generic_err("item not found at this index"))?;
                     past_indexes.insert(past_index_pos, item_data);
                     self.set_indexes_page(storage, past_indexes_page, &past_indexes)?;
                     past_indexes = indexes;
                 } else {
                     let item_data_move_down = past_indexes
                         .remove(&index_pos)
-                        .ok_or_else(|| StdError::generic_err("Item not found at this index. 2"))?;
+                        .ok_or_else(|| StdError::generic_err("item not found at this index"))?;
                     past_indexes.insert(past_index_pos, item_data_move_down);
                 }
                 past_indexes_page = current_page;
@@ -366,7 +366,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             res = Ser::deserialize(
                 &past_indexes
                     .remove(&past_index_pos)
-                    .ok_or_else(|| StdError::generic_err("Item not found at this index."))?,
+                    .ok_or_else(|| StdError::generic_err("item not found at this index"))?,
             );
             // closer to the head
             for i in (0..pos).rev() {
@@ -377,14 +377,14 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
                     let mut indexes = self.get_indexes(storage, current_page)?;
                     let item_data = indexes
                         .remove(&index_pos)
-                        .ok_or_else(|| StdError::generic_err("Item not found at this index."))?;
+                        .ok_or_else(|| StdError::generic_err("item not found at this index"))?;
                     past_indexes.insert(past_index_pos, item_data);
                     self.set_indexes_page(storage, past_indexes_page, &past_indexes)?;
                     past_indexes = indexes;
                 } else {
                     let item_data_move_up = past_indexes
                         .remove(&index_pos)
-                        .ok_or_else(|| StdError::generic_err("Item not found at this index."))?;
+                        .ok_or_else(|| StdError::generic_err("item not found at this index"))?;
                     past_indexes.insert(past_index_pos, item_data_move_up);
                 }
                 past_indexes_page = current_page;
@@ -469,7 +469,7 @@ where
                         if let Some(item_data) = indexes.get(&index_pos) {
                             item = Ser::deserialize(item_data);
                         } else {
-                            item = Err(StdError::generic_err("Item not found at this index."));
+                            item = Err(StdError::generic_err("item not found at this index"));
                         }
                     }
                     None => match self.deque_store.get_indexes(self.storage, indexes_page) {
@@ -477,7 +477,7 @@ where
                             if let Some(item_data) = indexes.get(&index_pos) {
                                 item = Ser::deserialize(item_data);
                             } else {
-                                item = Err(StdError::generic_err("Item not found at this index."));
+                                item = Err(StdError::generic_err("item not found at this index"));
                             }
                             self.saved_indexes.insert(indexes_page, indexes);
                         }
@@ -533,7 +533,7 @@ where
                         if let Some(item_data) = indexes.get(&index_pos) {
                             item = Ser::deserialize(item_data);
                         } else {
-                            item = Err(StdError::generic_err("Item not found at this index."));
+                            item = Err(StdError::generic_err("item not found at this index"));
                         }
                     }
                     None => match self.deque_store.get_indexes(self.storage, indexes_page) {
@@ -541,7 +541,7 @@ where
                             if let Some(item_data) = indexes.get(&index_pos) {
                                 item = Ser::deserialize(item_data);
                             } else {
-                                item = Err(StdError::generic_err("Item not found at this index."));
+                                item = Err(StdError::generic_err("item not found at this index"));
                             }
                             self.saved_indexes.insert(indexes_page, indexes);
                         }

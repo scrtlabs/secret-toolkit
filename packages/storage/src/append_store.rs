@@ -49,7 +49,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
 
     pub const fn new_with_page_size(namespace: &'a [u8], page_size: u32) -> Self {
         if page_size == 0 {
-            panic!("Zero index page size used in AppendStore")
+            panic!("zero index page size used in append_store")
         }
         Self {
             namespace,
@@ -145,7 +145,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     pub fn get_at(&self, storage: &dyn Storage, pos: u32) -> StdResult<T> {
         let len = self.get_len(storage)?;
         if pos > len {
-            return Err(StdError::generic_err("AppendStore access out of bounds"));
+            return Err(StdError::generic_err("append_store access out of bounds"));
         }
         self.get_at_unchecked(storage, pos)
     }
@@ -177,7 +177,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     pub fn set_at(&self, storage: &mut dyn Storage, pos: u32, item: &T) -> StdResult<()> {
         let len = self.get_len(storage)?;
         if pos >= len {
-            return Err(StdError::generic_err("AppendStore access out of bounds"));
+            return Err(StdError::generic_err("append_store access out of bounds"));
         }
         self.set_at_unchecked(storage, pos, item)
     }
@@ -210,7 +210,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
             self.set_len(storage, len);
             self.get_at_unchecked(storage, len)
         } else {
-            Err(StdError::generic_err("Can not pop from empty AppendStore"))
+            Err(StdError::generic_err("cannot pop from empty append_store"))
         }
     }
 
@@ -226,7 +226,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         let len = self.get_len(storage)?;
 
         if pos >= len {
-            return Err(StdError::generic_err("AppendStore access out of bounds"));
+            return Err(StdError::generic_err("append_store access out of bounds"));
         }
         let max_pos = len - 1;
         let max_page = self.page_from_position(max_pos);
@@ -259,7 +259,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
                 Ser::deserialize(&item_data)
             }
             std::cmp::Ordering::Greater => {
-                Err(StdError::generic_err("AppendStore access out of bounds"))
+                Err(StdError::generic_err("append_store access out of bounds"))
             }
         }
     }

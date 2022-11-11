@@ -50,7 +50,7 @@ where
     /// Modifies the number of values stored in one page of indexing, for the iterator
     pub const fn with_page_size(&self, indexes_size: u32) -> Self {
         if indexes_size == 0 {
-            panic!("Zero index page size used in keyset")
+            panic!("zero index page size used in keyset")
         }
         Self {
             namespace: self.namespace,
@@ -294,7 +294,7 @@ impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser, WithIte
                 Ok(u32::from_be_bytes(pos_bytes))
             }
             None => Err(StdError::NotFound {
-                kind: "Keyset value not found.".to_string(),
+                kind: "keyset value not found.".to_string(),
             }),
         }
     }
@@ -319,7 +319,7 @@ impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser, WithIte
 
         if indexes[pos_in_indexes] != key_data {
             return Err(StdError::generic_err(
-                "Tried to remove, but hash not found - should never happen",
+                "tried to remove from keyset, but value not found in indexes - should never happen",
             ));
         }
 
@@ -335,7 +335,7 @@ impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser, WithIte
         if max_page == page {
             // last page indexes is the same as indexes
             let last_data = indexes.pop().ok_or_else(|| {
-                StdError::generic_err("Last item's key not found - should never happen")
+                StdError::generic_err("last item's key not found - should never happen")
             })?;
             let last_key = [prefix, last_data.as_slice()].concat();
             // modify last item
@@ -346,7 +346,7 @@ impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser, WithIte
         } else {
             let mut last_page_indexes = self.get_indexes(storage, max_page)?;
             let last_data = last_page_indexes.pop().ok_or_else(|| {
-                StdError::generic_err("Last item's key not found - should never happen")
+                StdError::generic_err("last item's key not found - should never happen")
             })?;
             let last_key = [prefix, last_data.as_slice()].concat();
             // modify last item
@@ -411,7 +411,7 @@ impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser, WithIte
 
         if start_pos > max_size {
             return Err(StdError::NotFound {
-                kind: "Out of bounds".to_string(),
+                kind: "out of bounds".to_string(),
             });
         } else if end_pos > max_size {
             end_pos = max_size - 1;
