@@ -19,7 +19,7 @@ schemars = "0.7"
 base64 = "0.11.0" # Same as used by cosmwas-std
 subtle = { version = "2.2.3", default-features = false }
 cosmwasm-std = { git = "https://github.com/scrtlabs/cosmwasm", branch = "secret" , features=["staking"], package ="secret-cosmwasm-std" }
-cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "1.0.0" }
+cosmwasm-storage = {git = "https://github.com/scrtlabs/cosmwasm", branch = "secret" , package = "secret-cosmwasm-storage", version = "1.0.0" }
 secret-toolkit-crypto = { version = "0.6", path = "../crypto", default-features = false, features = [
     "hash",
     "rand",
