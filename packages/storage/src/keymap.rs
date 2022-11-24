@@ -114,7 +114,7 @@ where
     }
 }
 
-// This enables writing `append_store.iter().skip(n).rev()`
+// This enables writing `.iter().skip(n).rev()`
 impl<'a, K, T, Ser> KeymapBuilder<'a, K, T, Ser, WithoutIter>
 where
     K: Serialize + DeserializeOwned,
@@ -607,7 +607,7 @@ where
     storage: &'a dyn Storage,
     start: u32,
     end: u32,
-    saved_indexes: HashMap<u32, Vec<Vec<u8>>>,
+    cache: HashMap<u32, Vec<Vec<u8>>>,
 }
 
 impl<'a, K, T, Ser> KeyIter<'a, K, T, Ser>
@@ -628,7 +628,7 @@ where
             storage,
             start,
             end,
-            saved_indexes: HashMap::new(),
+            cache: HashMap::new(),
         }
     }
 }
@@ -650,7 +650,7 @@ where
         let page = self.keymap.page_from_position(self.start);
         let indexes_pos = (self.start % self.keymap.page_size) as usize;
 
-        match self.saved_indexes.get(&page) {
+        match self.cache.get(&page) {
             Some(indexes) => {
                 let key_data = &indexes[indexes_pos];
                 key = self.keymap.deserialize_key(key_data);
@@ -659,7 +659,7 @@ where
                 Ok(indexes) => {
                     let key_data = &indexes[indexes_pos];
                     key = self.keymap.deserialize_key(key_data);
-                    self.saved_indexes.insert(page, indexes);
+                    self.cache.insert(page, indexes);
                 }
                 Err(e) => key = Err(e),
             },
@@ -679,7 +679,7 @@ where
     // because that is very expensive in this case, and the items are just discarded, we wan
     // do better here.
     // In practice, this enables cheap paging over the storage by calling:
-    // `append_store.iter().skip(start).take(length).collect()`
+    // `.iter().skip(start).take(length).collect()`
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         self.start = self.start.saturating_add(n as u32);
         self.next()
@@ -702,7 +702,7 @@ where
         let page = self.keymap.page_from_position(self.end);
         let indexes_pos = (self.end % self.keymap.page_size) as usize;
 
-        match self.saved_indexes.get(&page) {
+        match self.cache.get(&page) {
             Some(indexes) => {
                 let key_data = &indexes[indexes_pos];
                 key = self.keymap.deserialize_key(key_data);
@@ -711,7 +711,7 @@ where
                 Ok(indexes) => {
                     let key_data = &indexes[indexes_pos];
                     key = self.keymap.deserialize_key(key_data);
-                    self.saved_indexes.insert(page, indexes);
+                    self.cache.insert(page, indexes);
                 }
                 Err(e) => key = Err(e),
             },
@@ -724,14 +724,14 @@ where
     // because that is very expensive in this case, and the items are just discarded, we wan
     // do better here.
     // In practice, this enables cheap paging over the storage by calling:
-    // `append_store.iter().skip(start).take(length).collect()`
+    // `.iter().skip(start).take(length).collect()`
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         self.end = self.end.saturating_sub(n as u32);
         self.next_back()
     }
 }
 
-// This enables writing `append_store.iter().skip(n).rev()`
+// This enables writing `.iter().skip(n).rev()`
 impl<'a, K, T, Ser> ExactSizeIterator for KeyIter<'a, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
@@ -753,7 +753,7 @@ where
     storage: &'a dyn Storage,
     start: u32,
     end: u32,
-    saved_indexes: HashMap<u32, Vec<Vec<u8>>>,
+    cache: HashMap<u32, Vec<Vec<u8>>>,
 }
 
 impl<'a, K, T, Ser> KeyItemIter<'a, K, T, Ser>
@@ -774,7 +774,7 @@ where
             storage,
             start,
             end,
-            saved_indexes: HashMap::new(),
+            cache: HashMap::new(),
         }
     }
 }
@@ -796,7 +796,7 @@ where
         let page = self.keymap.page_from_position(self.start);
         let indexes_pos = (self.start % self.keymap.page_size) as usize;
 
-        match self.saved_indexes.get(&page) {
+        match self.cache.get(&page) {
             Some(indexes) => {
                 let key_data = &indexes[indexes_pos];
                 key = self.keymap.deserialize_key(key_data);
@@ -805,7 +805,7 @@ where
                 Ok(indexes) => {
                     let key_data = &indexes[indexes_pos];
                     key = self.keymap.deserialize_key(key_data);
-                    self.saved_indexes.insert(page, indexes);
+                    self.cache.insert(page, indexes);
                 }
                 Err(e) => key = Err(e),
             },
@@ -836,7 +836,7 @@ where
     // because that is very expensive in this case, and the items are just discarded, we wan
     // do better here.
     // In practice, this enables cheap paging over the storage by calling:
-    // `append_store.iter().skip(start).take(length).collect()`
+    // `.iter().skip(start).take(length).collect()`
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         self.start = self.start.saturating_add(n as u32);
         self.next()
@@ -859,7 +859,7 @@ where
         let page = self.keymap.page_from_position(self.end);
         let indexes_pos = (self.end % self.keymap.page_size) as usize;
 
-        match self.saved_indexes.get(&page) {
+        match self.cache.get(&page) {
             Some(indexes) => {
                 let key_data = &indexes[indexes_pos];
                 key = self.keymap.deserialize_key(key_data);
@@ -868,7 +868,7 @@ where
                 Ok(indexes) => {
                     let key_data = &indexes[indexes_pos];
                     key = self.keymap.deserialize_key(key_data);
-                    self.saved_indexes.insert(page, indexes);
+                    self.cache.insert(page, indexes);
                 }
                 Err(e) => key = Err(e),
             },
@@ -892,14 +892,14 @@ where
     // because that is very expensive in this case, and the items are just discarded, we wan
     // do better here.
     // In practice, this enables cheap paging over the storage by calling:
-    // `append_store.iter().skip(start).take(length).collect()`
+    // `.iter().skip(start).take(length).collect()`
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         self.end = self.end.saturating_sub(n as u32);
         self.next_back()
     }
 }
 
-// This enables writing `append_store.iter().skip(n).rev()`
+// This enables writing `.iter().skip(n).rev()`
 impl<'a, K, T, Ser> ExactSizeIterator for KeyItemIter<'a, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,

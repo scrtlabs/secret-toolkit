@@ -306,7 +306,7 @@ where
     storage: &'a dyn Storage,
     start: u32,
     end: u32,
-    saved_indexes: HashMap<u32, Vec<Vec<u8>>>,
+    cache: HashMap<u32, Vec<Vec<u8>>>,
 }
 
 impl<'a, T, Ser> AppendStoreIter<'a, T, Ser>
@@ -326,7 +326,7 @@ where
             storage,
             start,
             end,
-            saved_indexes: HashMap::new(),
+            cache: HashMap::new(),
         }
     }
 }
@@ -346,7 +346,7 @@ where
         let page = self.append_store.page_from_position(self.start);
         let indexes_pos = (self.start % self.append_store.page_size) as usize;
 
-        match self.saved_indexes.get(&page) {
+        match self.cache.get(&page) {
             Some(indexes) => {
                 let item_data = &indexes[indexes_pos];
                 item = Ser::deserialize(item_data);
@@ -355,7 +355,7 @@ where
                 Ok(indexes) => {
                     let item_data = &indexes[indexes_pos];
                     item = Ser::deserialize(item_data);
-                    self.saved_indexes.insert(page, indexes);
+                    self.cache.insert(page, indexes);
                 }
                 Err(e) => {
                     item = Err(e);
@@ -397,7 +397,7 @@ where
         let item;
         let page = self.append_store.page_from_position(self.end);
         let indexes_pos = (self.end % self.append_store.page_size) as usize;
-        match self.saved_indexes.get(&page) {
+        match self.cache.get(&page) {
             Some(indexes) => {
                 let item_data = &indexes[indexes_pos];
                 item = Ser::deserialize(item_data);
@@ -406,7 +406,7 @@ where
                 Ok(indexes) => {
                     let item_data = &indexes[indexes_pos];
                     item = Ser::deserialize(item_data);
-                    self.saved_indexes.insert(page, indexes);
+                    self.cache.insert(page, indexes);
                 }
                 Err(e) => {
                     item = Err(e);

@@ -486,7 +486,7 @@ where
     storage: &'a dyn Storage,
     start: u32,
     end: u32,
-    saved_indexes: HashMap<u32, Vec<Vec<u8>>>,
+    cache: HashMap<u32, Vec<Vec<u8>>>,
 }
 
 impl<'a, K, Ser> ValueIter<'a, K, Ser>
@@ -506,7 +506,7 @@ where
             storage,
             start,
             end,
-            saved_indexes: HashMap::new(),
+            cache: HashMap::new(),
         }
     }
 }
@@ -527,7 +527,7 @@ where
         let page = self.keyset.page_from_position(self.start);
         let indexes_pos = (self.start % self.keyset.page_size) as usize;
 
-        match self.saved_indexes.get(&page) {
+        match self.cache.get(&page) {
             Some(indexes) => {
                 let key_data = &indexes[indexes_pos];
                 key = self.keyset.deserialize_key(key_data);
@@ -536,7 +536,7 @@ where
                 Ok(indexes) => {
                     let key_data = &indexes[indexes_pos];
                     key = self.keyset.deserialize_key(key_data);
-                    self.saved_indexes.insert(page, indexes);
+                    self.cache.insert(page, indexes);
                 }
                 Err(e) => key = Err(e),
             },
@@ -578,7 +578,7 @@ where
         let page = self.keyset.page_from_position(self.end);
         let indexes_pos = (self.end % self.keyset.page_size) as usize;
 
-        match self.saved_indexes.get(&page) {
+        match self.cache.get(&page) {
             Some(indexes) => {
                 let key_data = &indexes[indexes_pos];
                 key = self.keyset.deserialize_key(key_data);
@@ -587,7 +587,7 @@ where
                 Ok(indexes) => {
                     let key_data = &indexes[indexes_pos];
                     key = self.keyset.deserialize_key(key_data);
-                    self.saved_indexes.insert(page, indexes);
+                    self.cache.insert(page, indexes);
                 }
                 Err(e) => key = Err(e),
             },

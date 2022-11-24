@@ -443,7 +443,7 @@ where
     storage: &'a dyn Storage,
     start: u32,
     end: u32,
-    saved_indexes: HashMap<u32, HashMap<u32, Vec<u8>>>,
+    cache: HashMap<u32, HashMap<u32, Vec<u8>>>,
 }
 
 impl<'a, T, Ser> DequeStoreIter<'a, T, Ser>
@@ -463,7 +463,7 @@ where
             storage,
             start,
             end,
-            saved_indexes: HashMap::new(),
+            cache: HashMap::new(),
         }
     }
 }
@@ -484,7 +484,7 @@ where
             Ok(offset_pos) => {
                 let indexes_page = offset_pos / self.deque_store.page_size;
                 let index_pos = offset_pos % self.deque_store.page_size;
-                match self.saved_indexes.get(&indexes_page) {
+                match self.cache.get(&indexes_page) {
                     Some(indexes) => {
                         if let Some(item_data) = indexes.get(&index_pos) {
                             item = Ser::deserialize(item_data);
@@ -499,7 +499,7 @@ where
                             } else {
                                 item = Err(StdError::generic_err("item not found at this index"));
                             }
-                            self.saved_indexes.insert(indexes_page, indexes);
+                            self.cache.insert(indexes_page, indexes);
                         }
                         Err(e) => {
                             item = Err(e);
@@ -548,7 +548,7 @@ where
             Ok(offset_pos) => {
                 let indexes_page = offset_pos / self.deque_store.page_size;
                 let index_pos = offset_pos % self.deque_store.page_size;
-                match self.saved_indexes.get(&indexes_page) {
+                match self.cache.get(&indexes_page) {
                     Some(indexes) => {
                         if let Some(item_data) = indexes.get(&index_pos) {
                             item = Ser::deserialize(item_data);
@@ -563,7 +563,7 @@ where
                             } else {
                                 item = Err(StdError::generic_err("item not found at this index"));
                             }
-                            self.saved_indexes.insert(indexes_page, indexes);
+                            self.cache.insert(indexes_page, indexes);
                         }
                         Err(e) => {
                             item = Err(e);
