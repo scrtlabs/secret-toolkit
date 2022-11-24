@@ -94,10 +94,18 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     /// Used to get the indexes stored in the given page number
     fn get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<Vec<Vec<u8>>> {
         let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
-        let maybe_serialized = storage.get(&indexes_key);
-        match maybe_serialized {
-            Some(serialized) => Bincode2::deserialize(&serialized),
-            None => Ok(vec![]),
+        if self.page_size == 1 {
+            let maybe_item_data = storage.get(&indexes_key);
+            match maybe_item_data {
+                Some(item_data) => Ok(vec![item_data]),
+                None => Ok(vec![]),
+            }
+        } else {
+            let maybe_serialized = storage.get(&indexes_key);
+            match maybe_serialized {
+                Some(serialized) => Bincode2::deserialize(&serialized),
+                None => Ok(vec![]),
+            }
         }
     }
 
@@ -109,7 +117,15 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         indexes: &Vec<Vec<u8>>,
     ) -> StdResult<()> {
         let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
-        storage.set(&indexes_key, &Bincode2::serialize(indexes)?);
+        if self.page_size == 1 {
+            if let Some(item_data) = indexes.first() {
+                storage.set(&indexes_key, item_data);
+            } else {
+                storage.remove(&indexes_key);
+            }
+        } else {
+            storage.set(&indexes_key, &Bincode2::serialize(indexes)?);
+        }
         Ok(())
     }
 
@@ -678,26 +694,46 @@ mod tests {
 
     #[test]
     fn test_serializations() -> StdResult<()> {
+        test_serializations_with_page_size(1)?;
+        test_serializations_with_page_size(3)?;
+        test_serializations_with_page_size(5)?;
+        Ok(())
+    }
+
+    fn test_serializations_with_page_size(page_size: u32) -> StdResult<()> {
         // Check the default behavior is Bincode2
         let mut storage = MockStorage::new();
 
-        let append_store: AppendStore<i32> = AppendStore::new(b"test");
+        let append_store: AppendStore<i32> = AppendStore::new_with_page_size(b"test", page_size);
         append_store.push(&mut storage, &1234)?;
 
         let key = [append_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
-        let bytes = storage.get(&key);
-        let expected = Bincode2::serialize(&vec![Bincode2::serialize(&1234)?])?;
-        assert_eq!(bytes, Some(expected));
+        if append_store.page_size == 1 {
+            let item_data = storage.get(&key);
+            let expected_data = Bincode2::serialize(&1234)?;
+            assert_eq!(item_data, Some(expected_data));
+        } else {
+            let bytes = storage.get(&key);
+            let expected = Bincode2::serialize(&vec![Bincode2::serialize(&1234)?])?;
+            assert_eq!(bytes, Some(expected));
+        }
 
         // Check that overriding the serializer with Json works
         let mut storage = MockStorage::new();
-        let json_append_store: AppendStore<i32, Json> = AppendStore::new(b"test2");
+        let json_append_store: AppendStore<i32, Json> =
+            AppendStore::new_with_page_size(b"test2", page_size);
         json_append_store.push(&mut storage, &1234)?;
 
         let key = [json_append_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
-        let bytes = storage.get(&key);
-        let expected = Bincode2::serialize(&vec![b"1234".to_vec()])?;
-        assert_eq!(bytes, Some(expected));
+        if json_append_store.page_size == 1 {
+            let item_data = storage.get(&key);
+            let expected_data = b"1234".to_vec();
+            assert_eq!(item_data, Some(expected_data));
+        } else {
+            let bytes = storage.get(&key);
+            let expected = Bincode2::serialize(&vec![b"1234".to_vec()])?;
+            assert_eq!(bytes, Some(expected));
+        }
 
         Ok(())
     }

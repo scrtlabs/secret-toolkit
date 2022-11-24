@@ -157,10 +157,22 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// Used to get the indexes stored in the given page number
     fn get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<HashMap<u32, Vec<u8>>> {
         let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
-        let maybe_serialized = storage.get(&indexes_key);
-        match maybe_serialized {
-            Some(serialized) => Bincode2::deserialize(&serialized),
-            None => Ok(HashMap::new()),
+        if self.page_size == 1 {
+            let maybe_item_data = storage.get(&indexes_key);
+            match maybe_item_data {
+                Some(item_data) => {
+                    let mut hashmap = HashMap::new();
+                    hashmap.insert(0_u32, item_data);
+                    Ok(hashmap)
+                }
+                None => Ok(HashMap::new()),
+            }
+        } else {
+            let maybe_serialized = storage.get(&indexes_key);
+            match maybe_serialized {
+                Some(serialized) => Bincode2::deserialize(&serialized),
+                None => Ok(HashMap::new()),
+            }
         }
     }
 
@@ -172,7 +184,15 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         indexes: &HashMap<u32, Vec<u8>>,
     ) -> StdResult<()> {
         let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
-        storage.set(&indexes_key, &Bincode2::serialize(indexes)?);
+        if self.page_size == 1 {
+            if let Some(item_data) = indexes.get(&0_u32) {
+                storage.set(&indexes_key, item_data);
+            } else {
+                storage.remove(&indexes_key);
+            }
+        } else {
+            storage.set(&indexes_key, &Bincode2::serialize(indexes)?);
+        }
         Ok(())
     }
 
@@ -914,28 +934,47 @@ mod tests {
 
     #[test]
     fn test_serializations() -> StdResult<()> {
+        test_serializations_with_page_size(1)?;
+        test_serializations_with_page_size(2)?;
+        test_serializations_with_page_size(5)?;
+        Ok(())
+    }
+
+    fn test_serializations_with_page_size(page_size: u32) -> StdResult<()> {
         // Check the default behavior is Bincode2
         let mut storage = MockStorage::new();
 
-        let deque_store: DequeStore<i32> = DequeStore::new(b"test");
+        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", page_size);
         deque_store.push_back(&mut storage, &1234)?;
 
         let key = [deque_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
-        let bytes = storage.get(&key);
-        let mut expected: HashMap<u32, Vec<u8>> = HashMap::new();
-        expected.insert(0_u32, Bincode2::serialize(&1234)?);
-        assert_eq!(bytes, Some(Bincode2::serialize(&expected)?));
+        if deque_store.page_size == 1 {
+            let item_data = storage.get(&key);
+            assert_eq!(item_data, Some(Bincode2::serialize(&1234)?));
+        } else {
+            let bytes = storage.get(&key);
+            let mut expected: HashMap<u32, Vec<u8>> = HashMap::new();
+            expected.insert(0_u32, Bincode2::serialize(&1234)?);
+            assert_eq!(bytes, Some(Bincode2::serialize(&expected)?));
+        }
 
         // Check that overriding the serializer with Json works
         let mut storage = MockStorage::new();
-        let json_deque_store: DequeStore<i32, Json> = DequeStore::new(b"test2");
+        let json_deque_store: DequeStore<i32, Json> =
+            DequeStore::new_with_page_size(b"test2", page_size);
         json_deque_store.push_back(&mut storage, &1234)?;
 
         let key = [json_deque_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
-        let bytes = storage.get(&key);
-        let mut expected: HashMap<u32, Vec<u8>> = HashMap::new();
-        expected.insert(0_u32, b"1234".to_vec());
-        assert_eq!(bytes, Some(Bincode2::serialize(&expected)?));
+
+        if deque_store.page_size == 1 {
+            let item_data = storage.get(&key);
+            assert_eq!(item_data, Some(b"1234".to_vec()));
+        } else {
+            let bytes = storage.get(&key);
+            let mut expected: HashMap<u32, Vec<u8>> = HashMap::new();
+            expected.insert(0_u32, b"1234".to_vec());
+            assert_eq!(bytes, Some(Bincode2::serialize(&expected)?));
+        }
 
         Ok(())
     }

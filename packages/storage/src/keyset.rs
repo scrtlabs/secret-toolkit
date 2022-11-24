@@ -264,10 +264,18 @@ impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser, WithIte
     /// Used to get the indexes stored in the given page number
     fn get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<Vec<Vec<u8>>> {
         let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
-        let maybe_serialized = storage.get(&indexes_key);
-        match maybe_serialized {
-            Some(serialized) => Bincode2::deserialize(&serialized),
-            None => Ok(vec![]),
+        if self.page_size == 1 {
+            let maybe_item_data = storage.get(&indexes_key);
+            match maybe_item_data {
+                Some(item_data) => Ok(vec![item_data]),
+                None => Ok(vec![]),
+            }
+        } else {
+            let maybe_serialized = storage.get(&indexes_key);
+            match maybe_serialized {
+                Some(serialized) => Bincode2::deserialize(&serialized),
+                None => Ok(vec![]),
+            }
         }
     }
 
@@ -279,7 +287,15 @@ impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser, WithIte
         indexes: &Vec<Vec<u8>>,
     ) -> StdResult<()> {
         let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
-        storage.set(&indexes_key, &Bincode2::serialize(indexes)?);
+        if self.page_size == 1 {
+            if let Some(item_data) = indexes.first() {
+                storage.set(&indexes_key, item_data);
+            } else {
+                storage.remove(&indexes_key);
+            }
+        } else {
+            storage.set(&indexes_key, &Bincode2::serialize(indexes)?);
+        }
         Ok(())
     }
 
