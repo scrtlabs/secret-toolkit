@@ -17,4 +17,4 @@ all-features = true
 serde = "1.0"
 schemars = "0.8.1"
 cosmwasm-std = { git = "https://github.com/scrtlabs/cosmwasm", branch = "secret" , features=["staking"], package ="secret-cosmwasm-std" }
-cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "1.0.0" }
+cosmwasm-storage = {git = "https://github.com/scrtlabs/cosmwasm", branch = "secret" , package = "secret-cosmwasm-storage", version = "1.0.0" }
