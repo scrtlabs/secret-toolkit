@@ -16,5 +16,5 @@ all-features = true
 [dependencies]
 serde = "1.0"
 cosmwasm-std = { git = "https://github.com/scrtlabs/cosmwasm", branch = "secret" , features=["staking"], package ="secret-cosmwasm-std" }
-cosmwasm-storage = {git = "https://github.com/scrtlabs/cosmwasm", branch = "secret" , package = "secret-cosmwasm-storage", version = "1.0.0" }
+cosmwasm-storage = {git = "https://github.com/scrtlabs/cosmwasm", branch = "secret" , package = "secret-cosmwasm-storage" }
 secret-toolkit-serialization = { version = "0.6", path = "../serialization" }
