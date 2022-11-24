@@ -198,7 +198,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 
     /// tries to get the element at pos
     fn get_at_unchecked(&self, storage: &dyn Storage, pos: u32) -> StdResult<T> {
-        let offset_pos = self._get_offset_pos(storage, pos)?;
+        let offset_pos = self.get_offset_pos(storage, pos)?;
         let indexes_page = offset_pos / self.page_size;
         let index_pos = offset_pos % self.page_size;
         let indexes = self.get_indexes(storage, indexes_page)?;
@@ -209,7 +209,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 
     /// add the offset to the pos
-    fn _get_offset_pos(&self, storage: &dyn Storage, pos: u32) -> StdResult<u32> {
+    fn get_offset_pos(&self, storage: &dyn Storage, pos: u32) -> StdResult<u32> {
         let off = self.get_off(storage)?;
         Ok(pos.overflowing_add(off).0)
     }
@@ -251,7 +251,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 
     /// Sets data at a given index
     fn set_at_unchecked(&self, storage: &mut dyn Storage, pos: u32, item: &T) -> StdResult<()> {
-        let offset_pos = self._get_offset_pos(storage, pos)?;
+        let offset_pos = self.get_offset_pos(storage, pos)?;
         let indexes_page = offset_pos / self.page_size;
         let index_pos = offset_pos % self.page_size;
         let mut indexes = self.get_indexes(storage, indexes_page)?;
@@ -263,12 +263,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// Pushes an item to the back
     pub fn push_back(&self, storage: &mut dyn Storage, item: &T) -> StdResult<()> {
         let len = self.get_len(storage)?;
-        let offset_pos = self._get_offset_pos(storage, len)?;
-        let indexes_page = offset_pos / self.page_size;
-        let mut indexes = self.get_indexes(storage, indexes_page)?;
-        let index_pos = offset_pos % self.page_size;
-        indexes.insert(index_pos, Ser::serialize(item)?);
-        self.set_indexes_page(storage, indexes_page, &indexes)?;
+        self.set_at_unchecked(storage, len, item)?;
         self.set_len(storage, len + 1);
         Ok(())
     }
@@ -278,12 +273,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         let off = self.get_off(storage)?;
         let len = self.get_len(storage)?;
         self.set_off(storage, off.overflowing_sub(1).0);
-        let offset_pos = self._get_offset_pos(storage, 0)?;
-        let indexes_page = offset_pos / self.page_size;
-        let index_pos = offset_pos % self.page_size;
-        let mut indexes = self.get_indexes(storage, indexes_page)?;
-        indexes.insert(index_pos, Ser::serialize(item)?);
-        self.set_indexes_page(storage, indexes_page, &indexes)?;
+        self.set_at_unchecked(storage, 0, item)?;
         self.set_len(storage, len + 1);
         Ok(())
     }
@@ -292,7 +282,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     pub fn pop_back(&self, storage: &mut dyn Storage) -> StdResult<T> {
         if let Some(len) = self.get_len(storage)?.checked_sub(1) {
             self.set_len(storage, len);
-            let offset_pos = self._get_offset_pos(storage, len)?;
+            let offset_pos = self.get_offset_pos(storage, len)?;
             let indexes_page = offset_pos / self.page_size;
             let index_pos = offset_pos % self.page_size;
             let indexes = self.get_indexes(storage, indexes_page)?;
@@ -311,7 +301,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         if let Some(len) = self.get_len(storage)?.checked_sub(1) {
             let off = self.get_off(storage)?;
             self.set_len(storage, len);
-            let offset_pos = self._get_offset_pos(storage, 0)?;
+            let offset_pos = self.get_offset_pos(storage, 0)?;
             let indexes_page = offset_pos / self.page_size;
             let index_pos = offset_pos % self.page_size;
             let indexes = self.get_indexes(storage, indexes_page)?;
@@ -346,7 +336,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         let res;
         let to_tail = len - pos;
         if to_tail < pos {
-            let past_offset_pos = self._get_offset_pos(storage, pos)?;
+            let past_offset_pos = self.get_offset_pos(storage, pos)?;
             let mut past_indexes_page = past_offset_pos / self.page_size;
             let mut past_index_pos = past_offset_pos % self.page_size;
             let mut past_indexes = self.get_indexes(storage, past_indexes_page)?;
@@ -357,7 +347,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             );
             // closer to the tail
             for i in (pos + 1)..len {
-                let offset_pos = self._get_offset_pos(storage, i)?;
+                let offset_pos = self.get_offset_pos(storage, i)?;
                 let current_page = offset_pos / self.page_size;
                 let index_pos = offset_pos % self.page_size;
                 if current_page != past_indexes_page {
@@ -379,7 +369,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             }
             self.set_indexes_page(storage, past_indexes_page, &past_indexes)?;
         } else {
-            let past_offset_pos = self._get_offset_pos(storage, pos)?;
+            let past_offset_pos = self.get_offset_pos(storage, pos)?;
             let mut past_indexes_page = past_offset_pos / self.page_size;
             let mut past_index_pos = past_offset_pos % self.page_size;
             let mut past_indexes = self.get_indexes(storage, past_indexes_page)?;
@@ -390,7 +380,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
             );
             // closer to the head
             for i in (0..pos).rev() {
-                let offset_pos = self._get_offset_pos(storage, i)?;
+                let offset_pos = self.get_offset_pos(storage, i)?;
                 let current_page = offset_pos / self.page_size;
                 let index_pos = offset_pos % self.page_size;
                 if current_page != past_indexes_page {
@@ -480,7 +470,7 @@ where
             return None;
         }
         let item;
-        match self.deque_store._get_offset_pos(self.storage, self.start) {
+        match self.deque_store.get_offset_pos(self.storage, self.start) {
             Ok(offset_pos) => {
                 let indexes_page = offset_pos / self.deque_store.page_size;
                 let index_pos = offset_pos % self.deque_store.page_size;
@@ -544,7 +534,7 @@ where
         }
         self.end -= 1;
         let item;
-        match self.deque_store._get_offset_pos(self.storage, self.end) {
+        match self.deque_store.get_offset_pos(self.storage, self.end) {
             Ok(offset_pos) => {
                 let indexes_page = offset_pos / self.deque_store.page_size;
                 let index_pos = offset_pos % self.deque_store.page_size;
