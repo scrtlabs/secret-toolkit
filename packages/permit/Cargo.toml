@@ -14,7 +14,7 @@ keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 all-features = true
 
 [dependencies]
-cosmwasm-std = { package = "secret-cosmwasm-std", version = "1.0.0" }
+cosmwasm-std = { git = "https://github.com/scrtlabs/cosmwasm", branch = "secret" , features=["staking"], package ="secret-cosmwasm-std" }
 serde = "1.0"
 ripemd160 = { version = "0.9.1", default-features = false }
 schemars = "0.8.1"
