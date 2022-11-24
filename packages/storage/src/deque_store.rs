@@ -282,15 +282,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     pub fn pop_back(&self, storage: &mut dyn Storage) -> StdResult<T> {
         if let Some(len) = self.get_len(storage)?.checked_sub(1) {
             self.set_len(storage, len);
-            let offset_pos = self.get_offset_pos(storage, len)?;
-            let indexes_page = offset_pos / self.page_size;
-            let index_pos = offset_pos % self.page_size;
-            let indexes = self.get_indexes(storage, indexes_page)?;
-            Ser::deserialize(
-                indexes
-                    .get(&index_pos)
-                    .ok_or_else(|| StdError::generic_err("item not found at this index"))?,
-            )
+            self.get_at_unchecked(storage, len)
         } else {
             Err(StdError::generic_err("cannot pop from empty deque_store"))
         }
@@ -301,16 +293,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         if let Some(len) = self.get_len(storage)?.checked_sub(1) {
             let off = self.get_off(storage)?;
             self.set_len(storage, len);
-            let offset_pos = self.get_offset_pos(storage, 0)?;
-            let indexes_page = offset_pos / self.page_size;
-            let index_pos = offset_pos % self.page_size;
-            let indexes = self.get_indexes(storage, indexes_page)?;
-            let item = Ser::deserialize(
-                indexes
-                    .get(&index_pos)
-                    .ok_or_else(|| StdError::generic_err("item not found at this index"))?,
-            );
-            // self.set_indexes_page(storage, indexes_page, &indexes)?;
+            let item = self.get_at_unchecked(storage, 0);
             self.set_off(storage, off.overflowing_add(1).0);
             item
         } else {
