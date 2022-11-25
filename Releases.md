@@ -1,7 +1,7 @@
 # Release notes for the Secret Toolkit
 
 
-## secret-toolkit-storage v0.6.1
+## v0.7.0
 
 - Added the `Keyset` storage object (A hashset like storage object).
 - Allowed further customisation of Keymap and Keyset with new constructor structs called `KeymapBuilder` and `KeysetBuilder` which allow the user to disable the iterator feature (saving gas) or adjust the internal indexes' page size so that the user may determine how many objects are to be stored/loaded together in the iterator.
