@@ -1,5 +1,5 @@
 use cosmwasm_std::{to_binary, Binary, CanonicalAddr, Deps, StdError, StdResult};
-use ripemd160::{Digest, Ripemd160};
+use ripemd::{Digest, Ripemd160};
 
 use crate::{Permissions, Permit, RevokedPermits, SignedPermit};
 use bech32::{ToBase32, Variant};

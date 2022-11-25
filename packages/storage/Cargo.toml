@@ -1,7 +1,7 @@
 [package]
 name = "secret-toolkit-storage"
-version = "0.6.1"
-edition = "2018"
+version = "0.7.0"
+edition = "2021"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
 repository = "https://github.com/scrtlabs/secret-toolkit"
@@ -14,7 +14,7 @@ keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 all-features = true
 
 [dependencies]
-serde = "1.0"
-cosmwasm-std = { package = "secret-cosmwasm-std", version = "1.0.0" }
-cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "1.0.0" }
-secret-toolkit-serialization = { version = "0.6", path = "../serialization" }
+serde = { workspace = true }
+cosmwasm-std = { workspace = true  }
+cosmwasm-storage = { workspace = true }
+secret-toolkit-serialization = { version = "0.7", path = "../serialization" }
