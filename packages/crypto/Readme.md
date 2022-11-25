@@ -11,11 +11,11 @@ Add the following to your `cargo.toml` file:
 
 ```toml
 [dependencies]
-secret-toolkit = { version = "0.3.0", features = ["crypto"] }
-secret-toolkit-crypto = { version = "0.3.0", features = ["hash", "rand", "ecc-secp256k1"] }
+secret-toolkit = { version = "0.7.0", features = ["crypto"] }
+secret-toolkit-crypto = { version = "0.7.0", features = ["hash", "rand", "ecc-secp256k1"] }
 ```
 
-## Example usage:
+## Example usage
 
 ```ignore
 # extern crate secret_toolkit_crypto;
@@ -41,6 +41,7 @@ let signature: Signature = private_key.sign(message, deps.api);
 ```
 
 ### Cargo Features
+
 - `["hash"]` - Provides an easy-to-use `sha256` function. Uses [sha2](https://crates.io/crates/sha2).
 - `["rand"]` - Used to generate pseudo-random numbers. Uses [rand_chacha] and [rand_core].
 - `["ecc-secp256k1"]` - Contains types and methods for working with secp256k1 keys and signatures,
