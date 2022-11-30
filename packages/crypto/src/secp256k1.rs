@@ -27,7 +27,7 @@ impl PrivateKey {
     }
 
     pub fn serialize(&self) -> [u8; PRIVATE_KEY_SIZE] {
-        self.inner.serialize_secret()
+        self.inner.secret_bytes()
     }
 
     pub fn pubkey(&self) -> PublicKey {
@@ -93,7 +93,7 @@ mod tests {
     use super::*;
     use crate::sha_256;
     use cosmwasm_std::testing::MockApi;
-    use secp256k1_test::{rand::thread_rng, Secp256k1};
+    use secp256k1::{rand::thread_rng, Secp256k1};
 
     #[test]
     fn test_pubkey() {

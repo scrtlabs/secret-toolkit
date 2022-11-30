@@ -11,8 +11,8 @@ impl Prng {
         let mut hasher = Sha256::new();
 
         // write input message
-        hasher.update(&seed);
-        hasher.update(&entropy);
+        hasher.update(seed);
+        hasher.update(entropy);
         let hash = hasher.finalize();
 
         let mut hash_bytes = [0u8; 32];

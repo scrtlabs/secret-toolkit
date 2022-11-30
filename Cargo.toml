@@ -1,5 +1,61 @@
+[package]
+name = "secret-toolkit"
+version = "0.7.0"
+edition = "2021"
+authors = ["SCRT Labs <info@scrtlabs.com>"]
+license-file = "../../LICENSE"
+repository = "https://github.com/scrtlabs/secret-toolkit"
+readme = "../../Readme.md"
+description = "Various tools for writing Secret Contracts"
+categories = ["cryptography::cryptocurrencies", "wasm"]
+keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = ["serialization", "snip20", "snip721", "storage", "utils"]
+
+crypto = [
+    "secret-toolkit-crypto",
+] # Not in default features because this is slow to compile
+incubator = [
+    "secret-toolkit-incubator",
+    "serialization",
+] # Should never be in default features!
+permit = [
+    "secret-toolkit-permit",
+    "crypto",
+    "utils",
+] # Not in default features because it requires "crypto"
+serialization = ["secret-toolkit-serialization"]
+snip20 = ["secret-toolkit-snip20", "utils"]
+snip721 = ["secret-toolkit-snip721", "utils"]
+storage = ["secret-toolkit-storage", "serialization"]
+utils = ["secret-toolkit-utils"]
+viewing-key = ["secret-toolkit-viewing-key"]
+
+[dependencies]
+secret-toolkit-crypto = { version = "0.7", path = "packages/crypto", optional = true }
+secret-toolkit-incubator = { version = "0.7", path = "packages/incubator", optional = true }
+secret-toolkit-permit = { version = "0.7", path = "packages/permit", optional = true }
+secret-toolkit-serialization = { version = "0.7", path = "packages/serialization", optional = true }
+secret-toolkit-snip20 = { version = "0.7", path = "packages/snip20", optional = true }
+secret-toolkit-snip721 = { version = "0.7", path = "packages/snip721", optional = true }
+secret-toolkit-storage = { version = "0.7", path = "packages/storage", optional = true }
+secret-toolkit-utils = { version = "0.7", path = "packages/utils", optional = true }
+secret-toolkit-viewing-key = { version = "0.7", path = "packages/viewing_key", optional = true }
+
+
 [workspace]
 members = ["packages/*"]
 # Since `secret-toolkit` depends on all the other packages, this should make `cargo-check` a bit quicker
 # as it won't have to check all the other packages twice.
-default-members = ["packages/toolkit"]
+#default-members = ["packages/toolkit"]
+# exclude = ["packages/crypto"]
+
+[workspace.dependencies]
+schemars = { version = "0.8.11" }
+cosmwasm-std = { package = "secret-cosmwasm-std", version = "1.0.0" }
+serde = { version = "1.0" }
+cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "1.0.0" }

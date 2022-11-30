@@ -107,7 +107,7 @@ fn new_viewing_key(
 
     let key = sha_256(&rand_slice);
 
-    let viewing_key = VIEWING_KEY_PREFIX.to_string() + &base64::encode(&key);
+    let viewing_key = VIEWING_KEY_PREFIX.to_string() + &base64::encode(key);
     (viewing_key, rand_slice)
 }
 

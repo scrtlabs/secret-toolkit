@@ -1,7 +1,7 @@
 [package]
 name = "secret-toolkit-viewing-key"
-version = "0.6.0"
-edition = "2018"
+version = "0.7.0"
+edition = "2021"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
 repository = "https://github.com/scrtlabs/secret-toolkit"
@@ -14,14 +14,14 @@ keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 all-features = true
 
 [dependencies]
-serde = "1.0"
-schemars = "0.7"
-base64 = "0.11.0" # Same as used by cosmwas-std
+serde = {  workspace = true }
+schemars = { workspace = true }
+base64 = "0.13.0"
 subtle = { version = "2.2.3", default-features = false }
-cosmwasm-std = { package = "secret-cosmwasm-std", version = "1.0.0" }
-cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "1.0.0" }
-secret-toolkit-crypto = { version = "0.6", path = "../crypto", default-features = false, features = [
+cosmwasm-std = { workspace = true }
+cosmwasm-storage = { workspace = true }
+secret-toolkit-crypto = { version = "0.7", path = "../crypto", features = [
     "hash",
     "rand",
 ] }
-secret-toolkit-utils = { version = "0.6", path = "../utils" }
+secret-toolkit-utils = { version = "0.7", path = "../utils" }
