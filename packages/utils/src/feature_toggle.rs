@@ -311,14 +311,14 @@ mod tests {
             None
         );
 
-        assert_eq!(
-            FeatureToggle::is_pauser(&storage, &Addr::unchecked("alice".to_string()))?,
-            true
-        );
-        assert_eq!(
-            FeatureToggle::is_pauser(&storage, &Addr::unchecked("bob".to_string()))?,
-            false
-        );
+        assert!(FeatureToggle::is_pauser(
+            &storage,
+            &Addr::unchecked("alice".to_string())
+        )?,);
+        assert!(!FeatureToggle::is_pauser(
+            &storage,
+            &Addr::unchecked("bob".to_string())
+        )?);
 
         Ok(())
     }

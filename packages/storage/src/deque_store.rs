@@ -4,7 +4,7 @@
 //! This is achieved by storing each item in a separate storage entry.
 //! A special key is reserved for storing the length of the collection so far.
 //! Another special key is reserved for storing the offset of the collection.
-use std::any::type_name;
+use std::collections::HashMap;
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::sync::Mutex;
@@ -16,8 +16,11 @@ use cosmwasm_storage::to_length_prefixed;
 
 use secret_toolkit_serialization::{Bincode2, Serde};
 
+const INDEXES: &[u8] = b"indexes";
 const LEN_KEY: &[u8] = b"len";
 const OFFSET_KEY: &[u8] = b"off";
+
+const DEFAULT_PAGE_SIZE: u32 = 1;
 
 pub struct DequeStore<'a, T, Ser = Bincode2>
 where
@@ -28,6 +31,7 @@ where
     namespace: &'a [u8],
     /// needed if any suffixes were added to the original namespace.
     prefix: Option<Vec<u8>>,
+    page_size: u32,
     length: Mutex<Option<u32>>,
     offset: Mutex<Option<u32>>,
     item_type: PhantomData<T>,
@@ -40,6 +44,23 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         Self {
             namespace: prefix,
             prefix: None,
+            page_size: DEFAULT_PAGE_SIZE,
+            length: Mutex::new(None),
+            offset: Mutex::new(None),
+            item_type: PhantomData,
+            serialization_type: PhantomData,
+        }
+    }
+
+    /// constructor with indexes size
+    pub const fn new_with_page_size(prefix: &'a [u8], page_size: u32) -> Self {
+        if page_size == 0 {
+            panic!("zero index page size used in deque_store")
+        }
+        Self {
+            namespace: prefix,
+            prefix: None,
+            page_size,
             length: Mutex::new(None),
             offset: Mutex::new(None),
             item_type: PhantomData,
@@ -56,6 +77,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         Self {
             namespace: self.namespace,
             prefix: Some(prefix),
+            page_size: self.page_size,
             length: Mutex::new(None),
             offset: Mutex::new(None),
             item_type: self.item_type,
@@ -65,12 +87,20 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 }
 
 impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
+    fn as_slice(&self) -> &[u8] {
+        if let Some(prefix) = &self.prefix {
+            prefix
+        } else {
+            self.namespace
+        }
+    }
+
     /// gets the length from storage, and otherwise sets it to 0
     pub fn get_len(&self, storage: &dyn Storage) -> StdResult<u32> {
         let mut may_len = self.length.lock().unwrap();
         match *may_len {
             Some(len) => Ok(len),
-            None => match self._get_u32(storage, LEN_KEY) {
+            None => match self.get_u32(storage, LEN_KEY) {
                 Ok(len) => {
                     *may_len = Some(len);
                     Ok(len)
@@ -85,7 +115,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         let mut may_off = self.offset.lock().unwrap();
         match *may_off {
             Some(len) => Ok(len),
-            None => match self._get_u32(storage, OFFSET_KEY) {
+            None => match self.get_u32(storage, OFFSET_KEY) {
                 Ok(len) => {
                     *may_off = Some(len);
                     Ok(len)
@@ -96,7 +126,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 
     /// gets offset or length
-    fn _get_u32(&self, storage: &dyn Storage, key: &[u8]) -> StdResult<u32> {
+    fn get_u32(&self, storage: &dyn Storage, key: &[u8]) -> StdResult<u32> {
         let num_key = [self.as_slice(), key].concat();
         if let Some(num_vec) = storage.get(&num_key) {
             let num_bytes = num_vec
@@ -119,18 +149,67 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     pub fn get_at(&self, storage: &dyn Storage, pos: u32) -> StdResult<T> {
         let len = self.get_len(storage)?;
         if pos >= len {
-            return Err(StdError::generic_err("DequeStore access out of bounds"));
+            return Err(StdError::generic_err("deque_store access out of bounds"));
         }
         self.get_at_unchecked(storage, pos)
     }
 
+    /// Used to get the indexes stored in the given page number
+    fn get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<HashMap<u32, Vec<u8>>> {
+        let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
+        if self.page_size == 1 {
+            let maybe_item_data = storage.get(&indexes_key);
+            match maybe_item_data {
+                Some(item_data) => {
+                    let mut hashmap = HashMap::new();
+                    hashmap.insert(0_u32, item_data);
+                    Ok(hashmap)
+                }
+                None => Ok(HashMap::new()),
+            }
+        } else {
+            let maybe_serialized = storage.get(&indexes_key);
+            match maybe_serialized {
+                Some(serialized) => Bincode2::deserialize(&serialized),
+                None => Ok(HashMap::new()),
+            }
+        }
+    }
+
+    /// Set an indexes page
+    fn set_indexes_page(
+        &self,
+        storage: &mut dyn Storage,
+        page: u32,
+        indexes: &HashMap<u32, Vec<u8>>,
+    ) -> StdResult<()> {
+        let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
+        if self.page_size == 1 {
+            if let Some(item_data) = indexes.get(&0_u32) {
+                storage.set(&indexes_key, item_data);
+            } else {
+                storage.remove(&indexes_key);
+            }
+        } else {
+            storage.set(&indexes_key, &Bincode2::serialize(indexes)?);
+        }
+        Ok(())
+    }
+
     /// tries to get the element at pos
     fn get_at_unchecked(&self, storage: &dyn Storage, pos: u32) -> StdResult<T> {
-        self.load_impl(storage, &self._get_offset_pos(storage, pos)?.to_be_bytes())
+        let offset_pos = self.get_offset_pos(storage, pos)?;
+        let indexes_page = offset_pos / self.page_size;
+        let index_pos = offset_pos % self.page_size;
+        let indexes = self.get_indexes(storage, indexes_page)?;
+        let item_data = indexes
+            .get(&index_pos)
+            .ok_or_else(|| StdError::generic_err("item not found at this index"))?;
+        Ser::deserialize(item_data)
     }
 
     /// add the offset to the pos
-    fn _get_offset_pos(&self, storage: &dyn Storage, pos: u32) -> StdResult<u32> {
+    fn get_offset_pos(&self, storage: &dyn Storage, pos: u32) -> StdResult<u32> {
         let off = self.get_off(storage)?;
         Ok(pos.overflowing_add(off).0)
     }
@@ -165,15 +244,20 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     pub fn set_at(&self, storage: &mut dyn Storage, pos: u32, item: &T) -> StdResult<()> {
         let len = self.get_len(storage)?;
         if pos >= len {
-            return Err(StdError::generic_err("DequeStore access out of bounds"));
+            return Err(StdError::generic_err("deque_store access out of bounds"));
         }
         self.set_at_unchecked(storage, pos, item)
     }
 
     /// Sets data at a given index
     fn set_at_unchecked(&self, storage: &mut dyn Storage, pos: u32, item: &T) -> StdResult<()> {
-        let get_offset_pos = self._get_offset_pos(storage, pos)?;
-        self.save_impl(storage, &get_offset_pos.to_be_bytes(), item)
+        let offset_pos = self.get_offset_pos(storage, pos)?;
+        let indexes_page = offset_pos / self.page_size;
+        let index_pos = offset_pos % self.page_size;
+        let mut indexes = self.get_indexes(storage, indexes_page)?;
+        let item_data = Ser::serialize(item)?;
+        indexes.insert(index_pos, item_data);
+        self.set_indexes_page(storage, indexes_page, &indexes)
     }
 
     /// Pushes an item to the back
@@ -197,11 +281,10 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// Pops an item from the back
     pub fn pop_back(&self, storage: &mut dyn Storage) -> StdResult<T> {
         if let Some(len) = self.get_len(storage)?.checked_sub(1) {
-            let item = self.get_at_unchecked(storage, len);
             self.set_len(storage, len);
-            item
+            self.get_at_unchecked(storage, len)
         } else {
-            Err(StdError::generic_err("Can not pop from empty DequeStore"))
+            Err(StdError::generic_err("cannot pop from empty deque_store"))
         }
     }
 
@@ -209,12 +292,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     pub fn pop_front(&self, storage: &mut dyn Storage) -> StdResult<T> {
         if let Some(len) = self.get_len(storage)?.checked_sub(1) {
             let off = self.get_off(storage)?;
-            let item = self.get_at_unchecked(storage, 0);
             self.set_len(storage, len);
+            let item = self.get_at_unchecked(storage, 0);
             self.set_off(storage, off.overflowing_add(1).0);
             item
         } else {
-            Err(StdError::generic_err("Can not pop from empty DequeStore"))
+            Err(StdError::generic_err("cannot pop from empty deque_store"))
         }
     }
 
@@ -231,26 +314,80 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         let off = self.get_off(storage)?;
         let len = self.get_len(storage)?;
         if pos >= len {
-            return Err(StdError::generic_err("DequeStorage access out of bounds"));
+            return Err(StdError::generic_err("deque_store access out of bounds"));
         }
-        let item = self.get_at_unchecked(storage, pos);
+        let res;
         let to_tail = len - pos;
         if to_tail < pos {
+            let past_offset_pos = self.get_offset_pos(storage, pos)?;
+            let mut past_indexes_page = past_offset_pos / self.page_size;
+            let mut past_index_pos = past_offset_pos % self.page_size;
+            let mut past_indexes = self.get_indexes(storage, past_indexes_page)?;
+            res = Ser::deserialize(
+                &past_indexes
+                    .remove(&past_index_pos)
+                    .ok_or_else(|| StdError::generic_err("item not found at this index"))?,
+            );
             // closer to the tail
-            for i in pos..(len - 1) {
-                let element_to_shift = self.get_at_unchecked(storage, i + 1)?;
-                self.set_at_unchecked(storage, i, &element_to_shift)?;
+            for i in (pos + 1)..len {
+                let offset_pos = self.get_offset_pos(storage, i)?;
+                let current_page = offset_pos / self.page_size;
+                let index_pos = offset_pos % self.page_size;
+                if current_page != past_indexes_page {
+                    let mut indexes = self.get_indexes(storage, current_page)?;
+                    let item_data = indexes
+                        .remove(&index_pos)
+                        .ok_or_else(|| StdError::generic_err("item not found at this index"))?;
+                    past_indexes.insert(past_index_pos, item_data);
+                    self.set_indexes_page(storage, past_indexes_page, &past_indexes)?;
+                    past_indexes = indexes;
+                } else {
+                    let item_data_move_down = past_indexes
+                        .remove(&index_pos)
+                        .ok_or_else(|| StdError::generic_err("item not found at this index"))?;
+                    past_indexes.insert(past_index_pos, item_data_move_down);
+                }
+                past_indexes_page = current_page;
+                past_index_pos = index_pos;
             }
+            self.set_indexes_page(storage, past_indexes_page, &past_indexes)?;
         } else {
+            let past_offset_pos = self.get_offset_pos(storage, pos)?;
+            let mut past_indexes_page = past_offset_pos / self.page_size;
+            let mut past_index_pos = past_offset_pos % self.page_size;
+            let mut past_indexes = self.get_indexes(storage, past_indexes_page)?;
+            res = Ser::deserialize(
+                &past_indexes
+                    .remove(&past_index_pos)
+                    .ok_or_else(|| StdError::generic_err("item not found at this index"))?,
+            );
             // closer to the head
             for i in (0..pos).rev() {
-                let element_to_shift = self.get_at_unchecked(storage, i)?;
-                self.set_at_unchecked(storage, i + 1, &element_to_shift)?;
+                let offset_pos = self.get_offset_pos(storage, i)?;
+                let current_page = offset_pos / self.page_size;
+                let index_pos = offset_pos % self.page_size;
+                if current_page != past_indexes_page {
+                    let mut indexes = self.get_indexes(storage, current_page)?;
+                    let item_data = indexes
+                        .remove(&index_pos)
+                        .ok_or_else(|| StdError::generic_err("item not found at this index"))?;
+                    past_indexes.insert(past_index_pos, item_data);
+                    self.set_indexes_page(storage, past_indexes_page, &past_indexes)?;
+                    past_indexes = indexes;
+                } else {
+                    let item_data_move_up = past_indexes
+                        .remove(&index_pos)
+                        .ok_or_else(|| StdError::generic_err("item not found at this index"))?;
+                    past_indexes.insert(past_index_pos, item_data_move_up);
+                }
+                past_indexes_page = current_page;
+                past_index_pos = index_pos;
             }
+            self.set_indexes_page(storage, past_indexes_page, &past_indexes)?;
             self.set_off(storage, off.overflowing_add(1).0);
         }
         self.set_len(storage, len - 1);
-        item
+        res
     }
 
     /// Returns a readonly iterator
@@ -269,45 +406,6 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 }
 
-impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
-    fn as_slice(&self) -> &[u8] {
-        if let Some(prefix) = &self.prefix {
-            prefix
-        } else {
-            self.namespace
-        }
-    }
-
-    /// Returns StdResult<T> from retrieving the item with the specified key.  Returns a
-    /// StdError::NotFound if there is no item with that key
-    ///
-    /// # Arguments
-    ///
-    /// * `storage` - a reference to the storage this item is in
-    /// * `key` - a byte slice representing the key to access the stored item
-    fn load_impl(&self, storage: &dyn Storage, key: &[u8]) -> StdResult<T> {
-        let prefixed_key = [self.as_slice(), key].concat();
-        Ser::deserialize(
-            &storage
-                .get(&prefixed_key)
-                .ok_or_else(|| StdError::not_found(type_name::<T>()))?,
-        )
-    }
-
-    /// Returns StdResult<()> resulting from saving an item to storage
-    ///
-    /// # Arguments
-    ///
-    /// * `storage` - a mutable reference to the storage this item should go to
-    /// * `key` - a byte slice representing the key to access the stored item
-    /// * `value` - a reference to the item to store
-    fn save_impl(&self, storage: &mut dyn Storage, key: &[u8], value: &T) -> StdResult<()> {
-        let prefixed_key = [self.as_slice(), key].concat();
-        storage.set(&prefixed_key, &Ser::serialize(value)?);
-        Ok(())
-    }
-}
-
 /// An iterator over the contents of the deque store.
 pub struct DequeStoreIter<'a, T, Ser>
 where
@@ -318,6 +416,7 @@ where
     storage: &'a dyn Storage,
     start: u32,
     end: u32,
+    cache: HashMap<u32, HashMap<u32, Vec<u8>>>,
 }
 
 impl<'a, T, Ser> DequeStoreIter<'a, T, Ser>
@@ -337,6 +436,7 @@ where
             storage,
             start,
             end,
+            cache: HashMap::new(),
         }
     }
 }
@@ -352,7 +452,38 @@ where
         if self.start >= self.end {
             return None;
         }
-        let item = self.deque_store.get_at(self.storage, self.start);
+        let item;
+        match self.deque_store.get_offset_pos(self.storage, self.start) {
+            Ok(offset_pos) => {
+                let indexes_page = offset_pos / self.deque_store.page_size;
+                let index_pos = offset_pos % self.deque_store.page_size;
+                match self.cache.get(&indexes_page) {
+                    Some(indexes) => {
+                        if let Some(item_data) = indexes.get(&index_pos) {
+                            item = Ser::deserialize(item_data);
+                        } else {
+                            item = Err(StdError::generic_err("item not found at this index"));
+                        }
+                    }
+                    None => match self.deque_store.get_indexes(self.storage, indexes_page) {
+                        Ok(indexes) => {
+                            if let Some(item_data) = indexes.get(&index_pos) {
+                                item = Ser::deserialize(item_data);
+                            } else {
+                                item = Err(StdError::generic_err("item not found at this index"));
+                            }
+                            self.cache.insert(indexes_page, indexes);
+                        }
+                        Err(e) => {
+                            item = Err(e);
+                        }
+                    },
+                }
+            }
+            Err(e) => {
+                item = Err(e);
+            }
+        }
         self.start += 1;
         Some(item)
     }
@@ -385,7 +516,38 @@ where
             return None;
         }
         self.end -= 1;
-        let item = self.deque_store.get_at(self.storage, self.end);
+        let item;
+        match self.deque_store.get_offset_pos(self.storage, self.end) {
+            Ok(offset_pos) => {
+                let indexes_page = offset_pos / self.deque_store.page_size;
+                let index_pos = offset_pos % self.deque_store.page_size;
+                match self.cache.get(&indexes_page) {
+                    Some(indexes) => {
+                        if let Some(item_data) = indexes.get(&index_pos) {
+                            item = Ser::deserialize(item_data);
+                        } else {
+                            item = Err(StdError::generic_err("item not found at this index"));
+                        }
+                    }
+                    None => match self.deque_store.get_indexes(self.storage, indexes_page) {
+                        Ok(indexes) => {
+                            if let Some(item_data) = indexes.get(&index_pos) {
+                                item = Ser::deserialize(item_data);
+                            } else {
+                                item = Err(StdError::generic_err("item not found at this index"));
+                            }
+                            self.cache.insert(indexes_page, indexes);
+                        }
+                        Err(e) => {
+                            item = Err(e);
+                        }
+                    },
+                }
+            }
+            Err(e) => {
+                item = Err(e);
+            }
+        }
         Some(item)
     }
 
@@ -419,8 +581,16 @@ mod tests {
 
     #[test]
     fn test_pushs_pops() -> StdResult<()> {
+        test_pushs_pops_with_size(1)?;
+        test_pushs_pops_with_size(2)?;
+        test_pushs_pops_with_size(5)?;
+        test_pushs_pops_with_size(13)?;
+        Ok(())
+    }
+
+    fn test_pushs_pops_with_size(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: DequeStore<i32> = DequeStore::new(b"test");
+        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", page_size);
         deque_store.push_front(&mut storage, &4)?;
         deque_store.push_back(&mut storage, &5)?;
         deque_store.push_front(&mut storage, &3)?;
@@ -444,8 +614,42 @@ mod tests {
 
     #[test]
     fn test_removes() -> StdResult<()> {
+        test_removes_with_page_size(1)?;
+        test_removes_with_page_size(3)?;
+        test_removes_with_page_size(5)?;
+        test_removes_with_page_size(7)?;
+        test_removes_with_page_size(13)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove() -> StdResult<()> {
         let mut storage = MockStorage::new();
         let deque_store: DequeStore<i32> = DequeStore::new(b"test");
+        deque_store.push_front(&mut storage, &2143)?;
+        deque_store.push_back(&mut storage, &3412)?;
+        deque_store.push_back(&mut storage, &3333)?;
+        deque_store.push_front(&mut storage, &1234)?;
+        deque_store.push_back(&mut storage, &4321)?;
+
+        assert_eq!(deque_store.get_len(&storage), Ok(5));
+
+        assert_eq!(deque_store.remove(&mut storage, 3), Ok(3333));
+
+        assert_eq!(deque_store.get_len(&storage), Ok(4));
+
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1234));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(2143));
+        assert_eq!(deque_store.get_at(&storage, 2), Ok(3412));
+        assert_eq!(deque_store.get_at(&storage, 3), Ok(4321));
+
+        Ok(())
+    }
+
+    fn test_removes_with_page_size(size: u32) -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", size);
         deque_store.push_front(&mut storage, &2)?;
         deque_store.push_back(&mut storage, &3)?;
         deque_store.push_back(&mut storage, &4)?;
@@ -507,6 +711,113 @@ mod tests {
     }
 
     #[test]
+    fn test_overwrite() -> StdResult<()> {
+        test_overwrite_with_page_size(1)?;
+        test_overwrite_with_page_size(6)?;
+        test_overwrite_with_page_size(9)?;
+        test_overwrite_with_page_size(13)?;
+        test_overwrite_with_page_size(27)?;
+
+        Ok(())
+    }
+
+    fn test_overwrite_with_page_size(size: u32) -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", size);
+        deque_store.push_front(&mut storage, &2)?;
+        deque_store.push_back(&mut storage, &3)?;
+        deque_store.push_back(&mut storage, &4)?;
+        deque_store.push_back(&mut storage, &5)?;
+        deque_store.push_back(&mut storage, &6)?;
+        deque_store.push_front(&mut storage, &1)?;
+        deque_store.push_back(&mut storage, &7)?;
+        deque_store.push_back(&mut storage, &8)?;
+
+        assert!(deque_store.remove(&mut storage, 8).is_err());
+        assert!(deque_store.remove(&mut storage, 9).is_err());
+
+        assert_eq!(deque_store.remove(&mut storage, 7), Ok(8));
+        assert_eq!(deque_store.get_at(&storage, 6), Ok(7));
+        assert_eq!(deque_store.get_at(&storage, 5), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 4), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 3), Ok(4));
+        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        assert_eq!(deque_store.remove(&mut storage, 6), Ok(7));
+        assert_eq!(deque_store.get_at(&storage, 5), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 4), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 3), Ok(4));
+        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        assert_eq!(deque_store.remove(&mut storage, 3), Ok(4));
+        assert_eq!(deque_store.get_at(&storage, 4), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 3), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert!(deque_store.get_at(&storage, 5).is_err());
+
+        deque_store.push_back(&mut storage, &5)?;
+        assert_eq!(deque_store.get_at(&storage, 5), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 4), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 3), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        assert_eq!(deque_store.remove(&mut storage, 1), Ok(2));
+        assert_eq!(deque_store.get_at(&storage, 4), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 3), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 2), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(3));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        assert_eq!(deque_store.remove(&mut storage, 2), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 3), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 2), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(3));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        assert_eq!(deque_store.remove(&mut storage, 1), Ok(3));
+        assert_eq!(deque_store.get_at(&storage, 2), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        assert_eq!(deque_store.remove(&mut storage, 1), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        assert_eq!(deque_store.remove(&mut storage, 0), Ok(1));
+        assert_eq!(deque_store.remove(&mut storage, 0), Ok(5));
+
+        assert!(deque_store.remove(&mut storage, 0).is_err());
+
+        deque_store.push_front(&mut storage, &2)?;
+        deque_store.push_back(&mut storage, &3)?;
+        deque_store.push_back(&mut storage, &4)?;
+        deque_store.push_back(&mut storage, &5)?;
+        deque_store.push_back(&mut storage, &6)?;
+        deque_store.push_front(&mut storage, &1)?;
+        deque_store.push_back(&mut storage, &7)?;
+        deque_store.push_back(&mut storage, &8)?;
+
+        assert_eq!(deque_store.get_at(&storage, 7), Ok(8));
+        assert_eq!(deque_store.get_at(&storage, 6), Ok(7));
+        assert_eq!(deque_store.get_at(&storage, 5), Ok(6));
+        assert_eq!(deque_store.get_at(&storage, 4), Ok(5));
+        assert_eq!(deque_store.get_at(&storage, 3), Ok(4));
+        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
+        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
+        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+
+        Ok(())
+    }
+
+    #[test]
     fn test_iterator() -> StdResult<()> {
         let mut storage = MockStorage::new();
         let deque_store: DequeStore<i32> = DequeStore::new(b"test");
@@ -545,15 +856,24 @@ mod tests {
 
     #[test]
     fn test_reverse_iterator() -> StdResult<()> {
+        test_reverse_iterator_with_size(1)?;
+        test_reverse_iterator_with_size(3)?;
+        test_reverse_iterator_with_size(4)?;
+        test_reverse_iterator_with_size(5)?;
+        test_reverse_iterator_with_size(17)?;
+        Ok(())
+    }
+
+    fn test_reverse_iterator_with_size(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: DequeStore<i32> = DequeStore::new(b"test");
+        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", page_size);
         deque_store.push_front(&mut storage, &2143)?;
         deque_store.push_back(&mut storage, &3412)?;
         deque_store.push_back(&mut storage, &3333)?;
         deque_store.push_front(&mut storage, &1234)?;
         deque_store.push_back(&mut storage, &4321)?;
 
-        deque_store.remove(&mut storage, 3)?;
+        assert_eq!(deque_store.remove(&mut storage, 3), Ok(3333));
 
         let mut iter = deque_store.iter(&storage)?.rev();
         assert_eq!(iter.next(), Some(Ok(4321)));
@@ -587,24 +907,47 @@ mod tests {
 
     #[test]
     fn test_serializations() -> StdResult<()> {
+        test_serializations_with_page_size(1)?;
+        test_serializations_with_page_size(2)?;
+        test_serializations_with_page_size(5)?;
+        Ok(())
+    }
+
+    fn test_serializations_with_page_size(page_size: u32) -> StdResult<()> {
         // Check the default behavior is Bincode2
         let mut storage = MockStorage::new();
 
-        let deque_store: DequeStore<i32> = DequeStore::new(b"test");
+        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", page_size);
         deque_store.push_back(&mut storage, &1234)?;
 
-        let key = [deque_store.as_slice(), &0_u32.to_be_bytes()].concat();
-        let bytes = storage.get(&key);
-        assert_eq!(bytes, Some(vec![210, 4, 0, 0]));
+        let key = [deque_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
+        if deque_store.page_size == 1 {
+            let item_data = storage.get(&key);
+            assert_eq!(item_data, Some(Bincode2::serialize(&1234)?));
+        } else {
+            let bytes = storage.get(&key);
+            let mut expected: HashMap<u32, Vec<u8>> = HashMap::new();
+            expected.insert(0_u32, Bincode2::serialize(&1234)?);
+            assert_eq!(bytes, Some(Bincode2::serialize(&expected)?));
+        }
 
         // Check that overriding the serializer with Json works
         let mut storage = MockStorage::new();
-        let json_deque_store: DequeStore<i32, Json> = DequeStore::new(b"test2");
+        let json_deque_store: DequeStore<i32, Json> =
+            DequeStore::new_with_page_size(b"test2", page_size);
         json_deque_store.push_back(&mut storage, &1234)?;
 
-        let key = [json_deque_store.as_slice(), &0_u32.to_be_bytes()].concat();
-        let bytes = storage.get(&key);
-        assert_eq!(bytes, Some(b"1234".to_vec()));
+        let key = [json_deque_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
+
+        if deque_store.page_size == 1 {
+            let item_data = storage.get(&key);
+            assert_eq!(item_data, Some(b"1234".to_vec()));
+        } else {
+            let bytes = storage.get(&key);
+            let mut expected: HashMap<u32, Vec<u8>> = HashMap::new();
+            expected.insert(0_u32, b"1234".to_vec());
+            assert_eq!(bytes, Some(Bincode2::serialize(&expected)?));
+        }
 
         Ok(())
     }

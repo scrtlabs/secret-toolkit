@@ -96,7 +96,7 @@ assert_eq!(heap_store.remove(), Ok(Tx{
 
 Also known as a slot map, a generational index storage is an iterable data structure where each element in the list is identified by a unique key that is a pair (index, generation). Each time an item is removed from the list the generation of the storage increments by one. If a new item is placed at the same index as a previous item which had been removed previously, the old references will not point to the new element. This is because although the index matches, the generation does not. This ensures that each reference to an element in the list is stable and safe.
 
-Starting with an empty set, if we insert A we will have key: (index: 0, generation: 0). Inserting B will have the key: (index: 1, generation: 0). When we remove A the generation will increment by 1 and index 0 will be freed up. When we insert C it will go to the head of our list of free slots and be given the key (index: 0, generation: 1). If you attempt to get A the result will be None, even though A and C have both been at "0" position in the list. 
+Starting with an empty set, if we insert A we will have key: (index: 0, generation: 0). Inserting B will have the key: (index: 1, generation: 0). When we remove A the generation will increment by 1 and index 0 will be freed up. When we insert C it will go to the head of our list of free slots and be given the key (index: 0, generation: 1). If you attempt to get A the result will be None, even though A and C have both been at "0" position in the list.
 
 Unlike AppendStore, iteration over a generational index storage is not in order of insertion.
 

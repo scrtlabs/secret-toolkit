@@ -1058,7 +1058,7 @@ mod tests {
         let test_msg = approve_msg(
             spender.clone(),
             token_id.clone(),
-            expires.clone(),
+            expires,
             padding.clone(),
             256usize,
             code_hash.clone(),
@@ -1123,7 +1123,7 @@ mod tests {
 
         let test_msg = approve_all_msg(
             operator.clone(),
-            expires.clone(),
+            expires,
             padding.clone(),
             256usize,
             code_hash.clone(),
@@ -1189,7 +1189,7 @@ mod tests {
             view_owner.clone(),
             view_private_metadata.clone(),
             transfer.clone(),
-            expires.clone(),
+            expires,
             padding.clone(),
             256usize,
             code_hash.clone(),
@@ -1225,7 +1225,7 @@ mod tests {
 
         let test_msg = register_receive_nft_msg(
             code_hash.clone(),
-            also_implements_batch_receive_nft.clone(),
+            also_implements_batch_receive_nft,
             padding.clone(),
             256usize,
             callback_code_hash.clone(),
@@ -1805,7 +1805,7 @@ mod tests {
             token_id.clone(),
             view_owner.clone(),
             view_private_metadata.clone(),
-            expires.clone(),
+            expires,
             padding.clone(),
             256usize,
             code_hash.clone(),

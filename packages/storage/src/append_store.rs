@@ -3,10 +3,9 @@
 //!
 //! This is achieved by storing each item in a separate storage entry. A special key is reserved
 //! for storing the length of the collection so far.
-use std::any::type_name;
-use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::sync::Mutex;
+use std::{collections::HashMap, convert::TryInto};
 
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -15,7 +14,10 @@ use cosmwasm_storage::to_length_prefixed;
 
 use secret_toolkit_serialization::{Bincode2, Serde};
 
+const INDEXES: &[u8] = b"indexes";
 const LEN_KEY: &[u8] = b"len";
+
+const DEFAULT_PAGE_SIZE: u32 = 1;
 
 pub struct AppendStore<'a, T, Ser = Bincode2>
 where
@@ -26,6 +28,7 @@ where
     namespace: &'a [u8],
     /// needed if any suffixes were added to the original namespace.
     prefix: Option<Vec<u8>>,
+    page_size: u32,
     length: Mutex<Option<u32>>,
     item_type: PhantomData<T>,
     serialization_type: PhantomData<Ser>,
@@ -33,10 +36,25 @@ where
 
 impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     /// constructor
-    pub const fn new(prefix: &'a [u8]) -> Self {
+    pub const fn new(namespace: &'a [u8]) -> Self {
         Self {
-            namespace: prefix,
+            namespace,
             prefix: None,
+            page_size: DEFAULT_PAGE_SIZE,
+            length: Mutex::new(None),
+            item_type: PhantomData,
+            serialization_type: PhantomData,
+        }
+    }
+
+    pub const fn new_with_page_size(namespace: &'a [u8], page_size: u32) -> Self {
+        if page_size == 0 {
+            panic!("zero index page size used in append_store")
+        }
+        Self {
+            namespace,
+            prefix: None,
+            page_size,
             length: Mutex::new(None),
             item_type: PhantomData,
             serialization_type: PhantomData,
@@ -52,6 +70,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         Self {
             namespace: self.namespace,
             prefix: Some(prefix),
+            page_size: self.page_size,
             length: Mutex::new(None),
             item_type: self.item_type,
             serialization_type: self.serialization_type,
@@ -60,6 +79,56 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
 }
 
 impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
+    fn as_slice(&self) -> &[u8] {
+        if let Some(prefix) = &self.prefix {
+            prefix
+        } else {
+            self.namespace
+        }
+    }
+
+    fn page_from_position(&self, position: u32) -> u32 {
+        position / self.page_size
+    }
+
+    /// Used to get the indexes stored in the given page number
+    fn get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<Vec<Vec<u8>>> {
+        let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
+        if self.page_size == 1 {
+            let maybe_item_data = storage.get(&indexes_key);
+            match maybe_item_data {
+                Some(item_data) => Ok(vec![item_data]),
+                None => Ok(vec![]),
+            }
+        } else {
+            let maybe_serialized = storage.get(&indexes_key);
+            match maybe_serialized {
+                Some(serialized) => Bincode2::deserialize(&serialized),
+                None => Ok(vec![]),
+            }
+        }
+    }
+
+    /// Set an indexes page
+    fn set_indexes_page(
+        &self,
+        storage: &mut dyn Storage,
+        page: u32,
+        indexes: &Vec<Vec<u8>>,
+    ) -> StdResult<()> {
+        let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
+        if self.page_size == 1 {
+            if let Some(item_data) = indexes.first() {
+                storage.set(&indexes_key, item_data);
+            } else {
+                storage.remove(&indexes_key);
+            }
+        } else {
+            storage.set(&indexes_key, &Bincode2::serialize(indexes)?);
+        }
+        Ok(())
+    }
+
     /// gets the length from storage, and otherwise sets it to 0
     pub fn get_len(&self, storage: &dyn Storage) -> StdResult<u32> {
         let mut may_len = self.length.lock().unwrap();
@@ -92,15 +161,18 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     pub fn get_at(&self, storage: &dyn Storage, pos: u32) -> StdResult<T> {
         let len = self.get_len(storage)?;
         if pos > len {
-            return Err(StdError::generic_err("AppendStore access out of bounds"));
+            return Err(StdError::generic_err("append_store access out of bounds"));
         }
         self.get_at_unchecked(storage, pos)
     }
 
     /// tries to get the element at pos
     fn get_at_unchecked(&self, storage: &dyn Storage, pos: u32) -> StdResult<T> {
-        let key = pos.to_be_bytes();
-        self.load_impl(storage, &key)
+        let page = self.page_from_position(pos);
+        let indexes = self.get_indexes(storage, page)?;
+        let index_pos = (pos % self.page_size) as usize;
+        let item_data = &indexes[index_pos];
+        Ser::deserialize(item_data)
     }
 
     /// Set the length of the collection
@@ -121,14 +193,23 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     pub fn set_at(&self, storage: &mut dyn Storage, pos: u32, item: &T) -> StdResult<()> {
         let len = self.get_len(storage)?;
         if pos >= len {
-            return Err(StdError::generic_err("AppendStore access out of bounds"));
+            return Err(StdError::generic_err("append_store access out of bounds"));
         }
         self.set_at_unchecked(storage, pos, item)
     }
 
     /// Sets data at a given index
     fn set_at_unchecked(&self, storage: &mut dyn Storage, pos: u32, item: &T) -> StdResult<()> {
-        self.save_impl(storage, &pos.to_be_bytes(), item)
+        let page = self.page_from_position(pos);
+        let mut indexes = self.get_indexes(storage, page)?;
+        let index_pos = (pos % self.page_size) as usize;
+        let item_data = Ser::serialize(item)?;
+        if indexes.len() > index_pos {
+            indexes[index_pos] = item_data
+        } else {
+            indexes.push(item_data)
+        }
+        self.set_indexes_page(storage, page, &indexes)
     }
 
     /// Pushes an item to AppendStorage
@@ -142,11 +223,10 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     /// Pops an item from AppendStore
     pub fn pop(&self, storage: &mut dyn Storage) -> StdResult<T> {
         if let Some(len) = self.get_len(storage)?.checked_sub(1) {
-            let item = self.get_at_unchecked(storage, len);
             self.set_len(storage, len);
-            item
+            self.get_at_unchecked(storage, len)
         } else {
-            Err(StdError::generic_err("Can not pop from empty AppendStore"))
+            Err(StdError::generic_err("cannot pop from empty append_store"))
         }
     }
 
@@ -162,16 +242,42 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         let len = self.get_len(storage)?;
 
         if pos >= len {
-            return Err(StdError::generic_err("DequeStorage access out of bounds"));
+            return Err(StdError::generic_err("append_store access out of bounds"));
         }
-        let item = self.get_at_unchecked(storage, pos);
+        let max_pos = len - 1;
+        let max_page = self.page_from_position(max_pos);
+        let pos_page = self.page_from_position(pos);
 
-        for i in pos..(len - 1) {
-            let element_to_shift = self.get_at_unchecked(storage, i + 1)?;
-            self.set_at_unchecked(storage, i, &element_to_shift)?;
+        match pos_page.cmp(&max_page) {
+            std::cmp::Ordering::Less => {
+                // shift items from indexes to indexes
+                let mut past_indexes: Vec<Vec<u8>> = self.get_indexes(storage, pos_page)?;
+                let item_data = past_indexes.remove((pos % self.page_size) as usize);
+                // loop on
+                for page in (pos_page + 1)..=max_page {
+                    let mut indexes: Vec<Vec<u8>> = self.get_indexes(storage, page)?;
+                    let next_item_data = indexes.remove(0);
+                    past_indexes.push(next_item_data);
+                    self.set_indexes_page(storage, page - 1, &past_indexes)?;
+                    past_indexes = indexes;
+                }
+                // here past_indexes will have become the max_page indexes
+                self.set_indexes_page(storage, max_page, &past_indexes)?;
+                self.set_len(storage, max_pos);
+                Ser::deserialize(&item_data)
+            }
+            std::cmp::Ordering::Equal => {
+                // if the pos is in the last indexes page
+                let mut indexes = self.get_indexes(storage, pos_page)?;
+                let item_data = indexes.remove((pos % self.page_size) as usize);
+                self.set_indexes_page(storage, pos_page, &indexes)?;
+                self.set_len(storage, max_pos);
+                Ser::deserialize(&item_data)
+            }
+            std::cmp::Ordering::Greater => {
+                Err(StdError::generic_err("append_store access out of bounds"))
+            }
         }
-        self.set_len(storage, len - 1);
-        item
     }
 
     /// Returns a readonly iterator
@@ -190,45 +296,6 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     }
 }
 
-impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
-    fn as_slice(&self) -> &[u8] {
-        if let Some(prefix) = &self.prefix {
-            prefix
-        } else {
-            self.namespace
-        }
-    }
-
-    /// Returns StdResult<T> from retrieving the item with the specified key.  Returns a
-    /// StdError::NotFound if there is no item with that key
-    ///
-    /// # Arguments
-    ///
-    /// * `storage` - a reference to the storage this item is in
-    /// * `key` - a byte slice representing the key to access the stored item
-    fn load_impl(&self, storage: &dyn Storage, key: &[u8]) -> StdResult<T> {
-        let prefixed_key = [self.as_slice(), key].concat();
-        Ser::deserialize(
-            &storage
-                .get(&prefixed_key)
-                .ok_or_else(|| StdError::not_found(type_name::<T>()))?,
-        )
-    }
-
-    /// Returns StdResult<()> resulting from saving an item to storage
-    ///
-    /// # Arguments
-    ///
-    /// * `storage` - a mutable reference to the storage this item should go to
-    /// * `key` - a byte slice representing the key to access the stored item
-    /// * `value` - a reference to the item to store
-    fn save_impl(&self, storage: &mut dyn Storage, key: &[u8], value: &T) -> StdResult<()> {
-        let prefixed_key = [self.as_slice(), key].concat();
-        storage.set(&prefixed_key, &Ser::serialize(value)?);
-        Ok(())
-    }
-}
-
 /// An iterator over the contents of the append store.
 pub struct AppendStoreIter<'a, T, Ser>
 where
@@ -239,6 +306,7 @@ where
     storage: &'a dyn Storage,
     start: u32,
     end: u32,
+    cache: HashMap<u32, Vec<Vec<u8>>>,
 }
 
 impl<'a, T, Ser> AppendStoreIter<'a, T, Ser>
@@ -258,6 +326,7 @@ where
             storage,
             start,
             end,
+            cache: HashMap::new(),
         }
     }
 }
@@ -273,7 +342,26 @@ where
         if self.start >= self.end {
             return None;
         }
-        let item = self.append_store.get_at(self.storage, self.start);
+        let item;
+        let page = self.append_store.page_from_position(self.start);
+        let indexes_pos = (self.start % self.append_store.page_size) as usize;
+
+        match self.cache.get(&page) {
+            Some(indexes) => {
+                let item_data = &indexes[indexes_pos];
+                item = Ser::deserialize(item_data);
+            }
+            None => match self.append_store.get_indexes(self.storage, page) {
+                Ok(indexes) => {
+                    let item_data = &indexes[indexes_pos];
+                    item = Ser::deserialize(item_data);
+                    self.cache.insert(page, indexes);
+                }
+                Err(e) => {
+                    item = Err(e);
+                }
+            },
+        }
         self.start += 1;
         Some(item)
     }
@@ -306,7 +394,25 @@ where
             return None;
         }
         self.end -= 1;
-        let item = self.append_store.get_at(self.storage, self.end);
+        let item;
+        let page = self.append_store.page_from_position(self.end);
+        let indexes_pos = (self.end % self.append_store.page_size) as usize;
+        match self.cache.get(&page) {
+            Some(indexes) => {
+                let item_data = &indexes[indexes_pos];
+                item = Ser::deserialize(item_data);
+            }
+            None => match self.append_store.get_indexes(self.storage, page) {
+                Ok(indexes) => {
+                    let item_data = &indexes[indexes_pos];
+                    item = Ser::deserialize(item_data);
+                    self.cache.insert(page, indexes);
+                }
+                Err(e) => {
+                    item = Err(e);
+                }
+            },
+        }
         Some(item)
     }
 
@@ -359,10 +465,10 @@ mod tests {
     #[test]
     fn test_length() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let append_store: AppendStore<i32> = AppendStore::new(b"test");
+        let append_store: AppendStore<i32> = AppendStore::new_with_page_size(b"test", 3);
 
         assert!(append_store.length.lock().unwrap().eq(&None));
-        assert_eq!(append_store.get_len(&mut storage)?, 0);
+        assert_eq!(append_store.get_len(&storage)?, 0);
         assert!(append_store.length.lock().unwrap().eq(&Some(0)));
 
         append_store.push(&mut storage, &1234)?;
@@ -370,21 +476,21 @@ mod tests {
         append_store.push(&mut storage, &3412)?;
         append_store.push(&mut storage, &4321)?;
         assert!(append_store.length.lock().unwrap().eq(&Some(4)));
-        assert_eq!(append_store.get_len(&mut storage)?, 4);
+        assert_eq!(append_store.get_len(&storage)?, 4);
 
         assert_eq!(append_store.pop(&mut storage), Ok(4321));
         assert_eq!(append_store.pop(&mut storage), Ok(3412));
         assert!(append_store.length.lock().unwrap().eq(&Some(2)));
-        assert_eq!(append_store.get_len(&mut storage)?, 2);
+        assert_eq!(append_store.get_len(&storage)?, 2);
 
         assert_eq!(append_store.pop(&mut storage), Ok(2143));
         assert_eq!(append_store.pop(&mut storage), Ok(1234));
         assert!(append_store.length.lock().unwrap().eq(&Some(0)));
-        assert_eq!(append_store.get_len(&mut storage)?, 0);
+        assert_eq!(append_store.get_len(&storage)?, 0);
 
         assert!(append_store.pop(&mut storage).is_err());
         assert!(append_store.length.lock().unwrap().eq(&Some(0)));
-        assert_eq!(append_store.get_len(&mut storage)?, 0);
+        assert_eq!(append_store.get_len(&storage)?, 0);
 
         Ok(())
     }
@@ -501,9 +607,16 @@ mod tests {
 
     #[test]
     fn test_suffixed_reverse_iter() -> StdResult<()> {
+        test_suffixed_reverse_iter_with_size(1)?;
+        test_suffixed_reverse_iter_with_size(3)?;
+        test_suffixed_reverse_iter_with_size(5)?;
+        Ok(())
+    }
+
+    fn test_suffixed_reverse_iter_with_size(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
         let suffix: &[u8] = b"test_suffix";
-        let original_store: AppendStore<i32> = AppendStore::new(b"test");
+        let original_store: AppendStore<i32> = AppendStore::new_with_page_size(b"test", page_size);
         let append_store = original_store.add_suffix(suffix);
 
         append_store.push(&mut storage, &1234)?;
@@ -581,32 +694,64 @@ mod tests {
 
     #[test]
     fn test_serializations() -> StdResult<()> {
+        test_serializations_with_page_size(1)?;
+        test_serializations_with_page_size(3)?;
+        test_serializations_with_page_size(5)?;
+        Ok(())
+    }
+
+    fn test_serializations_with_page_size(page_size: u32) -> StdResult<()> {
         // Check the default behavior is Bincode2
         let mut storage = MockStorage::new();
 
-        let append_store: AppendStore<i32> = AppendStore::new(b"test");
+        let append_store: AppendStore<i32> = AppendStore::new_with_page_size(b"test", page_size);
         append_store.push(&mut storage, &1234)?;
 
-        let key = [append_store.as_slice(), &0_u32.to_be_bytes()].concat();
-        let bytes = storage.get(&key);
-        assert_eq!(bytes, Some(vec![210, 4, 0, 0]));
+        let key = [append_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
+        if append_store.page_size == 1 {
+            let item_data = storage.get(&key);
+            let expected_data = Bincode2::serialize(&1234)?;
+            assert_eq!(item_data, Some(expected_data));
+        } else {
+            let bytes = storage.get(&key);
+            let expected = Bincode2::serialize(&vec![Bincode2::serialize(&1234)?])?;
+            assert_eq!(bytes, Some(expected));
+        }
 
         // Check that overriding the serializer with Json works
         let mut storage = MockStorage::new();
-        let json_append_store: AppendStore<i32, Json> = AppendStore::new(b"test2");
+        let json_append_store: AppendStore<i32, Json> =
+            AppendStore::new_with_page_size(b"test2", page_size);
         json_append_store.push(&mut storage, &1234)?;
 
-        let key = [json_append_store.as_slice(), &0_u32.to_be_bytes()].concat();
-        let bytes = storage.get(&key);
-        assert_eq!(bytes, Some(b"1234".to_vec()));
+        let key = [json_append_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
+        if json_append_store.page_size == 1 {
+            let item_data = storage.get(&key);
+            let expected_data = b"1234".to_vec();
+            assert_eq!(item_data, Some(expected_data));
+        } else {
+            let bytes = storage.get(&key);
+            let expected = Bincode2::serialize(&vec![b"1234".to_vec()])?;
+            assert_eq!(bytes, Some(expected));
+        }
 
         Ok(())
     }
 
     #[test]
     fn test_removes() -> StdResult<()> {
+        test_removes_with_size(1)?;
+        test_removes_with_size(2)?;
+        test_removes_with_size(7)?;
+        test_removes_with_size(8)?;
+        test_removes_with_size(13)?;
+
+        Ok(())
+    }
+
+    fn test_removes_with_size(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: AppendStore<i32> = AppendStore::new(b"test");
+        let deque_store: AppendStore<i32> = AppendStore::new_with_page_size(b"test", page_size);
         deque_store.push(&mut storage, &1)?;
         deque_store.push(&mut storage, &2)?;
         deque_store.push(&mut storage, &3)?;
