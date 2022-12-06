@@ -1,6 +1,5 @@
 # Release notes for the Secret Toolkit
 
-
 ## v0.7.0
 
 - This release changes the internal toolkit package to be part of the workspace - this fixes default-features flags in some of the crates. In addition, crates used by the toolkit have been bumped, and the edition of the toolkit crates has been bumped to 2021.
