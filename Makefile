@@ -21,3 +21,4 @@ publish:
 	cargo publish -p secret-toolkit-snip721
 	cargo publish -p secret-toolkit-storage
 	cargo publish -p secret-toolkit-viewing-key
+	cargo publish
