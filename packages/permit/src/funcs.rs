@@ -31,7 +31,7 @@ pub fn validate<Permission: Permissions>(
     let pubkey = &permit.signature.pub_key.value;
 
     let base32_addr = pubkey_to_account(pubkey).0.as_slice().to_base32();
-    let account: String = bech32::encode(account_hrp, &base32_addr, Variant::Bech32).unwrap();
+    let account: String = bech32::encode(account_hrp, base32_addr, Variant::Bech32).unwrap();
 
     // Validate permit_name
     let permit_name = &permit.params.permit_name;
