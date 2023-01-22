@@ -27,3 +27,4 @@ cosmwasm-std = { workspace = true }
 
 [dev-dependencies]
 secp256k1 = { version = "0.24.1", default-features = false, features=["alloc", "rand-std"] }
+base64 = "0.21.0"

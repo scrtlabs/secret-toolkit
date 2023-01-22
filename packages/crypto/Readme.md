@@ -17,7 +17,7 @@ secret-toolkit-crypto = { version = "0.7.0", features = ["hash", "rand", "ecc-se
 
 ## Example usage
 
-```ignore
+```rust
 # extern crate secret_toolkit_crypto;
 
 # use secret_toolkit_crypto::{sha_256, Prng, secp256k1::{PrivateKey, PublicKey, Signature}};
@@ -25,7 +25,7 @@ secret-toolkit-crypto = { version = "0.7.0", features = ["hash", "rand", "ecc-se
 # use cosmwasm_std::{StdError, testing::mock_dependencies};
 
 # fn main() -> Result<(), StdError> {
-# let deps = mock_dependencies(20, &[]);
+# let deps = mock_dependencies();
 let entropy: String = "secret".to_owned();
 let prng_seed: Vec<u8> = sha_256(base64::encode(&entropy.clone()).as_bytes()).to_vec();
 
