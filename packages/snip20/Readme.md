@@ -12,9 +12,31 @@ Or you can call the individual function for each Handle message to generate the 
 
 Example:
 
-```ignore
+```rust
+# use cosmwasm_std::{Uint128, StdError, StdResult, CosmosMsg};
+# use secret_toolkit_snip20::{transfer_msg};
+# use std::process::{Termination, ExitCode};
+#
+# struct Response {}
+# 
+# impl Response {
+#    fn new() -> Self {
+#        Response {}
+#    }
+#    fn add_message(self, _msg: CosmosMsg) -> Self {
+#        self
+#    }
+# }
+#
+# impl Termination for Response {
+#    fn report(self) -> ExitCode {
+#        ExitCode::SUCCESS
+#    }
+# }
+#
+# fn main() -> StdResult<Response> {
     let recipient = "ADDRESS_TO_TRANSFER_TO".to_string();
-    let amount = Uint128(10000);
+    let amount = Uint128::from(10000u128);
     let padding = None;
     let block_size = 256;
     let callback_code_hash = "TOKEN_CONTRACT_CODE_HASH".to_string();
@@ -23,6 +45,7 @@ Example:
     let cosmos_msg = transfer_msg(
         recipient,
         amount,
+        Some("memo".to_string()),
         padding,
         block_size,
         callback_code_hash,
@@ -30,6 +53,7 @@ Example:
     )?;
 
     Ok(Response::new().add_message(cosmos_msg))
+# }
 ```
 
 All you have to do to call a SNIP-20 Handle function is call the appropriate toolkit function, and place the resulting `CosmosMsg` in the `messages` Vec of the InitResponse or HandleResponse.  In this example, we are transferring 10000 (in the lowest denomination of the token) to the recipient address.  We are not using the `padding` field of the Transfer message, but instead, we are padding the entire message to blocks of 256 bytes.
@@ -128,7 +152,12 @@ Or you can call the individual function for each query.
 
 Example:
 
-```ignore
+```rust
+#   use cosmwasm_std::{StdError, QuerierWrapper, testing::mock_dependencies};
+#   use secret_toolkit_snip20::balance_query;
+#   let mut deps = mock_dependencies();
+#   struct Deps<'a> { querier: QuerierWrapper<'a> };
+#   let deps = Deps { querier: QuerierWrapper::new(&deps.querier) };
     let address = "ADDRESS_WHOSE_BALANCE_IS_BEING_REQUESTED".to_string();
     let key = "THE_VIEWING_KEY_PREVIOUSLY_SET_BY_THE_ADDRESS".to_string();
     let block_size = 256;
@@ -136,7 +165,16 @@ Example:
     let contract_addr = "TOKEN_CONTRACT_ADDRESS".to_string();
 
     let balance =
-        balance_query(deps.querier, address, key, block_size, callback_code_hash, contract_addr)?;
+        balance_query(deps.querier, address, key, block_size, callback_code_hash, contract_addr);
+#   match balance.unwrap_err() {
+#       StdError::GenericErr{ msg } => assert_eq!(
+#           msg,
+#           "Error performing Balance query: Generic error: Querier system error: No such contract: TOKEN_CONTRACT_ADDRESS"
+#       ),
+#       _ => panic!()
+#   };
+#    
+#   Ok::<(), StdError>(())
 ```
 
 In this example, we are doing a Balance query for the specified address/key pair and storing the response in the balance variable, which is of the Balance type defined above.  The query message is padded to blocks of 256 bytes.
