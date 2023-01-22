@@ -64,7 +64,9 @@ You probably have also noticed that CreateViewingKey is not supported.  This is 
 
 These are the types that SNIP20 tokens can return from queries
 
-```ignore
+```rust
+# use cosmwasm_std::Uint128;
+#
 pub struct TokenInfo {
     pub name: String,
     pub symbol: String,
@@ -158,6 +160,7 @@ Example:
 #   let mut deps = mock_dependencies();
 #   struct Deps<'a> { querier: QuerierWrapper<'a> };
 #   let deps = Deps { querier: QuerierWrapper::new(&deps.querier) };
+#
     let address = "ADDRESS_WHOSE_BALANCE_IS_BEING_REQUESTED".to_string();
     let key = "THE_VIEWING_KEY_PREVIOUSLY_SET_BY_THE_ADDRESS".to_string();
     let block_size = 256;
@@ -166,6 +169,7 @@ Example:
 
     let balance =
         balance_query(deps.querier, address, key, block_size, callback_code_hash, contract_addr);
+#
 #   match balance.unwrap_err() {
 #       StdError::GenericErr{ msg } => assert_eq!(
 #           msg,
