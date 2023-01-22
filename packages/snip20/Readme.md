@@ -65,8 +65,10 @@ You probably have also noticed that CreateViewingKey is not supported.  This is 
 These are the types that SNIP20 tokens can return from queries
 
 ```rust
-# use cosmwasm_std::Uint128;
+# use cosmwasm_std::{Uint128, Coin};
+# use serde::Serialize;
 #
+# #[derive(Serialize)]
 pub struct TokenInfo {
     pub name: String,
     pub symbol: String,
@@ -80,6 +82,7 @@ pub struct ExchangeRate {
     pub denom: String,
 }
 
+# #[derive(Serialize)]
 pub struct Allowance {
     pub spender: String,
     pub owner: String,
@@ -92,6 +95,7 @@ pub struct Balance {
     pub amount: Uint128,
 }
 
+# #[derive(Serialize)]
 pub struct Tx {
     pub id: u64,
     pub from: String,
@@ -109,6 +113,7 @@ pub struct TransferHistory {
     pub txs: Vec<Tx>,
 }
 
+# #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TxAction {
     Transfer {
@@ -128,6 +133,7 @@ pub enum TxAction {
     Redeem {},
 }
 
+# #[derive(Serialize)]
 pub struct RichTx {
     pub id: u64,
     pub action: TxAction,
