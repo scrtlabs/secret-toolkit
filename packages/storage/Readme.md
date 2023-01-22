@@ -31,12 +31,14 @@ This is the simplest storage object in this toolkit. It is based on the similarl
 This object is meant to be initialized as a static constant in `state.rs`. However, it would also work perfectly fine if it was initialized during run time with a variable key (in this case though, you'd have to remind it what type of object is stored and its serde). Import it using the following lines:
 
 ```ignore
-use secret_toolkit::storage::{Item}
+use secret_toolkit::storage::{Item};
 ```
 
 And initialize it using the following lines:
 
-```ignore
+```rust
+# use cosmwasm_std::Addr;
+# use secret_toolkit_storage::Item;
 pub static OWNER: Item<Addr> = Item::new(b"owner");
 ```
 
@@ -48,7 +50,15 @@ use secret_toolkit::serialization::{Bincode2, Json};
 
 then
 
-```ignore
+```rust
+# use cosmwasm_std::Addr;
+# use secret_toolkit_storage::Item;
+# use secret_toolkit_serialization::Json;
+# use serde::{Serialize, Deserialize};
+# #[derive(Serialize, Deserialize)]
+# enum SomeEnum {};
+#
+pub static OWNER: Item<Addr> = Item::new(b"owner");
 pub static SOME_ENUM: Item<SomeEnum, Json> = Item::new(b"some_enum");
 ```
 
@@ -56,28 +66,71 @@ pub static SOME_ENUM: Item<SomeEnum, Json> = Item::new(b"some_enum");
 
 The way to read/write to/from storage is to use its methods. These methods are `save`, `load`, `may_load`, `remove`, `update`. Here is an example use case for each in execution inside `contract.rs`:
 
-```ignore
+```rust
+# use cosmwasm_std::{Addr, testing::mock_dependencies, StdError};
+# use secret_toolkit_storage::Item;
+#
+# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# 
+# let mut deps = mock_dependencies();
+# OWNER.save(&mut deps.storage, &Addr::unchecked("owner-addr"))?;
+#
 // The compiler knows that owner_addr is Addr
-let owner_addr = OWNER.load(deps.storage)?;
+let owner_addr = OWNER.load(&deps.storage)?;
+# Ok::<(), StdError>(())
 ```
 
-```ignore
-OWNER.save(deps.storage, &info.sender)?;
+```rust
+# use cosmwasm_std::{Addr, testing::{mock_dependencies, mock_info}, StdError};
+# use secret_toolkit_storage::Item;
+#
+# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# 
+# let mut deps = mock_dependencies();
+# let info = mock_info("sender", &[]);
+# 
+OWNER.save(&mut deps.storage, &info.sender)?;
+# Ok::<(), StdError>(())
 ```
 
-```ignore
+```rust
+# use cosmwasm_std::{Addr, testing::mock_dependencies, StdError};
+# use secret_toolkit_storage::Item;
+#
+# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# 
+# let mut deps = mock_dependencies();
+#
 // The compiler knows that may_addr is Option<Addr>
-let may_addr = OWNER.may_load(deps.storage)?;
+let may_addr = OWNER.may_load(&deps.storage)?;
+# Ok::<(), StdError>(())
 ```
 
-```ignore
+```rust
+# use cosmwasm_std::{Addr, testing::mock_dependencies, StdError};
+# use secret_toolkit_storage::Item;
+#
+# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# 
+# let mut deps = mock_dependencies();
+#
 // The compiler knows that may_addr is Option<Addr>
-let may_addr = OWNER.remove(deps.storage)?;
+let may_addr = OWNER.remove(&mut deps.storage);
 ```
 
-```ignore
+```rust
+# use cosmwasm_std::{Addr, testing::{mock_dependencies, mock_info}, StdError};
+# use secret_toolkit_storage::Item;
+#
+# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# 
+# let mut deps = mock_dependencies();
+# let info = mock_info("sender", &[]);
+# OWNER.save(&mut deps.storage, &Addr::unchecked("owner-addr"))?;
+# 
 // The compiler knows that may_addr is Option<Addr>
-let may_addr = OWNER.update(deps.storage, |_x| Ok(info.sender))?;
+let may_addr = OWNER.update(&mut deps.storage, |_x| Ok(info.sender))?;
+# Ok::<(), StdError>(())
 ```
 
 ### **AppendStore**
