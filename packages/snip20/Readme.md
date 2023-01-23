@@ -157,10 +157,8 @@ Example:
         balance_query(deps.as_ref().querier, address, key, block_size, callback_code_hash, contract_addr);
 #
 #   assert_eq!(
-#       balance.unwrap_err(), 
-#       StdError::generic_err(
-#           "Error performing Balance query: Generic error: Querier system error: No such contract: TOKEN_CONTRACT_ADDRESS"
-#       )
+#       balance.unwrap_err().to_string(), 
+#       "Generic error: Error performing Balance query: Generic error: Querier system error: No such contract: TOKEN_CONTRACT_ADDRESS"
 #   );
 ```
 
