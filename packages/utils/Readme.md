@@ -243,9 +243,9 @@ Normally you'd want to initialize the features in the `instantiate()` function:
 ```rust
 # use secret_toolkit_utils::feature_toggle::{FeatureToggle, FeatureStatus, FeatureToggleTrait};
 # use cosmwasm_std::{entry_point, DepsMut, Env, MessageInfo, StdResult, Response};
-# use serde::{Serialize, Deserialize};
+# use serde::{Serialize};
 #
-# #[derive(Serialize, Deserialize)]
+# #[derive(Serialize)]
 # enum Features {
 #     Feature1,
 #     Feature2,
@@ -282,7 +282,9 @@ pub fn instantiate(
 The feature field in `FeatureStatus` can be anything, as long as it's implementing `serde::Serialize`.
 In this example it's:
 
-```ignore
+```rust
+# use serde::{Serialize};
+#
 #[derive(Serialize)]
 pub enum Features {
     Feature1,
@@ -292,7 +294,10 @@ pub enum Features {
 
 For the `status` field, you should use the built-in `FeatureToggle::Status` enum:
 
-```ignore
+```rust
+# use serde::{Serialize, Deserialize};
+# use schemars::JsonSchema;
+#
 #[derive(Serialize, Debug, Deserialize, Clone, JsonSchema, PartialEq)]
 pub enum Status {
     NotPaused,
@@ -306,15 +311,25 @@ The defult value of `Status` is `Status::NotPaused`.
 
 Putting a toggle on a message (or any code section of your choosing) is as easy as calling `FeatureToggle::require_not_paused()`. For example if we have a `Redeem` message in our contract, and we initialized the feature as `Features::Redeem`:
 
-```ignore
+```rust
+# use cosmwasm_std::{DepsMut, Env, StdResult, Response};
+# use secret_toolkit_utils::feature_toggle::{FeatureToggle, FeatureToggleTrait};
+# use serde::{Serialize};
+#
+# #[derive(Serialize)]
+# pub enum Features {
+#     Redeem,
+# }
+#
 fn redeem(
     deps: DepsMut,
     env: Env,
     amount: Option<u128>,
 ) -> StdResult<Response> {
-    FeatureToggle::require_not_paused(&deps.storage, vec![Features::Redeem])?;
+    FeatureToggle::require_not_paused(deps.as_ref().storage, vec![Features::Redeem])?;
     
     // Continue with function's operation
+    Ok(Response::new())
 }
 ```
 
@@ -324,7 +339,16 @@ If the status of the `Features::Redeem` feature is `Paused`, the contract will e
 
 Firstly, we will need to add `Pause` and `Unpause` messages in our `HandleMsg` enum. We can simply use `FeatureToggle::FeatureToggleHandleMsg` - it's an enum that contains default messages that `FeatureToggle` also has default implementation for:
 
-```ignore
+```rust
+# use cosmwasm_std::Uint128;
+# use secret_toolkit_utils::feature_toggle::FeatureToggleHandleMsg;
+# use serde::{Serialize, Deserialize};
+#
+# #[derive(Serialize, Deserialize)]
+# pub enum Features {
+#     Redeem,
+# }
+#
 pub enum ExecuteMsg {
     // Contract messages
     Redeem {
@@ -333,13 +357,36 @@ pub enum ExecuteMsg {
     Etc {}, //..
 
     // Feature toggle
-    Features(FeatureToggleHandleMsg),
+    Features(FeatureToggleHandleMsg::<Features>),
 }
 ```
 
 The `FeatureToggle` struct contains a default implementation for triggering (pausing/unpausing) a feature, so you can just call it from your `execute()` function:
 
-```ignore
+```rust
+# use secret_toolkit_utils::feature_toggle::{FeatureToggle, FeatureToggleTrait, FeatureToggleHandleMsg};
+# use cosmwasm_std::{entry_point, DepsMut, Env, MessageInfo, StdResult, Response, Uint128, Addr};
+# use serde::{Serialize, Deserialize};
+#
+# #[derive(Serialize, Deserialize)]
+# enum Features {
+#     Feature1,
+#     Feature2,
+# }
+#
+# pub enum ExecuteMsg {
+#     // Contract messages
+#     Redeem {
+#         amount: Option<Uint128>,
+#     },
+#     Etc {}, //..
+#     // Feature toggle
+#     Features(FeatureToggleHandleMsg::<Features>),
+# }
+#
+# fn redeem(_deps: DepsMut, _env: Env, _amount: Option<Uint128>) -> StdResult<Response> { Ok(Response::new()) }
+# fn etc(_deps: DepsMut, _env: Env) -> StdResult<Response> { Ok(Response::new()) }
+#
 #[entry_point]
 pub fn execute(
     deps: DepsMut,
@@ -351,8 +398,10 @@ pub fn execute(
         ExecuteMsg::Redeem { amount } => redeem(deps, env, amount),
         ExecuteMsg::Etc {} => etc(deps, env),
         ExecuteMsg::Features(m) => match m {
-            FeatureToggleHandleMsg::Pause { features } => FeatureToggle::handle_pause(deps, env, features),
-            FeatureToggleHandleMsg::Unpause { features } => FeatureToggle::handle_unpause(deps, env, features),
+            FeatureToggleHandleMsg::Pause { features } => FeatureToggle::handle_pause(deps, &info, features),
+            FeatureToggleHandleMsg::Unpause { features } => FeatureToggle::handle_unpause(deps, &info, features),
+            // `SetPauser` and `RemovePauser` go here too
+            # _ => Ok(Response::new())
         },
     }
 }
@@ -368,7 +417,29 @@ Note: you should only add `Features(FeatureToggleHandleMsg)` to the `HandleMsg` 
 
 `FeatureToggle` provides with default implementation for these too, but you can wrap it with your own logic like requiring the caller to be admin, etc.:
 
-```ignore
+```rust
+# use cosmwasm_std::{entry_point, DepsMut, Env, MessageInfo, StdResult, Response, Uint128, Addr, StdError};
+# use secret_toolkit_utils::feature_toggle::{FeatureToggle, FeatureToggleTrait, FeatureToggleHandleMsg};
+# use serde::{Serialize, Deserialize};
+#
+# #[derive(Serialize, Deserialize)]
+# enum Features {
+#     Feature1,
+#     Feature2,
+# }
+#
+# pub enum ExecuteMsg {
+#     // Contract messages
+#     Redeem {
+#         amount: Option<Uint128>,
+#     },
+#     // Feature toggle
+#     Features(FeatureToggleHandleMsg::<Features>),
+# }
+#
+# fn redeem(_deps: DepsMut, _env: Env, _amount: Option<Uint128>) -> StdResult<Response> { Ok(Response::new()) }
+# fn get_admin() -> StdResult<Addr> { Ok(Addr::unchecked("admin")) }
+#
 #[entry_point]
 pub fn execute(
     deps: DepsMut,
@@ -380,9 +451,10 @@ pub fn execute(
     match msg {
         ExecuteMsg::Redeem { amount } => redeem(deps, env, amount),
         ExecuteMsg::Features(m) => match m {
-            // `Stop` and `Resume` go here too
             FeatureToggleHandleMsg::SetPauser { address } => set_pauser(deps, info, address),
             FeatureToggleHandleMsg::RemovePauser { address } => remove_pauser(deps, info, address),
+            // `Pause` and `Unpause` go here too
+            # _ => Ok(Response::new())
         },
     }
 }
@@ -391,13 +463,14 @@ fn set_pauser(
     deps: DepsMut,
     info: MessageInfo,
     address: String,
-) -> StdResult<HandleResponse> {
+) -> StdResult<Response> {
     let admin = get_admin()?;
     if admin != info.sender {
-        return Err(StdError::unauthorized());
+        return Err(StdError::generic_err("Unauthorized"));
     }
 
-    FeatureToggle::handle_set_pauser(deps, env, address)
+    let address = deps.api.addr_validate(&address)?;
+    FeatureToggle::handle_set_pauser(deps, address)
 }
 
 fn remove_pauser(
@@ -407,10 +480,11 @@ fn remove_pauser(
 ) -> StdResult<Response> {
     let admin = get_admin()?;
     if admin != info.sender {
-        return Err(StdError::unauthorized());
+        return Err(StdError::generic_err("Unauthorized"));
     }
 
-    FeatureToggle::handle_remove_pauser(deps, env, address)
+    let address = deps.api.addr_validate(&address)?;
+    FeatureToggle::handle_remove_pauser(deps, address)
 }
 ```
 
