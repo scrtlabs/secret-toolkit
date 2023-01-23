@@ -164,8 +164,6 @@ Example:
 #   use cosmwasm_std::{StdError, QuerierWrapper, testing::mock_dependencies};
 #   use secret_toolkit_snip20::balance_query;
 #   let mut deps = mock_dependencies();
-#   struct Deps<'a> { querier: QuerierWrapper<'a> };
-#   let deps = Deps { querier: QuerierWrapper::new(&deps.querier) };
 #
     let address = "ADDRESS_WHOSE_BALANCE_IS_BEING_REQUESTED".to_string();
     let key = "THE_VIEWING_KEY_PREVIOUSLY_SET_BY_THE_ADDRESS".to_string();
@@ -174,17 +172,14 @@ Example:
     let contract_addr = "TOKEN_CONTRACT_ADDRESS".to_string();
 
     let balance =
-        balance_query(deps.querier, address, key, block_size, callback_code_hash, contract_addr);
+        balance_query(deps.as_ref().querier, address, key, block_size, callback_code_hash, contract_addr);
 #
-#   match balance.unwrap_err() {
-#       StdError::GenericErr{ msg } => assert_eq!(
-#           msg,
+#   assert_eq!(
+#       balance.unwrap_err(), 
+#       StdError::generic_err(
 #           "Error performing Balance query: Generic error: Querier system error: No such contract: TOKEN_CONTRACT_ADDRESS"
-#       ),
-#       _ => panic!()
-#   };
-#    
-#   Ok::<(), StdError>(())
+#       )
+#   );
 ```
 
 In this example, we are doing a Balance query for the specified address/key pair and storing the response in the balance variable, which is of the Balance type defined above.  The query message is padded to blocks of 256 bytes.
