@@ -13,28 +13,9 @@ Or you can call the individual function for each Handle message to generate the 
 Example:
 
 ```rust
-# use cosmwasm_std::{Uint128, StdError, StdResult, CosmosMsg};
+# use cosmwasm_std::{Uint128, StdError, StdResult, CosmosMsg, Response};
 # use secret_toolkit_snip20::{transfer_msg};
-# use std::process::{Termination, ExitCode};
-#
-# struct Response {}
-# 
-# impl Response {
-#    fn new() -> Self {
-#        Response {}
-#    }
-#    fn add_message(self, _msg: CosmosMsg) -> Self {
-#        self
-#    }
-# }
-#
-# impl Termination for Response {
-#    fn report(self) -> ExitCode {
-#        ExitCode::SUCCESS
-#    }
-# }
-#
-# fn main() -> StdResult<Response> {
+# fn main() -> StdResult<()> {
     let recipient = "ADDRESS_TO_TRANSFER_TO".to_string();
     let amount = Uint128::from(10000u128);
     let padding = None;
@@ -52,7 +33,8 @@ Example:
         contract_addr,
     )?;
 
-    Ok(Response::new().add_message(cosmos_msg))
+    let response = Ok(Response::new().add_message(cosmos_msg));
+#   response.map(|_r| ())
 # }
 ```
 
