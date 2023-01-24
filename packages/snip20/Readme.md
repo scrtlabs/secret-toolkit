@@ -15,9 +15,11 @@ Example:
 ```rust
 # use cosmwasm_std::{Uint128, StdError, StdResult, CosmosMsg, Response};
 # use secret_toolkit_snip20::{transfer_msg};
+#
 # fn main() -> StdResult<()> {
     let recipient = "ADDRESS_TO_TRANSFER_TO".to_string();
     let amount = Uint128::from(10000u128);
+    let memo = Some("memo".to_string());
     let padding = None;
     let block_size = 256;
     let callback_code_hash = "TOKEN_CONTRACT_CODE_HASH".to_string();
@@ -26,7 +28,7 @@ Example:
     let cosmos_msg = transfer_msg(
         recipient,
         amount,
-        Some("memo".to_string()),
+        memo,
         padding,
         block_size,
         callback_code_hash,

@@ -16,7 +16,7 @@ elsewhere. There isn't an overarching theme for the items in this package.
 This module contains traits used to call another contract.  Do not forget to add the `use` statement for the traits you want.
 
 ```ignore
-use secret_toolkit::utils::{InitCallback, HandleCallback, Query};
+use secret_toolkit::utils::{InitCallback, HandleCallback};
 ```
 
 Also, don't forget to add the toolkit dependency to your Cargo.toml
@@ -494,7 +494,11 @@ Note: `set_pauser` and `remove_pauser` are permissionless by default.
 
 If you don't like the default implementation or want to override it for any other reason (for example, using a different storage namespace), you can do that by defining your own struct and implement `FeatureToggleTrait` for it:
 
-```ignore
+```rust
+# use cosmwasm_std::{Storage, StdResult};
+# use secret_toolkit_utils::feature_toggle::{FeatureToggleTrait, Status};
+# use serde::Serialize;
+#
 struct TrollFeatureToggle {}
 
 impl FeatureToggleTrait for TrollFeatureToggle {
@@ -525,11 +529,14 @@ impl FeatureToggleTrait for TrollFeatureToggle {
 
 Similarly to `FeatureToggleHandleMsg`, query messages (and default implementations) are also provided:
 
-```ignore
+```rust
+# use serde::{Serialize, Deserialize, de::DeserializeOwned};
+# use schemars::JsonSchema;
+#
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum FeatureToggleQueryMsg<T: Serialize + DeserializeOwned> {
-    #[serde(bound = "")] // don't ask
+    # #[serde(bound = "")]
     Status {
         features: Vec<T>,
     },
