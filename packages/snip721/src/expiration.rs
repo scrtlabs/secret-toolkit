@@ -19,8 +19,8 @@ pub enum Expiration {
 impl fmt::Display for Expiration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Expiration::AtHeight(height) => write!(f, "expiration height: {}", height),
-            Expiration::AtTime(time) => write!(f, "expiration time: {}", time),
+            Expiration::AtHeight(height) => write!(f, "expiration height: {height}"),
+            Expiration::AtTime(time) => write!(f, "expiration time: {time}"),
             Expiration::Never => write!(f, "expiration: never"),
         }
     }
