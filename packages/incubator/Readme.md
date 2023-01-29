@@ -17,7 +17,9 @@ Implementation based on <https://algorithmtutor.com/Data-Structures/Tree/Binary-
 
 The usage of `MaxHeapStoreMut` and `MaxHeapStore` are modeled on `AppendStoreMut` and `AppendStore`, respectively. To add an item to the heap use `insert` and to take the top value off use `remove`, which also returns the item that was removed. To peek at the max value without removing, use the `get_max` function. Duplicate items can be added to the heap.
 
-```ignore
+```rust
+# use cosmwasm_std::{StdError, testing::MockStorage};
+# use secret_toolkit_incubator::maxheap::MaxHeapStoreMut;
 let mut storage = MockStorage::new();
 let mut heap_store = MaxHeapStoreMut::attach_or_create(&mut storage)?;
 heap_store.insert(&1234)?;
@@ -31,14 +33,19 @@ assert_eq!(heap_store.remove(), Ok(3412));
 assert_eq!(heap_store.remove(), Ok(2143));
 assert_eq!(heap_store.remove(), Ok(2143));
 assert_eq!(heap_store.remove(), Ok(1234));
+# Ok::<(), StdError>(())
 ```
 
 In order to use a custom struct with `MaxHeapStore` you will need to implement the appropriate Ordering traits. The following is an example with a custom struct `Tx` that uses the `amount` field to determine order in the heap:
 
-```ignore
+```rust
+# use cosmwasm_std::{StdError, testing::MockStorage, Addr};
+# use secret_toolkit_incubator::maxheap::MaxHeapStoreMut;
+# use serde::{Serialize, Deserialize};
+# use std::cmp::Ordering;
 #[derive(Serialize, Deserialize, Clone, Debug, Eq)]
 pub struct Tx {
-    address: HumanAddr,
+    address: Addr,
     amount: u128,
 }
 
@@ -64,30 +71,31 @@ let mut storage = MockStorage::new();
 let mut heap_store = MaxHeapStoreMut::attach_or_create(&mut storage)?;
 
 heap_store.insert(&Tx{
-    address: HumanAddr("address1".to_string()),
+    address: Addr::unchecked("address1"),
     amount: 100,
 })?;
 heap_store.insert(&Tx{
-    address: HumanAddr("address2".to_string()),
+    address: Addr::unchecked("address2"),
     amount: 200,
 })?;
 heap_store.insert(&Tx{
-    address: HumanAddr("address5".to_string()),
+    address: Addr::unchecked("address5"),
     amount: 50,
 })?;
 
 assert_eq!(heap_store.remove(), Ok(Tx{
-    address: HumanAddr("address3".to_string()),
+    address: Addr::unchecked("address3"),
     amount: 200,
 }));
 assert_eq!(heap_store.remove(), Ok(Tx{
-    address: HumanAddr("address4".to_string()),
+    address: Addr::unchecked("address4"),
     amount: 100,
 }));
 assert_eq!(heap_store.remove(), Ok(Tx{
-    address: HumanAddr("address1".to_string()),
+    address: Addr::unchecked("address1"),
     amount: 50,
 }));
+# Ok::<(), StdError>(())
 ```
 
 `MaxHeapStore` is modeled on an `AppendStore` and stores the array representation of the heap in the same way, e.g. using `len` key to store the length. Therefore, you can attach an `AppendStore` to a max heap instead of `MaxHeapStore` if you want to iterate over all the values for some reason.
@@ -110,7 +118,9 @@ In effect, this example is a graph structure where the nodes are elements and th
 
 See tests in `generational_store.rs` for more examples, including iteration.
 
-```ignore
+```rust
+# use cosmwasm_std::{StdError, testing::MockStorage};
+# use secret_toolkit_incubator::generational_store::{GenerationalStoreMut, Index};
 let mut storage = MockStorage::new();
 let mut gen_store = GenerationalStoreMut::attach_or_create(&mut storage)?;
 let alpha = gen_store.insert(String::from("Alpha"));
@@ -127,12 +137,13 @@ assert_eq!(gen_store.get(gamma), Some(String::from("Gamma")));
 let delta = gen_store.insert(String::from("Delta"));
 assert_eq!(gen_store.get(delta.clone()), Some(String::from("Delta")));
 // check that the generation has updated
-assert_ne!(delta.clone(), Index{ index: 1, generation: 0 });
+assert_ne!(delta.clone(), Index::from_raw_parts(1, 0));
 // delta has filled the slot where beta was but generation is now 1
-assert_eq!(delta, Index{ index: 1, generation: 1 });
+assert_eq!(delta, Index::from_raw_parts(1, 1));
 
 // cannot remove twice
 assert!(gen_store.remove(beta).is_err());
+# Ok::<(), StdError>(())
 ```
 
 ### Todo
