@@ -469,7 +469,7 @@ impl QueryMsg {
                 msg,
             }))
             .map_err(|err| {
-                StdError::generic_err(format!("Error performing {} query: {}", self, err))
+                StdError::generic_err(format!("Error performing {self} query: {err}"))
             })
     }
 }
