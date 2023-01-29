@@ -16,26 +16,26 @@ Example:
 # use cosmwasm_std::{Uint128, StdError, StdResult, CosmosMsg, Response};
 # use secret_toolkit_snip721::transfer_nft_msg;
 # fn main() -> StdResult<()> {
-    let recipient = "ADDRESS_TO_TRANSFER_TO".to_string();
-    let token_id = "TOKEN_ID".to_string();
-    let memo = Some("TRANSFER_MEMO".to_string());
-    let padding = None;
-    let block_size = 256;
-    let callback_code_hash = "TOKEN_CONTRACT_CODE_HASH".to_string();
-    let contract_addr = "TOKEN_CONTRACT_ADDRESS".to_string();
+let recipient = "ADDRESS_TO_TRANSFER_TO".to_string();
+let token_id = "TOKEN_ID".to_string();
+let memo = Some("TRANSFER_MEMO".to_string());
+let padding = None;
+let block_size = 256;
+let callback_code_hash = "TOKEN_CONTRACT_CODE_HASH".to_string();
+let contract_addr = "TOKEN_CONTRACT_ADDRESS".to_string();
 
-    let cosmos_msg = transfer_nft_msg(
-        recipient,
-        token_id,
-        memo,
-        padding,
-        block_size,
-        callback_code_hash,
-        contract_addr,
-    )?;
+let cosmos_msg = transfer_nft_msg(
+    recipient,
+    token_id,
+    memo,
+    padding,
+    block_size,
+    callback_code_hash,
+    contract_addr,
+)?;
 
-    let response = Ok(Response::new().add_message(cosmos_msg));
-#   response.map(|_r| ())
+let response = Ok(Response::new().add_message(cosmos_msg));
+# response.map(|_r| ())
 # }
 ```
 
@@ -174,34 +174,34 @@ Or you can call the individual function for each query.
 Example:
 
 ```rust
-#   use cosmwasm_std::{StdError, testing::mock_dependencies};
-#   use secret_toolkit_snip721::{nft_dossier_query, ViewerInfo};
-#   let mut deps = mock_dependencies();
+# use cosmwasm_std::{StdError, testing::mock_dependencies};
+# use secret_toolkit_snip721::{nft_dossier_query, ViewerInfo};
+# let mut deps = mock_dependencies();
 #
-    let token_id = "TOKEN_ID".to_string();
-    let viewer = Some(ViewerInfo {
-        address: "VIEWER'S_ADDRESS".to_string(),
-        viewing_key: "VIEWER'S_KEY".to_string(),
-    });
-    let include_expired = None;
-    let block_size = 256;
-    let callback_code_hash = "TOKEN_CONTRACT_CODE_HASH".to_string();
-    let contract_addr = "TOKEN_CONTRACT_ADDRESS".to_string();
+let token_id = "TOKEN_ID".to_string();
+let viewer = Some(ViewerInfo {
+  address: "VIEWER'S_ADDRESS".to_string(),
+  viewing_key: "VIEWER'S_KEY".to_string(),
+});
+let include_expired = None;
+let block_size = 256;
+let callback_code_hash = "TOKEN_CONTRACT_CODE_HASH".to_string();
+let contract_addr = "TOKEN_CONTRACT_ADDRESS".to_string();
 
-    let nft_dossier = nft_dossier_query(
-        deps.as_ref().querier,
-        token_id,
-        viewer,
-        include_expired,
-        block_size,
-        callback_code_hash,
-        contract_addr
-    );
+let nft_dossier = nft_dossier_query(
+  deps.as_ref().querier,
+  token_id,
+  viewer,
+  include_expired,
+  block_size,
+  callback_code_hash,
+  contract_addr
+);
 #
-#   assert_eq!(
-#       nft_dossier.unwrap_err().to_string(),
-#       "Generic error: Error performing NftDossier query: Generic error: Querier system error: No such contract: TOKEN_CONTRACT_ADDRESS"
-#   );
+# assert_eq!(
+#     nft_dossier.unwrap_err().to_string(),
+#     "Generic error: Error performing NftDossier query: Generic error: Querier system error: No such contract: TOKEN_CONTRACT_ADDRESS"
+# );
 ```
 
 In this example, we are doing an NftDossier query on the token named "TOKEN_ID", supplying the address and viewing key of the querier, and storing the response in the nft_dossier variable, which is of the NftDossier type defined above.  Because no `include_expired` was specified, the response defaults to only displaying approvals that have not expired, but approvals will only be displayed if the viewer is the owner of the token.  The query message is padded to blocks of 256 bytes.
