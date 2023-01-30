@@ -17,4 +17,4 @@ all-features = true
 serde = {  workspace = true }
 schemars = { workspace = true }
 cosmwasm-std = {  workspace = true }
-cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "1.0.0" }
+cosmwasm-storage = { workspace = true }

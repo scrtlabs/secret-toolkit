@@ -23,7 +23,7 @@ impl PrivateKey {
     pub fn parse(raw: &[u8; PRIVATE_KEY_SIZE]) -> Result<Self, StdError> {
         secp256k1::SecretKey::from_slice(raw)
             .map(|key| PrivateKey { inner: key })
-            .map_err(|err| StdError::generic_err(format!("Error parsing PrivateKey: {}", err)))
+            .map_err(|err| StdError::generic_err(format!("Error parsing PrivateKey: {err}")))
     }
 
     pub fn serialize(&self) -> [u8; PRIVATE_KEY_SIZE] {
@@ -51,7 +51,7 @@ impl PublicKey {
     pub fn parse(p: &[u8]) -> Result<PublicKey, StdError> {
         secp256k1::PublicKey::from_slice(p)
             .map(|key| PublicKey { inner: key })
-            .map_err(|err| StdError::generic_err(format!("Error parsing PublicKey: {}", err)))
+            .map_err(|err| StdError::generic_err(format!("Error parsing PublicKey: {err}")))
     }
 
     pub fn serialize(&self) -> [u8; PUBLIC_KEY_SIZE] {
@@ -74,13 +74,13 @@ impl Signature {
     pub fn parse(p: &[u8; SIGNATURE_SIZE]) -> Result<Signature, StdError> {
         SecpSignature::from_compact(p)
             .map(|sig| Signature { inner: sig })
-            .map_err(|err| StdError::generic_err(format!("Error parsing Signature: {}", err)))
+            .map_err(|err| StdError::generic_err(format!("Error parsing Signature: {err}")))
     }
 
     pub fn parse_slice(p: &[u8]) -> Result<Signature, StdError> {
         SecpSignature::from_compact(p)
             .map(|sig| Signature { inner: sig })
-            .map_err(|err| StdError::generic_err(format!("Error parsing Signature: {}", err)))
+            .map_err(|err| StdError::generic_err(format!("Error parsing Signature: {err}")))
     }
 
     pub fn serialize(&self) -> [u8; SIGNATURE_SIZE] {

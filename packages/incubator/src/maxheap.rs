@@ -341,7 +341,7 @@ where
 
     fn get_at_unchecked(&self, pos: u32) -> StdResult<T> {
         let serialized = self.storage.get(&pos.to_be_bytes()).ok_or_else(|| {
-            StdError::generic_err(format!("No item in MaxHeapStore at position {}", pos))
+            StdError::generic_err(format!("No item in MaxHeapStore at position {pos}"))
         })?;
         Ser::deserialize(&serialized)
     }

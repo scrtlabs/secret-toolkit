@@ -31,12 +31,14 @@ This is the simplest storage object in this toolkit. It is based on the similarl
 This object is meant to be initialized as a static constant in `state.rs`. However, it would also work perfectly fine if it was initialized during run time with a variable key (in this case though, you'd have to remind it what type of object is stored and its serde). Import it using the following lines:
 
 ```ignore
-use secret_toolkit::storage::{Item}
+use secret_toolkit::storage::{Item};
 ```
 
 And initialize it using the following lines:
 
-```ignore
+```rust
+# use cosmwasm_std::Addr;
+# use secret_toolkit_storage::Item;
 pub static OWNER: Item<Addr> = Item::new(b"owner");
 ```
 
@@ -48,7 +50,15 @@ use secret_toolkit::serialization::{Bincode2, Json};
 
 then
 
-```ignore
+```rust
+# use cosmwasm_std::Addr;
+# use secret_toolkit_storage::Item;
+# use secret_toolkit_serialization::Json;
+# use serde::{Serialize, Deserialize};
+# #[derive(Serialize, Deserialize)]
+# enum SomeEnum {};
+#
+pub static OWNER: Item<Addr> = Item::new(b"owner");
 pub static SOME_ENUM: Item<SomeEnum, Json> = Item::new(b"some_enum");
 ```
 
@@ -56,28 +66,71 @@ pub static SOME_ENUM: Item<SomeEnum, Json> = Item::new(b"some_enum");
 
 The way to read/write to/from storage is to use its methods. These methods are `save`, `load`, `may_load`, `remove`, `update`. Here is an example use case for each in execution inside `contract.rs`:
 
-```ignore
+```rust
+# use cosmwasm_std::{Addr, testing::mock_dependencies, StdError};
+# use secret_toolkit_storage::Item;
+#
+# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# 
+# let mut deps = mock_dependencies();
+# OWNER.save(&mut deps.storage, &Addr::unchecked("owner-addr"))?;
+#
 // The compiler knows that owner_addr is Addr
-let owner_addr = OWNER.load(deps.storage)?;
+let owner_addr = OWNER.load(&deps.storage)?;
+# Ok::<(), StdError>(())
 ```
 
-```ignore
-OWNER.save(deps.storage, &info.sender)?;
+```rust
+# use cosmwasm_std::{Addr, testing::{mock_dependencies, mock_info}, StdError};
+# use secret_toolkit_storage::Item;
+#
+# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# 
+# let mut deps = mock_dependencies();
+# let info = mock_info("sender", &[]);
+# 
+OWNER.save(&mut deps.storage, &info.sender)?;
+# Ok::<(), StdError>(())
 ```
 
-```ignore
+```rust
+# use cosmwasm_std::{Addr, testing::mock_dependencies, StdError};
+# use secret_toolkit_storage::Item;
+#
+# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# 
+# let mut deps = mock_dependencies();
+#
 // The compiler knows that may_addr is Option<Addr>
-let may_addr = OWNER.may_load(deps.storage)?;
+let may_addr = OWNER.may_load(&deps.storage)?;
+# Ok::<(), StdError>(())
 ```
 
-```ignore
+```rust
+# use cosmwasm_std::{Addr, testing::mock_dependencies, StdError};
+# use secret_toolkit_storage::Item;
+#
+# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# 
+# let mut deps = mock_dependencies();
+#
 // The compiler knows that may_addr is Option<Addr>
-let may_addr = OWNER.remove(deps.storage)?;
+let may_addr = OWNER.remove(&mut deps.storage);
 ```
 
-```ignore
+```rust
+# use cosmwasm_std::{Addr, testing::{mock_dependencies, mock_info}, StdError};
+# use secret_toolkit_storage::Item;
+#
+# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# 
+# let mut deps = mock_dependencies();
+# let info = mock_info("sender", &[]);
+# OWNER.save(&mut deps.storage, &Addr::unchecked("owner-addr"))?;
+# 
 // The compiler knows that may_addr is Option<Addr>
-let may_addr = OWNER.update(deps.storage, |_x| Ok(info.sender))?;
+let may_addr = OWNER.update(&mut deps.storage, |_x| Ok(info.sender))?;
+# Ok::<(), StdError>(())
 ```
 
 ### **AppendStore**
@@ -98,25 +151,34 @@ The same conventions from `Item` also apply here, that is:
 To import and initialize this storage object as a static constant in `state.rs`, do the following:
 
 ```ignore
-use secret_toolkit::storage::{AppendStore}
+use secret_toolkit::storage::{AppendStore};
 ```
 
-```ignore
+```rust
+# use secret_toolkit_storage::AppendStore;
+# use cosmwasm_std::StdError;
 pub static COUNT_STORE: AppendStore<i32> = AppendStore::new(b"count");
+# Ok::<(), StdError>(())
 ```
 
 > ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
 
 Often times we need these storage objects to be associated to a user address or some other key that is variable. In this case, you need not initialize a completely new AppendStore inside `contract.rs`. Instead, you can create a new AppendStore by adding a suffix to an already existing AppendStore. This has the benefit of preventing you from having to rewrite the signature of the AppendStore. For example
 
-```ignore
+```rust
+# use secret_toolkit_storage::AppendStore;
+# use cosmwasm_std::testing::mock_info;
+# let info = mock_info("sender", &[]);
+# pub static COUNT_STORE: AppendStore<i32> = AppendStore::new(b"count");
+#
 // The compiler knows that user_count_store is AppendStore<i32, Bincode2>
 let user_count_store = COUNT_STORE.add_suffix(info.sender.to_string().as_bytes());
 ```
 
 Sometimes when iterating these objects, we may want to load the next `n` objects at once. This may be prefered if the objects we are iterating over are cheap to store or if we know that multiple objects will need to be accessed back to back. In such cases we may want to change the internal indexing size (default of 1). We do this in `state.rs`:
 
-```ignore
+```rust
+# use secret_toolkit_storage::AppendStore;
 pub static COUNT_STORE: AppendStore<i32> = AppendStore::new_with_page_size(b"count", 5);
 ```
 
@@ -128,17 +190,29 @@ The main user facing methods to read/write to AppendStore are `pop`, `push`, `ge
 
 AppendStore also implements a readonly iterator feature. This feature is also used to create a paging wrapper method called `paging`. The way you create the iterator is:
 
-```ignore
-let iter = user_count_store.iter(&deps.storage)?;
+```rust
+# use cosmwasm_std::{StdError, testing::mock_dependencies};
+# use secret_toolkit_storage::AppendStore;
+# pub static COUNT_STORE: AppendStore<i32> = AppendStore::new_with_page_size(b"count", 5);
+# let deps = mock_dependencies();
+#
+let iter = COUNT_STORE.iter(&deps.storage)?;
+# Ok::<(), StdError>(())
 ```
 
 More examples can be found in the unit tests. And the paging wrapper is used in the following manner:
 
-```ignore
+```rust
+# use cosmwasm_std::{StdError, testing::mock_dependencies};
+# use secret_toolkit_storage::AppendStore;
+# pub static COUNT_STORE: AppendStore<i32> = AppendStore::new_with_page_size(b"count", 5);
+# let deps = mock_dependencies();
+#
 let start_page: u32 = 0;
 let page_size: u32 = 5;
 // The compiler knows that values is Vec<i32>
-let values = user_count_store.paging(&deps.storage, start_page, page_size)?;
+let values = COUNT_STORE.paging(&deps.storage, start_page, page_size)?;
+# Ok::<(), StdError>(())
 ```
 
 ### **DequeStore**
@@ -150,10 +224,11 @@ This is a storage wrapper based on AppendStore that replicates a double ended li
 To import and initialize this storage object as a static constant in `state.rs`, do the following:
 
 ```ignore
-use secret_toolkit::storage::{DequeStore}
+use secret_toolkit::storage::{DequeStore};
 ```
 
-```ignore
+```rust
+# use secret_toolkit_storage::DequeStore;
 pub static COUNT_STORE: DequeStore<i32> = DequeStore::new(b"count");
 ```
 
@@ -181,10 +256,18 @@ be returned in each page.
 To import and initialize this storage object as a static constant in `state.rs`, do the following:
 
 ```ignore
-use secret_toolkit::storage::{Keymap, KeymapBuilder}
+use secret_toolkit::storage::{Keymap, KeymapBuilder};
 ```
 
-```ignore
+```rust
+# use secret_toolkit_storage::Keymap;
+# use cosmwasm_std::{Addr};
+# use serde::{Serialize, Deserialize};
+# #[derive(Serialize, Deserialize)]
+# struct BetInfo { bet_outcome: u32, amount: u32 };
+# #[derive(Serialize, Deserialize)]
+# struct Foo { vote_for: String };
+#
 pub static ADDR_VOTE: Keymap<Addr, Foo> = Keymap::new(b"vote");
 pub static BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"bet");
 ```
@@ -197,7 +280,15 @@ If you need to associate a keymap to a user address (or any other variable), the
 
 For example, suppose that in your contract, a user can make multiple bets. Then, you'd want a Keymap to be associated to each user. You would achieve this by doing the following during execution in `contract.rs`.
 
-```ignore
+```rust
+# use secret_toolkit_storage::Keymap;
+# use cosmwasm_std::{Addr, testing::mock_info};
+# use serde::{Serialize, Deserialize};
+# #[derive(Serialize, Deserialize)]
+# struct BetInfo { bet_outcome: u32, amount: u32 };
+# let info = mock_info("sender", &[]);
+#
+pub static BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"bet");
 // The compiler knows that user_bet_store is AppendStore<u32, BetInfo>
 let user_count_store = BET_STORE.add_suffix(info.sender.to_string().as_bytes());
 ```
@@ -212,7 +303,13 @@ The other feature is to modify the page size of the internal indexer (only if th
 
 The following is used to produce a Keymap without an iterator in `state.rs`
 
-```ignore
+```rust
+# use secret_toolkit_storage::{Keymap, KeymapBuilder, WithoutIter};
+# use secret_toolkit_serialization::{Json, Bincode2};
+# use serde::{Serialize, Deserialize};
+# #[derive(Serialize, Deserialize)]
+# struct Foo { vote: u32 };
+#
 pub static JSON_ADDR_VOTE: Keymap<String, Foo, Json, WithoutIter> =
             KeymapBuilder::new(b"json_vote").without_iter().build();
 
@@ -222,7 +319,14 @@ pub static BINCODE_ADDR_VOTE: Keymap<String, Foo, Bincode2, WithoutIter> =
 
 The following is used to produce a Keymap with modified index page size:
 
-```ignore
+```rust
+# use secret_toolkit_storage::{Keymap, KeymapBuilder};
+# use cosmwasm_std::{Addr};
+# use secret_toolkit_serialization::{Json};
+# use serde::{Serialize, Deserialize};
+# #[derive(Serialize, Deserialize)]
+# struct Foo { vote: u32 };
+#
 pub static ADDR_VOTE: Keymap<Addr, Foo> = KeymapBuilder::new(b"page_vote").with_page_size(13).build();
 
 pub static JSON_VOTE: Keymap<Addr, Foo, Json> =
@@ -235,7 +339,17 @@ You can find more examples of using keymaps in the unit tests of Keymap in `keym
 
 To insert, remove, read from the keymap, do the following:
 
-```ignore
+```rust
+# use secret_toolkit_storage::{Keymap, KeymapBuilder};
+# use cosmwasm_std::{Addr, testing::{mock_info, mock_dependencies}, StdError};
+# use serde::{Serialize, Deserialize};
+# #[derive(Serialize, Deserialize, PartialEq, Debug)]
+# struct Foo { message: String, votes: u32 };
+#
+# let mut deps = mock_dependencies();
+# let info = mock_info("sender", &[]);
+# pub static ADDR_VOTE: Keymap<Addr, Foo> = KeymapBuilder::new(b"page_vote").with_page_size(13).build();
+#
 let user_addr: Addr = info.sender;
 
 let foo = Foo {
@@ -243,12 +357,13 @@ let foo = Foo {
     votes: 1111,
 };
 
-ADDR_VOTE.insert(deps.storage, &user_addr, &foo)?;
+ADDR_VOTE.insert(&mut deps.storage, &user_addr, &foo)?;
 // Compiler knows that this is Foo
-let read_foo = ADDR_VOTE.get(deps.storage, &user_addr).unwrap();
-assert_eq!(read_foo, foo1);
-ADDR_VOTE.remove(deps.storage, &user_addr)?;
-assert_eq!(ADDR_VOTE.get_len(deps.storage)?, 0);
+let read_foo = ADDR_VOTE.get(deps.as_ref().storage, &user_addr).unwrap();
+assert_eq!(read_foo, foo);
+ADDR_VOTE.remove(&mut deps.storage, &user_addr)?;
+assert_eq!(ADDR_VOTE.get_len(deps.as_ref().storage)?, 0);
+# Ok::<(), StdError>(())
 ```
 
 #### **Iterator**
@@ -259,7 +374,13 @@ Keymap also has two paging methods, these are `.paging` and `.paging_keys`. `pag
 
 Here are some select examples from the unit tests:
 
-```ignore
+```rust
+# use cosmwasm_std::{StdResult, testing::MockStorage};
+# use secret_toolkit_storage::Keymap;
+# use serde::{Serialize, Deserialize};
+# #[derive(Serialize, Deserialize, PartialEq, Debug)]
+# struct Foo { string: String, number: u32 };
+#
 fn test_keymap_iter_keys() -> StdResult<()> {
     let mut storage = MockStorage::new();
 
@@ -291,7 +412,13 @@ fn test_keymap_iter_keys() -> StdResult<()> {
 }
 ```
 
-```ignore
+```rust
+# use cosmwasm_std::{StdResult, testing::MockStorage};
+# use secret_toolkit_storage::Keymap;
+# use serde::{Serialize, Deserialize};
+# #[derive(Serialize, Deserialize, PartialEq, Debug)]
+# struct Foo { string: String, number: u32 };
+#
 fn test_keymap_iter() -> StdResult<()> {
     let mut storage = MockStorage::new();
 
@@ -330,10 +457,12 @@ An example use-case for such a structure is if you have a set of whitelisted use
 To import and initialize this storage object as a static constant in `state.rs`, do the following:
 
 ```ignore
-use secret_toolkit::storage::{Keyset, KeysetBuilder}
+use secret_toolkit::storage::{Keyset, KeysetBuilder};
 ```
 
-```ignore
+```rust
+# use secret_toolkit_storage::Keyset;
+# use cosmwasm_std::Addr;
 pub static WHITELIST: Keyset<Addr> = Keyset::new(b"whitelist");
 ```
 

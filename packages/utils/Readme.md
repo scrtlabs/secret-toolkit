@@ -16,7 +16,7 @@ elsewhere. There isn't an overarching theme for the items in this package.
 This module contains traits used to call another contract.  Do not forget to add the `use` statement for the traits you want.
 
 ```ignore
-use secret_toolkit::utils::{InitCallback, HandleCallback, Query};
+use secret_toolkit::utils::{InitCallback, HandleCallback};
 ```
 
 Also, don't forget to add the toolkit dependency to your Cargo.toml
@@ -25,7 +25,11 @@ Also, don't forget to add the toolkit dependency to your Cargo.toml
 
 If you want to instantiate another contract, you should first copy/paste the InitMsg of that contract.  For example, if you wanted to create an instance of the counter contract at <https://github.com/enigmampc/secret-template>
 
-```ignore
+```rust
+# use secret_toolkit_utils::InitCallback;
+# use serde::{Serialize, Deserialize};
+# use schemars::JsonSchema;
+#
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CounterInitMsg {
     pub count: i32,
@@ -38,7 +42,23 @@ impl InitCallback for CounterInitMsg {
 
 You would copy/paste its InitMsg, and rename it so that it does not conflict with the InitMsg you have defined for your own contract.  Then you would implement the `InitCallback` trait as above, setting the BLOCK_SIZE constant to the size of the blocks you want your instantiation message padded to.
 
-```ignore
+```rust
+# use secret_toolkit_utils::InitCallback;
+# use cosmwasm_std::{StdResult, StdError, Response};
+# use serde::{Serialize, Deserialize};
+# use schemars::JsonSchema;
+#
+# #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+# pub struct CounterInitMsg {
+#     pub count: i32,
+# }
+#
+# impl InitCallback for CounterInitMsg {
+#     const BLOCK_SIZE: usize = 256;
+# }
+#
+# let response: StdResult<Response>;
+#
 let counter_init_msg = CounterInitMsg {
      count: 100 
 };
@@ -50,7 +70,8 @@ let cosmos_msg = counter_init_msg.to_cosmos_msg(
     None,
 )?;
 
-Ok(Response::new().add_message(cosmos_msg))
+response = Ok(Response::new().add_message(cosmos_msg));
+# Ok::<(), StdError>(())
 ```
 
 Next, in the init or handle function that will instantiate the other contract, you will create an instance of the CounterInitMsg, call its `to_cosmos_msg`, and place the resulting CosmosMsg in the `messages` Vec of the InitResponse or HandleResponse that your function is returning.  In this example, we are pretending that the code id of the counter contract is 123.  Also, in this example, you are not sending any SCRT with the InitMsg, but if you needed to send 1 SCRT, you would replace the None in the `to_cosmos_msg` call with `Some(Uint128(1000000))`.  The amount sent is in uscrt.  Any CosmosMsg placed in the `messages` Vec will be executed after your contract has finished its own processing.
@@ -59,7 +80,11 @@ Next, in the init or handle function that will instantiate the other contract, y
 
 You should first copy/paste the specific HandleMsg(s) you want to call.  For example, if you wanted to reset the counter you instantiated above
 
-```ignore
+```rust
+# use secret_toolkit_utils::HandleCallback;
+# use serde::{Serialize, Deserialize};
+# use schemars::JsonSchema;
+#
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum CounterHandleMsg {
     Reset { count: i32 },
@@ -72,7 +97,23 @@ impl HandleCallback for CounterHandleMsg {
 
 You would copy/paste the Reset variant of its HandleMsg enum, and rename the enum so that it does not conflict with the HandleMsg enum you have defined for your own contract.  Then you would implement the `HandleCallback` trait as above, setting the BLOCK_SIZE constant to the size of the blocks you want your Reset message padded to.  If you need to call multiple different Handle messages, even if they are to different contracts, you can include all the Handle messages as variants in the same enum (you can not have two variants with the same name within the same enum, though).
 
-```ignore
+```rust
+# use secret_toolkit_utils::HandleCallback;
+# use cosmwasm_std::{StdResult, StdError, Response};
+# use serde::{Serialize, Deserialize};
+# use schemars::JsonSchema;
+#
+# #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+# pub enum CounterHandleMsg {
+#     Reset { count: i32 },
+# }
+# 
+# impl HandleCallback for CounterHandleMsg {
+#     const BLOCK_SIZE: usize = 256;
+# }
+#
+# let response: StdResult<Response>;
+#
 let reset_msg = CounterHandleMsg::Reset {
     count: 200,
 };
@@ -83,7 +124,8 @@ let cosmos_msg = reset_msg.to_cosmos_msg(
     None,
 )?;
 
-Ok(Response::new().add_message(cosmos_msg))
+response = Ok(Response::new().add_message(cosmos_msg));
+# Ok::<(), StdError>(())
 ```
 
 Next, in the init or handle function that will call the other contract, you will create an instance of the CounterHandleMsg::Reset variant, call its `to_cosmos_msg`, and place the resulting CosmosMsg in the `messages` Vec of the InitResponse or HandleResponse that your function is returning.  In this example, you are not sending any SCRT with the Reset message, but if you needed to send 1 SCRT, you would replace the None in the `to_cosmos_msg` call with `Some(Uint128(1000000))`.  The amount sent is in uscrt.  Any CosmosMsg placed in the `messages` Vec will be executed after your contract has finished its own processing.
@@ -92,7 +134,11 @@ Next, in the init or handle function that will call the other contract, you will
 
 You should first copy/paste the specific QueryMsg(s) you want to call.  For example, if you wanted to get the count of the counter you instantiated above
 
-```ignore
+```rust
+# use secret_toolkit_utils::Query;
+# use serde::{Serialize, Deserialize};
+# use schemars::JsonSchema;
+#
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum CounterQueryMsg {
@@ -106,7 +152,11 @@ impl Query for CounterQueryMsg {
 
 You would copy/paste the GetCount variant of its QueryMsg enum, and rename the enum so that it does not conflict with the QueryMsg enum you have defined for your own contract.  Then you would implement the `Query` trait as above, setting the BLOCK_SIZE constant to the size of the blocks you want your query message padded to.  If you need to perform multiple different queries, even if they are to different contracts, you can include all the Query messages as variants in the same enum (you can not have two variants with the same name within the same enum, though).
 
-```ignore
+```rust
+# use secret_toolkit_utils::Query;
+# use serde::{Serialize, Deserialize};
+# use schemars::JsonSchema;
+#
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CountResponse {
     pub count: i32,
@@ -117,7 +167,12 @@ Next, you will copy/paste the response of the query.  If the other contract defi
 
 If, however, the other contract returns an enum variant, one approach is to copy the fields of the variant and place them in a struct.  Because an enum variant gets serialized with the name of the variant, you will then also want to create a wrapper struct whose only field has the name of the variant, and whose type is the struct you defined with the variant's fields.  For example, if you wanted to do a token_info query of the [SNIP20 reference implementation](https://github.com/enigmampc/snip20-reference-impl), I would recommend using the SNIP20 toolkit function, but just for the sake of example, let's say you forgot that toolkit existed.
 
-```ignore
+```rust
+# use secret_toolkit_utils::Query;
+# use cosmwasm_std::Uint128;
+# use serde::{Serialize, Deserialize};
+# use schemars::JsonSchema;
+#
 #[derive(Serialize, Deserialize, JsonSchema, Debug)]
 pub struct TokenInfo {
     pub name: String,
@@ -136,13 +191,41 @@ You would copy the QueryAnswer::TokenInfo enum variant and create a TokenInfo st
 
 Now to perform the query
 
-```ignore
+```rust
+# use secret_toolkit_utils::Query;
+# use cosmwasm_std::{StdResult, StdError, Uint128, testing::mock_dependencies};
+# use serde::{Serialize, Deserialize};
+# use schemars::JsonSchema;
+#
+# #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+# #[serde(rename_all = "snake_case")]
+# pub enum CounterQueryMsg {
+#    GetCount {},
+# }
+# 
+# impl Query for CounterQueryMsg {
+#     const BLOCK_SIZE: usize = 256;
+# }
+#
+# #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+# pub struct CountResponse {
+#     pub count: i32,
+# }
+#
+# let deps = mock_dependencies();
+#
 let get_count = CounterQueryMsg::GetCount {};
-let count_response: CountResponse = get_count.query(
-    deps.querier,
+let count_response: StdResult<CountResponse> = get_count.query(
+    deps.as_ref().querier,
     "CODE_HASH_OF_CONTRACT_YOU_WANT_TO_QUERY".to_string(),
     "ADDRESS_OF_CONTRACT_YOU_ARE_QUERYING".to_string(),
-)?;
+);
+#
+# assert_eq!(
+#     count_response.unwrap_err().to_string(),
+#     "Generic error: Querier system error: No such contract: ADDRESS_OF_CONTRACT_YOU_ARE_QUERYING"
+# );
+# Ok::<(), StdError>(())
 ```
 
 You create an instance of the CounterQueryMsg::GetCount variant, and call its `query` function, returning its value to a variable of the response type.  If you were doing a token_info query, you would write `let token_info_resp: TokenInfoResponse = ...`.  You MUST use explicit type annotation here.
@@ -157,7 +240,19 @@ The feature toggles are designed to be flexible, so you can choose whether to pu
 
 Normally you'd want to initialize the features in the `instantiate()` function:
 
-```ignore
+```rust
+# use secret_toolkit_utils::feature_toggle::{FeatureToggle, FeatureStatus, FeatureToggleTrait};
+# use cosmwasm_std::{entry_point, DepsMut, Env, MessageInfo, StdResult, Response};
+# use serde::{Serialize};
+#
+# #[derive(Serialize)]
+# enum Features {
+#     Feature1,
+#     Feature2,
+# }
+#
+# struct InstantiateMsg { }
+#
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
@@ -179,13 +274,17 @@ pub fn instantiate(
         ],
         vec![info.sender], // Can put more than one pauser
     )?;
+    
+    Ok(Response::new())
 }
 ```
 
 The feature field in `FeatureStatus` can be anything, as long as it's implementing `serde::Serialize`.
 In this example it's:
 
-```ignore
+```rust
+# use serde::{Serialize};
+#
 #[derive(Serialize)]
 pub enum Features {
     Feature1,
@@ -195,7 +294,10 @@ pub enum Features {
 
 For the `status` field, you should use the built-in `FeatureToggle::Status` enum:
 
-```ignore
+```rust
+# use serde::{Serialize, Deserialize};
+# use schemars::JsonSchema;
+#
 #[derive(Serialize, Debug, Deserialize, Clone, JsonSchema, PartialEq)]
 pub enum Status {
     NotPaused,
@@ -209,15 +311,25 @@ The defult value of `Status` is `Status::NotPaused`.
 
 Putting a toggle on a message (or any code section of your choosing) is as easy as calling `FeatureToggle::require_not_paused()`. For example if we have a `Redeem` message in our contract, and we initialized the feature as `Features::Redeem`:
 
-```ignore
+```rust
+# use cosmwasm_std::{DepsMut, Env, StdResult, Response};
+# use secret_toolkit_utils::feature_toggle::{FeatureToggle, FeatureToggleTrait};
+# use serde::{Serialize};
+#
+# #[derive(Serialize)]
+# pub enum Features {
+#     Redeem,
+# }
+#
 fn redeem(
     deps: DepsMut,
     env: Env,
     amount: Option<u128>,
 ) -> StdResult<Response> {
-    FeatureToggle::require_not_paused(&deps.storage, vec![Features::Redeem])?;
+    FeatureToggle::require_not_paused(deps.as_ref().storage, vec![Features::Redeem])?;
     
     // Continue with function's operation
+    Ok(Response::new())
 }
 ```
 
@@ -227,7 +339,16 @@ If the status of the `Features::Redeem` feature is `Paused`, the contract will e
 
 Firstly, we will need to add `Pause` and `Unpause` messages in our `HandleMsg` enum. We can simply use `FeatureToggle::FeatureToggleHandleMsg` - it's an enum that contains default messages that `FeatureToggle` also has default implementation for:
 
-```ignore
+```rust
+# use cosmwasm_std::Uint128;
+# use secret_toolkit_utils::feature_toggle::FeatureToggleHandleMsg;
+# use serde::{Serialize, Deserialize};
+#
+# #[derive(Serialize, Deserialize)]
+# pub enum Features {
+#     Redeem,
+# }
+#
 pub enum ExecuteMsg {
     // Contract messages
     Redeem {
@@ -236,13 +357,36 @@ pub enum ExecuteMsg {
     Etc {}, //..
 
     // Feature toggle
-    Features(FeatureToggleHandleMsg),
+    Features(FeatureToggleHandleMsg::<Features>),
 }
 ```
 
 The `FeatureToggle` struct contains a default implementation for triggering (pausing/unpausing) a feature, so you can just call it from your `execute()` function:
 
-```ignore
+```rust
+# use secret_toolkit_utils::feature_toggle::{FeatureToggle, FeatureToggleTrait, FeatureToggleHandleMsg};
+# use cosmwasm_std::{entry_point, DepsMut, Env, MessageInfo, StdResult, Response, Uint128, Addr};
+# use serde::{Serialize, Deserialize};
+#
+# #[derive(Serialize, Deserialize)]
+# enum Features {
+#     Feature1,
+#     Feature2,
+# }
+#
+# pub enum ExecuteMsg {
+#     // Contract messages
+#     Redeem {
+#         amount: Option<Uint128>,
+#     },
+#     Etc {}, //..
+#     // Feature toggle
+#     Features(FeatureToggleHandleMsg::<Features>),
+# }
+#
+# fn redeem(_deps: DepsMut, _env: Env, _amount: Option<Uint128>) -> StdResult<Response> { Ok(Response::new()) }
+# fn etc(_deps: DepsMut, _env: Env) -> StdResult<Response> { Ok(Response::new()) }
+#
 #[entry_point]
 pub fn execute(
     deps: DepsMut,
@@ -254,8 +398,10 @@ pub fn execute(
         ExecuteMsg::Redeem { amount } => redeem(deps, env, amount),
         ExecuteMsg::Etc {} => etc(deps, env),
         ExecuteMsg::Features(m) => match m {
-            FeatureToggleHandleMsg::Pause { features } => FeatureToggle::handle_pause(deps, env, features),
-            FeatureToggleHandleMsg::Unpause { features } => FeatureToggle::handle_unpause(deps, env, features),
+            FeatureToggleHandleMsg::Pause { features } => FeatureToggle::handle_pause(deps, &info, features),
+            FeatureToggleHandleMsg::Unpause { features } => FeatureToggle::handle_unpause(deps, &info, features),
+            // `SetPauser` and `RemovePauser` go here too
+            # _ => Ok(Response::new())
         },
     }
 }
@@ -271,7 +417,29 @@ Note: you should only add `Features(FeatureToggleHandleMsg)` to the `HandleMsg` 
 
 `FeatureToggle` provides with default implementation for these too, but you can wrap it with your own logic like requiring the caller to be admin, etc.:
 
-```ignore
+```rust
+# use cosmwasm_std::{entry_point, DepsMut, Env, MessageInfo, StdResult, Response, Uint128, Addr, StdError};
+# use secret_toolkit_utils::feature_toggle::{FeatureToggle, FeatureToggleTrait, FeatureToggleHandleMsg};
+# use serde::{Serialize, Deserialize};
+#
+# #[derive(Serialize, Deserialize)]
+# enum Features {
+#     Feature1,
+#     Feature2,
+# }
+#
+# pub enum ExecuteMsg {
+#     // Contract messages
+#     Redeem {
+#         amount: Option<Uint128>,
+#     },
+#     // Feature toggle
+#     Features(FeatureToggleHandleMsg::<Features>),
+# }
+#
+# fn redeem(_deps: DepsMut, _env: Env, _amount: Option<Uint128>) -> StdResult<Response> { Ok(Response::new()) }
+# fn get_admin() -> StdResult<Addr> { Ok(Addr::unchecked("admin")) }
+#
 #[entry_point]
 pub fn execute(
     deps: DepsMut,
@@ -283,9 +451,10 @@ pub fn execute(
     match msg {
         ExecuteMsg::Redeem { amount } => redeem(deps, env, amount),
         ExecuteMsg::Features(m) => match m {
-            // `Stop` and `Resume` go here too
             FeatureToggleHandleMsg::SetPauser { address } => set_pauser(deps, info, address),
             FeatureToggleHandleMsg::RemovePauser { address } => remove_pauser(deps, info, address),
+            // `Pause` and `Unpause` go here too
+            # _ => Ok(Response::new())
         },
     }
 }
@@ -294,13 +463,14 @@ fn set_pauser(
     deps: DepsMut,
     info: MessageInfo,
     address: String,
-) -> StdResult<HandleResponse> {
+) -> StdResult<Response> {
     let admin = get_admin()?;
     if admin != info.sender {
-        return Err(StdError::unauthorized());
+        return Err(StdError::generic_err("Unauthorized"));
     }
 
-    FeatureToggle::handle_set_pauser(deps, env, address)
+    let address = deps.api.addr_validate(&address)?;
+    FeatureToggle::handle_set_pauser(deps, address)
 }
 
 fn remove_pauser(
@@ -310,10 +480,11 @@ fn remove_pauser(
 ) -> StdResult<Response> {
     let admin = get_admin()?;
     if admin != info.sender {
-        return Err(StdError::unauthorized());
+        return Err(StdError::generic_err("Unauthorized"));
     }
 
-    FeatureToggle::handle_remove_pauser(deps, env, address)
+    let address = deps.api.addr_validate(&address)?;
+    FeatureToggle::handle_remove_pauser(deps, address)
 }
 ```
 
@@ -323,7 +494,11 @@ Note: `set_pauser` and `remove_pauser` are permissionless by default.
 
 If you don't like the default implementation or want to override it for any other reason (for example, using a different storage namespace), you can do that by defining your own struct and implement `FeatureToggleTrait` for it:
 
-```ignore
+```rust
+# use cosmwasm_std::{Storage, StdResult};
+# use secret_toolkit_utils::feature_toggle::{FeatureToggleTrait, Status};
+# use serde::Serialize;
+#
 struct TrollFeatureToggle {}
 
 impl FeatureToggleTrait for TrollFeatureToggle {
@@ -354,11 +529,14 @@ impl FeatureToggleTrait for TrollFeatureToggle {
 
 Similarly to `FeatureToggleHandleMsg`, query messages (and default implementations) are also provided:
 
-```ignore
+```rust
+# use serde::{Serialize, Deserialize, de::DeserializeOwned};
+# use schemars::JsonSchema;
+#
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum FeatureToggleQueryMsg<T: Serialize + DeserializeOwned> {
-    #[serde(bound = "")] // don't ask
+    # #[serde(bound = "")]
     Status {
         features: Vec<T>,
     },
