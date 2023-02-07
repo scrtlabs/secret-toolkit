@@ -335,7 +335,7 @@ pub static JSON_VOTE: Map<Addr, Foo, Json> =
 
 #### **Read/Write**
 
-You can find more examples of using maps in the unit tests of Map in `keymap.rs`.
+You can find more examples of using maps in the unit tests of Map in `map.rs`.
 
 To insert, remove, read from the map, do the following:
 
