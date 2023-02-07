@@ -198,13 +198,13 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Ser::serialize(key)
     }
 
-    /// user facing get function
-    pub fn get(&self, storage: &dyn Storage, key: &K) -> Option<T> {
-        self.get_from_key(storage, key).ok()
+    /// user facing load function
+    pub fn load(&self, storage: &dyn Storage, key: &K) -> Option<T> {
+        self.load_from_key(storage, key).ok()
     }
 
-    /// internal item get function
-    fn get_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<T> {
+    /// internal item load function
+    fn load_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<T> {
         let key_vec = self.serialize_key(key)?;
         self.load_impl(storage, &key_vec)
     }
@@ -217,8 +217,8 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Ok(())
     }
 
-    /// user facing insert function
-    pub fn insert(&self, storage: &mut dyn Storage, key: &K, item: &T) -> StdResult<()> {
+    /// user facing save function
+    pub fn save(&self, storage: &mut dyn Storage, key: &K, item: &T) -> StdResult<()> {
         let key_vec = self.serialize_key(key)?;
         self.save_impl(storage, &key_vec, item)
     }
@@ -326,17 +326,17 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Ok(())
     }
 
-    /// user facing get function
-    pub fn get(&self, storage: &dyn Storage, key: &K) -> Option<T> {
-        if let Ok(internal_item) = self.get_from_key(storage, key) {
+    /// user facing load function
+    pub fn load(&self, storage: &dyn Storage, key: &K) -> Option<T> {
+        if let Ok(internal_item) = self.load_from_key(storage, key) {
             internal_item.get_item().ok()
         } else {
             None
         }
     }
 
-    /// internal item get function
-    fn get_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<InternalItem<T, Ser>> {
+    /// internal item load function
+    fn load_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<InternalItem<T, Ser>> {
         let key_vec = self.serialize_key(key)?;
         self.load_impl(storage, &key_vec)
     }
@@ -345,7 +345,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     pub fn remove(&self, storage: &mut dyn Storage, key: &K) -> StdResult<()> {
         let key_vec = self.serialize_key(key)?;
 
-        let removed_pos = self.get_from_key(storage, key)?.index_pos.unwrap();
+        let removed_pos = self.load_from_key(storage, key)?.index_pos.unwrap();
 
         let page = self.page_from_position(removed_pos);
 
@@ -404,8 +404,8 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         Ok(())
     }
 
-    /// user facing insert function
-    pub fn insert(&self, storage: &mut dyn Storage, key: &K, item: &T) -> StdResult<()> {
+    /// user facing save function
+    pub fn save(&self, storage: &mut dyn Storage, key: &K, item: &T) -> StdResult<()> {
         let key_vec = self.serialize_key(key)?;
 
         match self.may_load_impl(storage, &key_vec)? {
@@ -813,7 +813,7 @@ where
         self.start += 1;
         // turn key into pair
         let pair = match key {
-            Ok(k) => match self.map.get_from_key(self.storage, &k) {
+            Ok(k) => match self.map.load_from_key(self.storage, &k) {
                 Ok(internal_item) => match internal_item.get_item() {
                     Ok(item) => Ok((k, item)),
                     Err(e) => Err(e),
@@ -875,7 +875,7 @@ where
         }
         // turn key into pair
         let pair = match key {
-            Ok(k) => match self.map.get_from_key(self.storage, &k) {
+            Ok(k) => match self.map.load_from_key(self.storage, &k) {
                 Ok(internal_item) => match internal_item.get_item() {
                     Ok(item) => Ok((k, item)),
                     Err(e) => Err(e),
@@ -993,7 +993,7 @@ mod tests {
         number: i32,
     }
     #[test]
-    fn map_perf_insert() -> StdResult<()> {
+    fn map_perf_save() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
         let total_items = 1000;
@@ -1002,7 +1002,7 @@ mod tests {
 
         for i in 0..total_items {
             let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
-            map.insert(&mut storage, &key, &i)?;
+            map.save(&mut storage, &key, &i)?;
         }
 
         assert_eq!(map.get_len(&storage)?, 1000);
@@ -1011,7 +1011,7 @@ mod tests {
     }
 
     #[test]
-    fn test_map_perf_insert_remove() -> StdResult<()> {
+    fn test_map_perf_save_remove() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
         let total_items = 100;
@@ -1019,7 +1019,7 @@ mod tests {
         let map: Map<i32, i32> = Map::new(b"test");
 
         for i in 0..total_items {
-            map.insert(&mut storage, &i, &i)?;
+            map.save(&mut storage, &i, &i)?;
         }
 
         for i in 0..total_items {
@@ -1041,7 +1041,7 @@ mod tests {
 
         for i in 0..total_items {
             let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
-            map.insert(&mut storage, &key, &i)?;
+            map.save(&mut storage, &key, &i)?;
         }
 
         for i in 0..((total_items / page_size) - 1) {
@@ -1069,7 +1069,7 @@ mod tests {
         let map: Map<i32, u32> = Map::new(b"test");
 
         for i in 0..total_items {
-            map.insert(&mut storage, &(i as i32), &i)?;
+            map.save(&mut storage, &(i as i32), &i)?;
         }
 
         let values = map.paging_keys(&storage, 0, page_size)?;
@@ -1084,7 +1084,7 @@ mod tests {
     }
 
     #[test]
-    fn test_map_insert_multiple() -> StdResult<()> {
+    fn test_map_save_multiple() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
         let map: Map<Vec<u8>, Foo> = Map::new(b"test");
@@ -1097,11 +1097,11 @@ mod tests {
             number: 1111,
         };
 
-        map.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
-        map.insert(&mut storage, &b"key2".to_vec(), &foo2)?;
+        map.save(&mut storage, &b"key1".to_vec(), &foo1)?;
+        map.save(&mut storage, &b"key2".to_vec(), &foo2)?;
 
-        let read_foo1 = map.get(&storage, &b"key1".to_vec()).unwrap();
-        let read_foo2 = map.get(&storage, &b"key2".to_vec()).unwrap();
+        let read_foo1 = map.load(&storage, &b"key1".to_vec()).unwrap();
+        let read_foo2 = map.load(&storage, &b"key2".to_vec()).unwrap();
 
         assert_eq!(foo1, read_foo1);
         assert_eq!(foo2, read_foo2);
@@ -1118,7 +1118,7 @@ mod tests {
             number: 1111,
         };
 
-        map.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
+        map.save(&mut storage, &b"key1".to_vec(), &foo1)?;
         let contains_k1 = map.contains(&storage, &b"key1".to_vec());
 
         assert!(contains_k1);
@@ -1140,8 +1140,8 @@ mod tests {
             number: 1111,
         };
 
-        map.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
-        map.insert(&mut storage, &b"key2".to_vec(), &foo2)?;
+        map.save(&mut storage, &b"key1".to_vec(), &foo1)?;
+        map.save(&mut storage, &b"key2".to_vec(), &foo2)?;
 
         let mut x = map.iter(&storage)?;
         let (len, _) = x.size_hint();
@@ -1171,8 +1171,8 @@ mod tests {
         let key1 = "key1".to_string();
         let key2 = "key2".to_string();
 
-        map.insert(&mut storage, &key1, &foo1)?;
-        map.insert(&mut storage, &key2, &foo2)?;
+        map.save(&mut storage, &key1, &foo1)?;
+        map.save(&mut storage, &key2, &foo2)?;
 
         let mut x = map.iter_keys(&storage)?;
         let (len, _) = x.size_hint();
@@ -1199,10 +1199,10 @@ mod tests {
             number: 2222,
         };
 
-        map.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
-        map.insert(&mut storage, &b"key1".to_vec(), &foo2)?;
+        map.save(&mut storage, &b"key1".to_vec(), &foo1)?;
+        map.save(&mut storage, &b"key1".to_vec(), &foo2)?;
 
-        let foo3 = map.get(&storage, &b"key1".to_vec()).unwrap();
+        let foo3 = map.load(&storage, &b"key1".to_vec()).unwrap();
 
         assert_eq!(foo3, foo2);
 
@@ -1223,11 +1223,11 @@ mod tests {
             string: "string one".to_string(),
             number: 1111,
         };
-        map.insert(&mut storage, &"key1".to_string(), &foo1)?;
-        map.insert(&mut storage, &"key2".to_string(), &foo2)?;
+        map.save(&mut storage, &"key1".to_string(), &foo1)?;
+        map.save(&mut storage, &"key2".to_string(), &foo2)?;
 
-        let read_foo1 = map.get(&storage, &"key1".to_string()).unwrap();
-        let read_foo2 = map.get(&storage, &"key2".to_string()).unwrap();
+        let read_foo1 = map.load(&storage, &"key1".to_string()).unwrap();
+        let read_foo2 = map.load(&storage, &"key2".to_string()).unwrap();
 
         assert_eq!(original_map.get_len(&storage)?, 0);
         assert_eq!(foo1, read_foo1);
@@ -1239,16 +1239,16 @@ mod tests {
         assert!(alt_same_suffix.is_empty(&storage)?);
 
         // show that it loads foo1 before removal
-        let before_remove_foo1 = map.get(&storage, &"key1".to_string());
+        let before_remove_foo1 = map.load(&storage, &"key1".to_string());
         assert!(before_remove_foo1.is_some());
         assert_eq!(foo1, before_remove_foo1.unwrap());
         // and returns None after removal
         map.remove(&mut storage, &"key1".to_string())?;
-        let removed_foo1 = map.get(&storage, &"key1".to_string());
+        let removed_foo1 = map.load(&storage, &"key1".to_string());
         assert!(removed_foo1.is_none());
 
         // show what happens when reading from keys that have not been set yet.
-        assert!(map.get(&storage, &"key3".to_string()).is_none());
+        assert!(map.load(&storage, &"key3".to_string()).is_none());
 
         Ok(())
     }
@@ -1283,12 +1283,12 @@ mod tests {
         let key1 = "k1".to_string();
         let key2 = "k2".to_string();
 
-        map.insert(&mut storage, &key1, &foo1)?;
+        map.save(&mut storage, &key1, &foo1)?;
         assert_eq!(map.get_len(&storage)?, 1);
         assert!(map.length.lock().unwrap().eq(&Some(1)));
 
         // add another item
-        map.insert(&mut storage, &key2, &foo2)?;
+        map.save(&mut storage, &key2, &foo2)?;
         assert_eq!(map.get_len(&storage)?, 2);
         assert!(map.length.lock().unwrap().eq(&Some(2)));
 
@@ -1298,7 +1298,7 @@ mod tests {
         assert!(map.length.lock().unwrap().eq(&Some(1)));
 
         // override item (should not change length)
-        map.insert(&mut storage, &key2, &foo1)?;
+        map.save(&mut storage, &key2, &foo1)?;
         assert_eq!(map.get_len(&storage)?, 1);
         assert!(map.length.lock().unwrap().eq(&Some(1)));
 
@@ -1334,11 +1334,11 @@ mod tests {
             string: "string one".to_string(),
             number: 1111,
         };
-        map.insert(&mut storage, &"key1".to_string(), &foo1)?;
-        map.insert(&mut storage, &"key2".to_string(), &foo2)?;
+        map.save(&mut storage, &"key1".to_string(), &foo1)?;
+        map.save(&mut storage, &"key2".to_string(), &foo2)?;
 
-        let read_foo1 = map.get(&storage, &"key1".to_string()).unwrap();
-        let read_foo2 = map.get(&storage, &"key2".to_string()).unwrap();
+        let read_foo1 = map.load(&storage, &"key1".to_string()).unwrap();
+        let read_foo2 = map.load(&storage, &"key2".to_string()).unwrap();
 
         assert_eq!(foo1, read_foo1);
         assert_eq!(foo2, read_foo2);
@@ -1346,8 +1346,8 @@ mod tests {
 
         map.remove(&mut storage, &"key1".to_string())?;
 
-        let read_foo1 = map.get(&storage, &"key1".to_string());
-        let read_foo2 = map.get(&storage, &"key2".to_string()).unwrap();
+        let read_foo1 = map.load(&storage, &"key1".to_string());
+        let read_foo2 = map.load(&storage, &"key2".to_string()).unwrap();
 
         assert!(read_foo1.is_none());
         assert_eq!(foo2, read_foo2);
@@ -1365,7 +1365,7 @@ mod tests {
 
         for i in 0..total_items {
             let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
-            map.insert(&mut storage, &key, &i)?;
+            map.save(&mut storage, &key, &i)?;
         }
 
         for i in 0..((total_items / page_size) - 1) {
@@ -1393,7 +1393,7 @@ mod tests {
         let map: Map<i32, u32, Json> = MapBuilder::new(b"test").with_page_size(3).build();
 
         for i in 0..total_items {
-            map.insert(&mut storage, &(i as i32), &i)?;
+            map.save(&mut storage, &(i as i32), &i)?;
         }
 
         let values = map.paging_keys(&storage, 0, page_size)?;
@@ -1425,9 +1425,9 @@ mod tests {
             number: 1111,
         };
 
-        map.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
-        map.insert(&mut storage, &b"key2".to_vec(), &foo2)?;
-        map.insert(&mut storage, &b"key3".to_vec(), &foo3)?;
+        map.save(&mut storage, &b"key1".to_vec(), &foo1)?;
+        map.save(&mut storage, &b"key2".to_vec(), &foo2)?;
+        map.save(&mut storage, &b"key3".to_vec(), &foo3)?;
 
         let mut x = map.iter(&storage)?;
         let (len, _) = x.size_hint();
@@ -1458,10 +1458,10 @@ mod tests {
         let map: Map<i32, i32> = MapBuilder::new(b"test")
             .with_page_size(page_size)
             .build();
-        map.insert(&mut storage, &1234, &1234)?;
-        map.insert(&mut storage, &2143, &2143)?;
-        map.insert(&mut storage, &3412, &3412)?;
-        map.insert(&mut storage, &4321, &4321)?;
+        map.save(&mut storage, &1234, &1234)?;
+        map.save(&mut storage, &2143, &2143)?;
+        map.save(&mut storage, &3412, &3412)?;
+        map.save(&mut storage, &4321, &4321)?;
 
         let mut iter = map.iter(&storage)?.rev();
         assert_eq!(iter.next(), Some(Ok((4321, 4321))));
@@ -1508,7 +1508,7 @@ mod tests {
         let map: Map<i32, i32> = MapBuilder::new(b"test")
             .with_page_size(page_size)
             .build();
-        map.insert(&mut storage, &1234, &1234)?;
+        map.save(&mut storage, &1234, &1234)?;
 
         let page_key = [map.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
         if map.page_size == 1 {
@@ -1526,7 +1526,7 @@ mod tests {
         let json_map: Map<i32, i32, Json> = MapBuilder::new(b"test2")
             .with_page_size(page_size)
             .build();
-        json_map.insert(&mut storage, &1234, &1234)?;
+        json_map.save(&mut storage, &1234, &1234)?;
 
         let key = [json_map.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
         if json_map.page_size == 1 {

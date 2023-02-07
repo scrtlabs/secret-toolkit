@@ -337,7 +337,7 @@ pub static JSON_VOTE: Map<Addr, Foo, Json> =
 
 You can find more examples of using maps in the unit tests of Map in `map.rs`.
 
-To insert, remove, read from the map, do the following:
+To save to, remove, and read from the map, do the following:
 
 ```rust
 # use secret_toolkit_storage::{Map, MapBuilder};
@@ -357,9 +357,9 @@ let foo = Foo {
     votes: 1111,
 };
 
-ADDR_VOTE.insert(&mut deps.storage, &user_addr, &foo)?;
+ADDR_VOTE.save(&mut deps.storage, &user_addr, &foo)?;
 // Compiler knows that this is Foo
-let read_foo = ADDR_VOTE.get(deps.as_ref().storage, &user_addr).unwrap();
+let read_foo = ADDR_VOTE.load(deps.as_ref().storage, &user_addr).unwrap();
 assert_eq!(read_foo, foo);
 ADDR_VOTE.remove(&mut deps.storage, &user_addr)?;
 assert_eq!(ADDR_VOTE.get_len(deps.as_ref().storage)?, 0);
@@ -397,8 +397,8 @@ fn test_map_iter_keys() -> StdResult<()> {
     let key1 = "key1".to_string();
     let key2 = "key2".to_string();
 
-    map.insert(&mut storage, &key1, &foo1)?;
-    map.insert(&mut storage, &key2, &foo2)?;
+    map.save(&mut storage, &key1, &foo1)?;
+    map.save(&mut storage, &key2, &foo2)?;
 
     let mut x = map.iter_keys(&storage)?;
     let (len, _) = x.size_hint();
@@ -432,8 +432,8 @@ fn test_map_iter() -> StdResult<()> {
         number: 1111,
     };
 
-    map.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
-    map.insert(&mut storage, &b"key2".to_vec(), &foo2)?;
+    map.save(&mut storage, &b"key1".to_vec(), &foo1)?;
+    map.save(&mut storage, &b"key2".to_vec(), &foo2)?;
 
     let mut x = map.iter(&storage)?;
     let (len, _) = x.size_hint();
