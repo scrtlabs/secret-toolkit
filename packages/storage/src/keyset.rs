@@ -1024,15 +1024,15 @@ mod tests {
 
     fn test_keyset_custom_page_reverse_iterator(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let keymap: Keyset<i32> = KeysetBuilder::new(b"test")
+        let keyset: Keyset<i32> = KeysetBuilder::new(b"test")
             .with_page_size(page_size)
             .build();
-        keymap.insert(&mut storage, &1234)?;
-        keymap.insert(&mut storage, &2143)?;
-        keymap.insert(&mut storage, &3412)?;
-        keymap.insert(&mut storage, &4321)?;
+        keyset.insert(&mut storage, &1234)?;
+        keyset.insert(&mut storage, &2143)?;
+        keyset.insert(&mut storage, &3412)?;
+        keyset.insert(&mut storage, &4321)?;
 
-        let mut iter = keymap.iter(&storage)?.rev();
+        let mut iter = keyset.iter(&storage)?.rev();
         assert_eq!(iter.next(), Some(Ok(4321)));
         assert_eq!(iter.next(), Some(Ok(3412)));
         assert_eq!(iter.next(), Some(Ok(2143)));
@@ -1040,7 +1040,7 @@ mod tests {
         assert_eq!(iter.next(), None);
 
         // iterate twice to make sure nothing changed
-        let mut iter = keymap.iter(&storage)?.rev();
+        let mut iter = keyset.iter(&storage)?.rev();
         assert_eq!(iter.next(), Some(Ok(4321)));
         assert_eq!(iter.next(), Some(Ok(3412)));
         assert_eq!(iter.next(), Some(Ok(2143)));
@@ -1048,13 +1048,13 @@ mod tests {
         assert_eq!(iter.next(), None);
 
         // make sure our implementation of `nth_back` doesn't break anything
-        let mut iter = keymap.iter(&storage)?.rev().skip(2);
+        let mut iter = keyset.iter(&storage)?.rev().skip(2);
         assert_eq!(iter.next(), Some(Ok(2143)));
         assert_eq!(iter.next(), Some(Ok(1234)));
         assert_eq!(iter.next(), None);
 
         // make sure our implementation of `ExactSizeIterator` works well
-        let mut iter = keymap.iter(&storage)?.skip(2).rev();
+        let mut iter = keyset.iter(&storage)?.skip(2).rev();
         assert_eq!(iter.next(), Some(Ok(4321)));
         assert_eq!(iter.next(), Some(Ok(3412)));
         assert_eq!(iter.next(), None);

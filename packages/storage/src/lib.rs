@@ -11,7 +11,7 @@ pub use deque_store::DequeStore;
 pub use item::Item;
 pub use iter_options::WithoutIter;
 use iter_options::{IterOption, WithIter};
-pub use keymap::{Keymap, KeymapBuilder};
+pub use keymap::{Map, MapBuilder};
 pub use keyset::{Keyset, KeysetBuilder};
 
 pub mod iter_options {

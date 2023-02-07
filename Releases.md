@@ -14,9 +14,9 @@ The APIs remains the same, but it is necessary to upgrade the contract's `cosmwa
 - This release changes the internal toolkit package to be part of the workspace - this fixes default-features flags in some of the crates. In addition, crates used by the toolkit have been bumped, and the edition of the toolkit crates has been bumped to 2021.
 
 - Added the `Keyset` storage object (A hashset like storage object).
-- Allowed further customisation of Keymap and Keyset with new constructor structs called `KeymapBuilder` and `KeysetBuilder` which allow the user to disable the iterator feature (saving gas) or adjust the internal indexes' page size so that the user may determine how many objects are to be stored/loaded together in the iterator.
+- Allowed further customisation of Map and Keyset with new constructor structs called `MapBuilder` and `KeysetBuilder` which allow the user to disable the iterator feature (saving gas) or adjust the internal indexes' page size so that the user may determine how many objects are to be stored/loaded together in the iterator.
 - `::new_with_page_size(namespace, page_size)` method was added to `AppendStore` and `DequeStore` so that the user may adjust the internal indexes' page size which determine how many objects are to be stored/loaded together in the iterator.
-- Minor performance upgrades to `Keymap`, `AppendStore`, and `DequeStore`.
+- Minor performance upgrades to `Map`, `AppendStore`, and `DequeStore`.
 
 ### Breaking
 
@@ -40,7 +40,7 @@ are prone to bugs, or inefficient. Unless you are using these specific interface
 ### Breaking
 
 - Removed the implementations of Clone for storage types which are not useful and may cause data corruption if used incorrectly.
-- Changed `Keymap::insert` to take the item by reference rather than by value. This should reduce the cost of calling that function by avoiding cloning.
+- Changed `Map::insert` to take the item by reference rather than by value. This should reduce the cost of calling that function by avoiding cloning.
 
 ### Features
 
@@ -50,7 +50,7 @@ are prone to bugs, or inefficient. Unless you are using these specific interface
 
 * BUGFIX: implementation of `.clone` method fixed
 * Added `.add_suffix` and `.clone` methods to `secret-toolkit::storage::Item`
-* Minor performance updates to `secret-toolkit::storage::Keymap`
+* Minor performance updates to `secret-toolkit::storage::Map`
 
 ## secret-toolkit-storage v0.4.1
 

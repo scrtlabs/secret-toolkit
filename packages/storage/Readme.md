@@ -244,7 +244,7 @@ The main user facing methods to read/write to DequeStore are `pop_back`, `pop_fr
 
 This is exactly same as that of AppendStore.
 
-### **Keymap**
+### **Map**
 
 This hashmap-like storage structure allows the user to use generic typed keys to store objects. Allows iteration with paging over keys and/or items (without guaranteed ordering, although the order of insertion is preserved until you start removing objects).
 An example use-case for such a structure is if you want to contain a large amount of votes, deposits, or bets and iterate over them at some time in the future.
@@ -256,11 +256,11 @@ be returned in each page.
 To import and initialize this storage object as a static constant in `state.rs`, do the following:
 
 ```ignore
-use secret_toolkit::storage::{Keymap, KeymapBuilder};
+use secret_toolkit::storage::{Map, MapBuilder};
 ```
 
 ```rust
-# use secret_toolkit_storage::Keymap;
+# use secret_toolkit_storage::Map;
 # use cosmwasm_std::{Addr};
 # use serde::{Serialize, Deserialize};
 # #[derive(Serialize, Deserialize)]
@@ -268,79 +268,79 @@ use secret_toolkit::storage::{Keymap, KeymapBuilder};
 # #[derive(Serialize, Deserialize)]
 # struct Foo { vote_for: String };
 #
-pub static ADDR_VOTE: Keymap<Addr, Foo> = Keymap::new(b"vote");
-pub static BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"bet");
+pub static ADDR_VOTE: Map<Addr, Foo> = Map::new(b"vote");
+pub static BET_STORE: Map<u32, BetInfo> = Map::new(b"bet");
 ```
 
 > ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
 
-You can use Json serde algorithm by changing the signature to `Keymap<Addr, Uint128, Json>`, similar to all the other storage objects above. However, keep in mind that the Serde algorithm is used to serde both the stored object (`Uint128`) AND the key (`Addr`).
+You can use Json serde algorithm by changing the signature to `Map<Addr, Uint128, Json>`, similar to all the other storage objects above. However, keep in mind that the Serde algorithm is used to serde both the stored object (`Uint128`) AND the key (`Addr`).
 
-If you need to associate a keymap to a user address (or any other variable), then you can also do this using the `.add_suffix` method.
+If you need to associate a map to a user address (or any other variable), then you can also do this using the `.add_suffix` method.
 
-For example, suppose that in your contract, a user can make multiple bets. Then, you'd want a Keymap to be associated to each user. You would achieve this by doing the following during execution in `contract.rs`.
+For example, suppose that in your contract, a user can make multiple bets. Then, you'd want a Map to be associated to each user. You would achieve this by doing the following during execution in `contract.rs`.
 
 ```rust
-# use secret_toolkit_storage::Keymap;
+# use secret_toolkit_storage::Map;
 # use cosmwasm_std::{Addr, testing::mock_info};
 # use serde::{Serialize, Deserialize};
 # #[derive(Serialize, Deserialize)]
 # struct BetInfo { bet_outcome: u32, amount: u32 };
 # let info = mock_info("sender", &[]);
 #
-pub static BET_STORE: Keymap<u32, BetInfo> = Keymap::new(b"bet");
+pub static BET_STORE: Map<u32, BetInfo> = Map::new(b"bet");
 // The compiler knows that user_bet_store is AppendStore<u32, BetInfo>
 let user_count_store = BET_STORE.add_suffix(info.sender.to_string().as_bytes());
 ```
 
 #### **Advanced Init**
 
-It is also possible to modify some of the configuration settings of the Keymap structure so that it suits better to a specific use case. In this case, we use a struct called `KeymapBuilder` to build a keymap with specialized config. Currently, we can use KeymapBuilder to modify two attributes of keymaps.
+It is also possible to modify some of the configuration settings of the Map structure so that it suits better to a specific use case. In this case, we use a struct called `MapBuilder` to build a map with specialized config. Currently, we can use MapBuilder to modify two attributes of maps.
 
-One is to disable the iterator feature altogether using `.without_iter()`. This basically turns a keymap into a typed PrefixedStorage, but it also saves a ton of gas by not storing the keys and the length of the keymap.
+One is to disable the iterator feature altogether using `.without_iter()`. This basically turns a map into a typed PrefixedStorage, but it also saves a ton of gas by not storing the keys and the length of the map.
 
-The other feature is to modify the page size of the internal indexer (only if the iterator feature is enabled, i.e. this setting is irrelevant if `.without_iter()` is used). Keymap iterates by using internal index pages allowing it to load the next 5 objects at the same time. You can change the default 5 to any `u32` greater than zero by using `.with_page_size(num)`. This allows the user to optimize the gas usage of Keymap.
+The other feature is to modify the page size of the internal indexer (only if the iterator feature is enabled, i.e. this setting is irrelevant if `.without_iter()` is used). Map iterates by using internal index pages allowing it to load the next 5 objects at the same time. You can change the default 5 to any `u32` greater than zero by using `.with_page_size(num)`. This allows the user to optimize the gas usage of Map.
 
-The following is used to produce a Keymap without an iterator in `state.rs`
+The following is used to produce a Map without an iterator in `state.rs`
 
 ```rust
-# use secret_toolkit_storage::{Keymap, KeymapBuilder, WithoutIter};
+# use secret_toolkit_storage::{Map, MapBuilder, WithoutIter};
 # use secret_toolkit_serialization::{Json, Bincode2};
 # use serde::{Serialize, Deserialize};
 # #[derive(Serialize, Deserialize)]
 # struct Foo { vote: u32 };
 #
-pub static JSON_ADDR_VOTE: Keymap<String, Foo, Json, WithoutIter> =
-            KeymapBuilder::new(b"json_vote").without_iter().build();
+pub static JSON_ADDR_VOTE: Map<String, Foo, Json, WithoutIter> =
+            MapBuilder::new(b"json_vote").without_iter().build();
 
-pub static BINCODE_ADDR_VOTE: Keymap<String, Foo, Bincode2, WithoutIter> =
-            KeymapBuilder::new(b"bincode_vote").without_iter().build();
+pub static BINCODE_ADDR_VOTE: Map<String, Foo, Bincode2, WithoutIter> =
+            MapBuilder::new(b"bincode_vote").without_iter().build();
 ```
 
-The following is used to produce a Keymap with modified index page size:
+The following is used to produce a Map with modified index page size:
 
 ```rust
-# use secret_toolkit_storage::{Keymap, KeymapBuilder};
+# use secret_toolkit_storage::{Map, MapBuilder};
 # use cosmwasm_std::{Addr};
 # use secret_toolkit_serialization::{Json};
 # use serde::{Serialize, Deserialize};
 # #[derive(Serialize, Deserialize)]
 # struct Foo { vote: u32 };
 #
-pub static ADDR_VOTE: Keymap<Addr, Foo> = KeymapBuilder::new(b"page_vote").with_page_size(13).build();
+pub static ADDR_VOTE: Map<Addr, Foo> = MapBuilder::new(b"page_vote").with_page_size(13).build();
 
-pub static JSON_VOTE: Keymap<Addr, Foo, Json> =
-            KeymapBuilder::new(b"page_vote").with_page_size(3).build();
+pub static JSON_VOTE: Map<Addr, Foo, Json> =
+            MapBuilder::new(b"page_vote").with_page_size(3).build();
 ```
 
 #### **Read/Write**
 
-You can find more examples of using keymaps in the unit tests of Keymap in `keymap.rs`.
+You can find more examples of using maps in the unit tests of Map in `keymap.rs`.
 
-To insert, remove, read from the keymap, do the following:
+To insert, remove, read from the map, do the following:
 
 ```rust
-# use secret_toolkit_storage::{Keymap, KeymapBuilder};
+# use secret_toolkit_storage::{Map, MapBuilder};
 # use cosmwasm_std::{Addr, testing::{mock_info, mock_dependencies}, StdError};
 # use serde::{Serialize, Deserialize};
 # #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -348,7 +348,7 @@ To insert, remove, read from the keymap, do the following:
 #
 # let mut deps = mock_dependencies();
 # let info = mock_info("sender", &[]);
-# pub static ADDR_VOTE: Keymap<Addr, Foo> = KeymapBuilder::new(b"page_vote").with_page_size(13).build();
+# pub static ADDR_VOTE: Map<Addr, Foo> = MapBuilder::new(b"page_vote").with_page_size(13).build();
 #
 let user_addr: Addr = info.sender;
 
@@ -368,23 +368,23 @@ assert_eq!(ADDR_VOTE.get_len(deps.as_ref().storage)?, 0);
 
 #### **Iterator**
 
-There are two methods that create an iterator in Keymap. These are `.iter` and `.iter_keys`. `iter_keys` only iterates over the keys whereas `iter` iterates over (key, item) pairs. Needless to say, `.iter_keys` is more efficient as it does not attempt to read the item.
+There are two methods that create an iterator in Map. These are `.iter` and `.iter_keys`. `iter_keys` only iterates over the keys whereas `iter` iterates over (key, item) pairs. Needless to say, `.iter_keys` is more efficient as it does not attempt to read the item.
 
-Keymap also has two paging methods, these are `.paging` and `.paging_keys`. `paging_keys` only paginates keys whereas `iter` iterates over (key, item) pairs. Needless to say, `.iter_keys` is more efficient as it does not attempt to read the item.
+Map also has two paging methods, these are `.paging` and `.paging_keys`. `paging_keys` only paginates keys whereas `iter` iterates over (key, item) pairs. Needless to say, `.iter_keys` is more efficient as it does not attempt to read the item.
 
 Here are some select examples from the unit tests:
 
 ```rust
 # use cosmwasm_std::{StdResult, testing::MockStorage};
-# use secret_toolkit_storage::Keymap;
+# use secret_toolkit_storage::Map;
 # use serde::{Serialize, Deserialize};
 # #[derive(Serialize, Deserialize, PartialEq, Debug)]
 # struct Foo { string: String, number: u32 };
 #
-fn test_keymap_iter_keys() -> StdResult<()> {
+fn test_map_iter_keys() -> StdResult<()> {
     let mut storage = MockStorage::new();
 
-    let keymap: Keymap<String, Foo> = Keymap::new(b"test");
+    let map: Map<String, Foo> = Map::new(b"test");
     let foo1 = Foo {
         string: "string one".to_string(),
         number: 1111,
@@ -397,10 +397,10 @@ fn test_keymap_iter_keys() -> StdResult<()> {
     let key1 = "key1".to_string();
     let key2 = "key2".to_string();
 
-    keymap.insert(&mut storage, &key1, &foo1)?;
-    keymap.insert(&mut storage, &key2, &foo2)?;
+    map.insert(&mut storage, &key1, &foo1)?;
+    map.insert(&mut storage, &key2, &foo2)?;
 
-    let mut x = keymap.iter_keys(&storage)?;
+    let mut x = map.iter_keys(&storage)?;
     let (len, _) = x.size_hint();
     assert_eq!(len, 2);
 
@@ -414,15 +414,15 @@ fn test_keymap_iter_keys() -> StdResult<()> {
 
 ```rust
 # use cosmwasm_std::{StdResult, testing::MockStorage};
-# use secret_toolkit_storage::Keymap;
+# use secret_toolkit_storage::Map;
 # use serde::{Serialize, Deserialize};
 # #[derive(Serialize, Deserialize, PartialEq, Debug)]
 # struct Foo { string: String, number: u32 };
 #
-fn test_keymap_iter() -> StdResult<()> {
+fn test_map_iter() -> StdResult<()> {
     let mut storage = MockStorage::new();
 
-    let keymap: Keymap<Vec<u8>, Foo> = Keymap::new(b"test");
+    let map: Map<Vec<u8>, Foo> = Map::new(b"test");
     let foo1 = Foo {
         string: "string one".to_string(),
         number: 1111,
@@ -432,10 +432,10 @@ fn test_keymap_iter() -> StdResult<()> {
         number: 1111,
     };
 
-    keymap.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
-    keymap.insert(&mut storage, &b"key2".to_vec(), &foo2)?;
+    map.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
+    map.insert(&mut storage, &b"key2".to_vec(), &foo2)?;
 
-    let mut x = keymap.iter(&storage)?;
+    let mut x = map.iter(&storage)?;
     let (len, _) = x.size_hint();
     assert_eq!(len, 2);
 
@@ -468,7 +468,7 @@ pub static WHITELIST: Keyset<Addr> = Keyset::new(b"whitelist");
 
 > ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
 
-> add_suffix and KeysetBuilder methods function similarly to that of Keymap's.
+> add_suffix and KeysetBuilder methods function similarly to that of Map's.
 
 #### **Storage Methods**
 
