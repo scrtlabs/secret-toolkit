@@ -12,24 +12,32 @@ Or you can call the individual function for each Handle message to generate the 
 
 Example:
 
-```ignore
-    let recipient = "ADDRESS_TO_TRANSFER_TO".to_string();
-    let amount = Uint128(10000);
-    let padding = None;
-    let block_size = 256;
-    let callback_code_hash = "TOKEN_CONTRACT_CODE_HASH".to_string();
-    let contract_addr = "TOKEN_CONTRACT_ADDRESS".to_string();
+```rust
+# use cosmwasm_std::{Uint128, StdError, StdResult, CosmosMsg, Response};
+# use secret_toolkit_snip20::{transfer_msg};
+#
+# fn main() -> StdResult<()> {
+let recipient = "ADDRESS_TO_TRANSFER_TO".to_string();
+let amount = Uint128::from(10000u128);
+let memo = Some("memo".to_string());
+let padding = None;
+let block_size = 256;
+let callback_code_hash = "TOKEN_CONTRACT_CODE_HASH".to_string();
+let contract_addr = "TOKEN_CONTRACT_ADDRESS".to_string();
 
-    let cosmos_msg = transfer_msg(
-        recipient,
-        amount,
-        padding,
-        block_size,
-        callback_code_hash,
-        contract_addr,
-    )?;
+let cosmos_msg = transfer_msg(
+    recipient,
+    amount,
+    memo,
+    padding,
+    block_size,
+    callback_code_hash,
+    contract_addr,
+)?;
 
-    Ok(Response::new().add_message(cosmos_msg))
+let response = Ok(Response::new().add_message(cosmos_msg));
+# response.map(|_r| ())
+# }
 ```
 
 All you have to do to call a SNIP-20 Handle function is call the appropriate toolkit function, and place the resulting `CosmosMsg` in the `messages` Vec of the InitResponse or HandleResponse.  In this example, we are transferring 10000 (in the lowest denomination of the token) to the recipient address.  We are not using the `padding` field of the Transfer message, but instead, we are padding the entire message to blocks of 256 bytes.
@@ -40,7 +48,11 @@ You probably have also noticed that CreateViewingKey is not supported.  This is 
 
 These are the types that SNIP20 tokens can return from queries
 
-```ignore
+```rust
+# use cosmwasm_std::{Uint128, Coin};
+# use serde::Serialize;
+#
+# #[derive(Serialize)]
 pub struct TokenInfo {
     pub name: String,
     pub symbol: String,
@@ -54,6 +66,7 @@ pub struct ExchangeRate {
     pub denom: String,
 }
 
+# #[derive(Serialize)]
 pub struct Allowance {
     pub spender: String,
     pub owner: String,
@@ -66,6 +79,7 @@ pub struct Balance {
     pub amount: Uint128,
 }
 
+# #[derive(Serialize)]
 pub struct Tx {
     pub id: u64,
     pub from: String,
@@ -83,6 +97,7 @@ pub struct TransferHistory {
     pub txs: Vec<Tx>,
 }
 
+# #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TxAction {
     Transfer {
@@ -102,6 +117,7 @@ pub enum TxAction {
     Redeem {},
 }
 
+# #[derive(Serialize)]
 pub struct RichTx {
     pub id: u64,
     pub action: TxAction,
@@ -128,15 +144,24 @@ Or you can call the individual function for each query.
 
 Example:
 
-```ignore
-    let address = "ADDRESS_WHOSE_BALANCE_IS_BEING_REQUESTED".to_string();
-    let key = "THE_VIEWING_KEY_PREVIOUSLY_SET_BY_THE_ADDRESS".to_string();
-    let block_size = 256;
-    let callback_code_hash = "TOKEN_CONTRACT_CODE_HASH".to_string();
-    let contract_addr = "TOKEN_CONTRACT_ADDRESS".to_string();
+```rust
+# use cosmwasm_std::{StdError, QuerierWrapper, testing::mock_dependencies};
+# use secret_toolkit_snip20::balance_query;
+# let mut deps = mock_dependencies();
+#
+let address = "ADDRESS_WHOSE_BALANCE_IS_BEING_REQUESTED".to_string();
+let key = "THE_VIEWING_KEY_PREVIOUSLY_SET_BY_THE_ADDRESS".to_string();
+let block_size = 256;
+let callback_code_hash = "TOKEN_CONTRACT_CODE_HASH".to_string();
+let contract_addr = "TOKEN_CONTRACT_ADDRESS".to_string();
 
-    let balance =
-        balance_query(deps.querier, address, key, block_size, callback_code_hash, contract_addr)?;
+let balance =
+    balance_query(deps.as_ref().querier, address, key, block_size, callback_code_hash, contract_addr);
+#
+# assert_eq!(
+#     balance.unwrap_err().to_string(), 
+#     "Generic error: Error performing Balance query: Generic error: Querier system error: No such contract: TOKEN_CONTRACT_ADDRESS"
+# );
 ```
 
 In this example, we are doing a Balance query for the specified address/key pair and storing the response in the balance variable, which is of the Balance type defined above.  The query message is padded to blocks of 256 bytes.

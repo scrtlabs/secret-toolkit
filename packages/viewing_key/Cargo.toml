@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-viewing-key"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -20,8 +20,8 @@ base64 = "0.13.0"
 subtle = { version = "2.2.3", default-features = false }
 cosmwasm-std = { workspace = true }
 cosmwasm-storage = { workspace = true }
-secret-toolkit-crypto = { version = "0.7", path = "../crypto", features = [
+secret-toolkit-crypto = { version = "0.8", path = "../crypto", features = [
     "hash",
     "rand",
 ] }
-secret-toolkit-utils = { version = "0.7", path = "../utils" }
+secret-toolkit-utils = { version = "0.8", path = "../utils" }

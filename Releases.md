@@ -1,5 +1,14 @@
 # Release notes for the Secret Toolkit
 
+## v0.8.0
+
+This release upgrades all `secret-toolkit` packages to be compatible with Cosmwasm v1.1.
+The APIs remains the same, but it is necessary to upgrade the contract's `cosmwasm` dependencies to `v1.1.0`
+
+### Breaking
+
+- This version will not work with `cosmwasm v1`. It is necessary to upgrade to `cosmwasm v1.1` in order to use this release.
+
 ## v0.7.0
 
 - This release changes the internal toolkit package to be part of the workspace - this fixes default-features flags in some of the crates. In addition, crates used by the toolkit have been bumped, and the edition of the toolkit crates has been bumped to 2021.
