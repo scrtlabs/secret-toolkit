@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-crypto"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -27,3 +27,4 @@ cosmwasm-std = { workspace = true }
 
 [dev-dependencies]
 secp256k1 = { version = "0.24.1", default-features = false, features=["alloc", "rand-std"] }
+base64 = "0.21.0"
