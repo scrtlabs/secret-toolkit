@@ -100,7 +100,7 @@ impl<'de, S: Serde, T: for<'des> de::Deserialize<'des>> de::Visitor<'de> for Bas
     {
         let binary = Base64::from_base64(v).map_err(|_| {
             //
-            E::custom(format!("invalid base64: {}", v))
+            E::custom(format!("invalid base64: {v}"))
         })?;
         match S::deserialize::<T>(binary.as_slice()) {
             Ok(val) => Ok(Base64Of::from(val)),
