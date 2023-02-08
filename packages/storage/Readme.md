@@ -268,8 +268,8 @@ use secret_toolkit::storage::{Map, MapBuilder};
 # #[derive(Serialize, Deserialize)]
 # struct Foo { vote_for: String };
 #
-pub static ADDR_VOTE: Map<Addr, Foo> = Map::new(b"vote");
-pub static BET_STORE: Map<u32, BetInfo> = Map::new(b"bet");
+pub static ADDR_VOTE: Map<Addr, Foo> = Map::new("vote");
+pub static BET_STORE: Map<u32, BetInfo> = Map::new("bet");
 ```
 
 > ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
@@ -288,9 +288,9 @@ For example, suppose that in your contract, a user can make multiple bets. Then,
 # struct BetInfo { bet_outcome: u32, amount: u32 };
 # let info = mock_info("sender", &[]);
 #
-pub static BET_STORE: Map<u32, BetInfo> = Map::new(b"bet");
+pub static BET_STORE: Map<u32, BetInfo> = Map::new("bet");
 // The compiler knows that user_bet_store is AppendStore<u32, BetInfo>
-let user_count_store = BET_STORE.add_suffix(info.sender.to_string().as_bytes());
+let user_count_store = BET_STORE.add_suffix(info.sender.as_str());
 ```
 
 #### **Advanced Init**
@@ -311,10 +311,10 @@ The following is used to produce a Map without an iterator in `state.rs`
 # struct Foo { vote: u32 };
 #
 pub static JSON_ADDR_VOTE: Map<String, Foo, Json, WithoutIter> =
-            MapBuilder::new(b"json_vote").without_iter().build();
+            MapBuilder::new("json_vote").without_iter().build();
 
 pub static BINCODE_ADDR_VOTE: Map<String, Foo, Bincode2, WithoutIter> =
-            MapBuilder::new(b"bincode_vote").without_iter().build();
+            MapBuilder::new("bincode_vote").without_iter().build();
 ```
 
 The following is used to produce a Map with modified index page size:
@@ -327,10 +327,10 @@ The following is used to produce a Map with modified index page size:
 # #[derive(Serialize, Deserialize)]
 # struct Foo { vote: u32 };
 #
-pub static ADDR_VOTE: Map<Addr, Foo> = MapBuilder::new(b"page_vote").with_page_size(13).build();
+pub static ADDR_VOTE: Map<Addr, Foo> = MapBuilder::new("page_vote").with_page_size(13).build();
 
 pub static JSON_VOTE: Map<Addr, Foo, Json> =
-            MapBuilder::new(b"page_vote").with_page_size(3).build();
+            MapBuilder::new("page_vote").with_page_size(3).build();
 ```
 
 #### **Read/Write**
@@ -348,7 +348,7 @@ To save to, remove, and read from the map, do the following:
 #
 # let mut deps = mock_dependencies();
 # let info = mock_info("sender", &[]);
-# pub static ADDR_VOTE: Map<Addr, Foo> = MapBuilder::new(b"page_vote").with_page_size(13).build();
+# pub static ADDR_VOTE: Map<Addr, Foo> = MapBuilder::new("page_vote").with_page_size(13).build();
 #
 let user_addr: Addr = info.sender;
 
@@ -384,7 +384,7 @@ Here are some select examples from the unit tests:
 fn test_map_iter_keys() -> StdResult<()> {
     let mut storage = MockStorage::new();
 
-    let map: Map<String, Foo> = Map::new(b"test");
+    let map: Map<String, Foo> = Map::new("test");
     let foo1 = Foo {
         string: "string one".to_string(),
         number: 1111,
@@ -422,7 +422,7 @@ fn test_map_iter_keys() -> StdResult<()> {
 fn test_map_iter() -> StdResult<()> {
     let mut storage = MockStorage::new();
 
-    let map: Map<Vec<u8>, Foo> = Map::new(b"test");
+    let map: Map<Vec<u8>, Foo> = Map::new("test");
     let foo1 = Foo {
         string: "string one".to_string(),
         number: 1111,
