@@ -583,7 +583,7 @@ where
 
     fn get_at_unchecked(&self, pos: u32) -> StdResult<Entry<T>> {
         let kind_plus_serialized = self.storage.get(&pos.to_be_bytes()).ok_or_else(|| {
-            StdError::generic_err(format!("No item in generational store at position {}", pos))
+            StdError::generic_err(format!("No item in generational store at position {pos}"))
         })?;
         if kind_plus_serialized.is_empty() {
             return Err(StdError::generic_err("Invalid data in generational store"));
