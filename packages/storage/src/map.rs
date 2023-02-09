@@ -224,9 +224,9 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 
     /// user facing method that checks if any item is stored with this key.
-    pub fn contains(&self, storage: &dyn Storage, key: &K) -> bool {
+    pub fn has(&self, storage: &dyn Storage, key: &K) -> bool {
         match self.serialize_key(key) {
-            Ok(key_vec) => self.contains_impl(storage, &key_vec),
+            Ok(key_vec) => self.has_impl(storage, &key_vec),
             Err(_) => false,
         }
     }
@@ -431,9 +431,9 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 
     /// user facing method that checks if any item is stored with this key.
-    pub fn contains(&self, storage: &dyn Storage, key: &K) -> bool {
+    pub fn has(&self, storage: &dyn Storage, key: &K) -> bool {
         match self.serialize_key(key) {
-            Ok(key_vec) => self.contains_impl(storage, &key_vec),
+            Ok(key_vec) => self.has_impl(storage, &key_vec),
             Err(_) => false,
         }
     }
@@ -917,7 +917,7 @@ trait PrefixedTypedStorage<T: Serialize + DeserializeOwned, Ser: Serde> {
     ///
     /// * `storage` - a reference to the storage this item is in
     /// * `key` - a byte slice representing the key to access the stored item
-    fn contains_impl(&self, storage: &dyn Storage, key: &[u8]) -> bool {
+    fn has_impl(&self, storage: &dyn Storage, key: &[u8]) -> bool {
         let prefixed_key = [self.as_slice(), key].concat();
         storage.get(&prefixed_key).is_some()
     }
@@ -1109,7 +1109,7 @@ mod tests {
     }
 
     #[test]
-    fn test_map_contains() -> StdResult<()> {
+    fn test_map_has() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
         let map: Map<Vec<u8>, Foo> = Map::new("test");
@@ -1119,9 +1119,9 @@ mod tests {
         };
 
         map.save(&mut storage, &b"key1".to_vec(), &foo1)?;
-        let contains_k1 = map.contains(&storage, &b"key1".to_vec());
+        let has_k1 = map.has(&storage, &b"key1".to_vec());
 
-        assert!(contains_k1);
+        assert!(has_k1);
 
         Ok(())
     }
@@ -1342,7 +1342,7 @@ mod tests {
 
         assert_eq!(foo1, read_foo1);
         assert_eq!(foo2, read_foo2);
-        assert!(map.contains(&storage, &"key1".to_string()));
+        assert!(map.has(&storage, &"key1".to_string()));
 
         map.remove(&mut storage, &"key1".to_string())?;
 
