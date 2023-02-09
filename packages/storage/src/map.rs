@@ -224,8 +224,8 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 
     /// user facing method that checks if any item is stored with this key.
-    pub fn has(&self, storage: &dyn Storage, key: &K) -> bool {
-        match self.serialize_key(key) {
+    pub fn has(&self, storage: &dyn Storage, key: K) -> bool {
+        match self.serialize_key(&key) {
             Ok(key_vec) => self.has_impl(storage, &key_vec),
             Err(_) => false,
         }
@@ -431,8 +431,8 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 
     /// user facing method that checks if any item is stored with this key.
-    pub fn has(&self, storage: &dyn Storage, key: &K) -> bool {
-        match self.serialize_key(key) {
+    pub fn has(&self, storage: &dyn Storage, key: K) -> bool {
+        match self.serialize_key(&key) {
             Ok(key_vec) => self.has_impl(storage, &key_vec),
             Err(_) => false,
         }
@@ -1119,7 +1119,7 @@ mod tests {
         };
 
         map.save(&mut storage, &b"key1".to_vec(), &foo1)?;
-        let has_k1 = map.has(&storage, &b"key1".to_vec());
+        let has_k1 = map.has(&storage, b"key1".to_vec());
 
         assert!(has_k1);
 
@@ -1342,7 +1342,7 @@ mod tests {
 
         assert_eq!(foo1, read_foo1);
         assert_eq!(foo2, read_foo2);
-        assert!(map.has(&storage, &"key1".to_string()));
+        assert!(map.has(&storage, "key1".to_string()));
 
         map.remove(&mut storage, &"key1".to_string())?;
 
