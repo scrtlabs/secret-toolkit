@@ -7,7 +7,7 @@ pub mod map;
 pub mod keyset;
 
 pub use append_store::AppendStore;
-pub use deque_store::DequeStore;
+pub use deque_store::Deque;
 pub use item::Item;
 pub use iter_options::WithoutIter;
 use iter_options::{IterOption, WithIter};
