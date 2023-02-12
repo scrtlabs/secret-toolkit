@@ -122,9 +122,9 @@ where
 
 impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser> {
     /// constructor
-    pub const fn new(prefix: &'a [u8]) -> Self {
+    pub const fn new(prefix: &'a str) -> Self {
         Self {
-            namespace: prefix,
+            namespace: prefix.as_bytes(),
             prefix: None,
             page_size: DEFAULT_PAGE_SIZE,
             length: Mutex::new(None),
@@ -635,7 +635,7 @@ mod tests {
 
         let total_items = 1000;
 
-        let keyset: Keyset<i32> = Keyset::new(b"test");
+        let keyset: Keyset<i32> = Keyset::new("test");
 
         for i in 0..total_items {
             keyset.insert(&mut storage, &i)?;
@@ -652,7 +652,7 @@ mod tests {
 
         let total_items = 100;
 
-        let keyset: Keyset<i32> = Keyset::new(b"test");
+        let keyset: Keyset<i32> = Keyset::new("test");
 
         for i in 0..total_items {
             keyset.insert(&mut storage, &i)?;
@@ -673,7 +673,7 @@ mod tests {
 
         let page_size: u32 = 5;
         let total_items: u32 = 50;
-        let keyset: Keyset<u32> = Keyset::new(b"test");
+        let keyset: Keyset<u32> = Keyset::new("test");
 
         for i in 0..total_items {
             keyset.insert(&mut storage, &i)?;
@@ -699,7 +699,7 @@ mod tests {
 
         let page_size = 50;
         let total_items = 10;
-        let keyset: Keyset<u32> = Keyset::new(b"test");
+        let keyset: Keyset<u32> = Keyset::new("test");
 
         for i in 0..total_items {
             keyset.insert(&mut storage, &i)?;
@@ -720,7 +720,7 @@ mod tests {
     fn test_keyset_insert_multiple() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let keyset: Keyset<Foo> = Keyset::new(b"test");
+        let keyset: Keyset<Foo> = Keyset::new("test");
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -745,7 +745,7 @@ mod tests {
     fn test_keyset_iter() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let keyset: Keyset<Foo> = Keyset::new(b"test");
+        let keyset: Keyset<Foo> = Keyset::new("test");
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -773,7 +773,7 @@ mod tests {
     fn test_keyset_iter_keys() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let keyset: Keyset<Foo> = Keyset::new(b"test");
+        let keyset: Keyset<Foo> = Keyset::new("test");
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -801,7 +801,7 @@ mod tests {
     fn test_keyset_suffixed_basics() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let original_keyset: Keyset<Foo> = Keyset::new(b"test");
+        let original_keyset: Keyset<Foo> = Keyset::new("test");
         let keyset = original_keyset.add_suffix(b"test_suffix");
         let foo1 = Foo {
             string: "string one".to_string(),
@@ -821,7 +821,7 @@ mod tests {
         assert!(read_foo1);
         assert!(read_foo2);
 
-        let alternative_keyset: Keyset<Foo> = Keyset::new(b"alternative");
+        let alternative_keyset: Keyset<Foo> = Keyset::new("alternative");
         let alt_same_suffix = alternative_keyset.add_suffix(b"test_suffix");
 
         assert!(alt_same_suffix.is_empty(&storage)?);
@@ -848,7 +848,7 @@ mod tests {
     fn test_keyset_length() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let keyset: Keyset<Foo> = Keyset::new(b"test");
+        let keyset: Keyset<Foo> = Keyset::new("test");
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
