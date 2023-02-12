@@ -1,13 +1,13 @@
 #![doc = include_str!("../Readme.md")]
 
 pub mod append_store;
-pub mod deque_store;
+pub mod deque;
 pub mod item;
 pub mod map;
 pub mod keyset;
 
 pub use append_store::AppendStore;
-pub use deque_store::Deque;
+pub use deque::Deque;
 pub use item::Item;
 pub use iter_options::WithoutIter;
 use iter_options::{IterOption, WithIter};
