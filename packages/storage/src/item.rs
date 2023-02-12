@@ -23,9 +23,9 @@ where
 
 impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Item<'a, T, Ser> {
     /// constructor
-    pub const fn new(key: &'a [u8]) -> Self {
+    pub const fn new(key: &'a str) -> Self {
         Self {
-            storage_key: key,
+            storage_key: key.as_bytes(),
             prefix: None,
             item_type: PhantomData,
             serialization_type: PhantomData,
@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn test_item() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let item: Item<i32> = Item::new(b"test");
+        let item: Item<i32> = Item::new("test");
 
         assert!(item.is_empty(&storage));
         assert_eq!(item.may_load(&storage)?, None);
@@ -180,7 +180,7 @@ mod tests {
     #[test]
     fn test_suffix() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let item: Item<i32> = Item::new(b"test");
+        let item: Item<i32> = Item::new("test");
         let item1 = item.add_suffix(b"suffix1");
         let item2 = item.add_suffix(b"suffix2");
 
@@ -204,7 +204,7 @@ mod tests {
     #[test]
     fn test_update() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let item: Item<i32> = Item::new(b"test");
+        let item: Item<i32> = Item::new("test");
 
         assert!(item.update(&mut storage, |x| Ok(x + 1)).is_err());
         item.save(&mut storage, &7)?;
@@ -219,7 +219,7 @@ mod tests {
         // Check the default behavior is Bincode2
         let mut storage = MockStorage::new();
 
-        let item: Item<i32> = Item::new(b"test");
+        let item: Item<i32> = Item::new("test");
         item.save(&mut storage, &1234)?;
 
         let key = b"test";
@@ -228,7 +228,7 @@ mod tests {
 
         // Check that overriding the serializer with Json works
         let mut storage = MockStorage::new();
-        let json_item: Item<i32, Json> = Item::new(b"test2");
+        let json_item: Item<i32, Json> = Item::new("test2");
         json_item.save(&mut storage, &1234)?;
 
         let key = b"test2";
