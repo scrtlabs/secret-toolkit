@@ -39,7 +39,7 @@ And initialize it using the following lines:
 ```rust
 # use cosmwasm_std::Addr;
 # use secret_toolkit_storage::Item;
-pub static OWNER: Item<Addr> = Item::new(b"owner");
+pub static OWNER: Item<Addr> = Item::new("owner");
 ```
 
 This uses Bincode2 to serde Addr by default. To specify the Serde algorithm as Json, first import it from `secret-toolkit::serialization`
@@ -58,8 +58,8 @@ then
 # #[derive(Serialize, Deserialize)]
 # enum SomeEnum {};
 #
-pub static OWNER: Item<Addr> = Item::new(b"owner");
-pub static SOME_ENUM: Item<SomeEnum, Json> = Item::new(b"some_enum");
+pub static OWNER: Item<Addr> = Item::new("owner");
+pub static SOME_ENUM: Item<SomeEnum, Json> = Item::new("some_enum");
 ```
 
 #### **Read/Write**
@@ -70,7 +70,7 @@ The way to read/write to/from storage is to use its methods. These methods are `
 # use cosmwasm_std::{Addr, testing::mock_dependencies, StdError};
 # use secret_toolkit_storage::Item;
 #
-# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# pub static OWNER: Item<Addr> = Item::new("owner");
 # 
 # let mut deps = mock_dependencies();
 # OWNER.save(&mut deps.storage, &Addr::unchecked("owner-addr"))?;
@@ -84,7 +84,7 @@ let owner_addr = OWNER.load(&deps.storage)?;
 # use cosmwasm_std::{Addr, testing::{mock_dependencies, mock_info}, StdError};
 # use secret_toolkit_storage::Item;
 #
-# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# pub static OWNER: Item<Addr> = Item::new("owner");
 # 
 # let mut deps = mock_dependencies();
 # let info = mock_info("sender", &[]);
@@ -97,7 +97,7 @@ OWNER.save(&mut deps.storage, &info.sender)?;
 # use cosmwasm_std::{Addr, testing::mock_dependencies, StdError};
 # use secret_toolkit_storage::Item;
 #
-# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# pub static OWNER: Item<Addr> = Item::new("owner");
 # 
 # let mut deps = mock_dependencies();
 #
@@ -110,7 +110,7 @@ let may_addr = OWNER.may_load(&deps.storage)?;
 # use cosmwasm_std::{Addr, testing::mock_dependencies, StdError};
 # use secret_toolkit_storage::Item;
 #
-# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# pub static OWNER: Item<Addr> = Item::new("owner");
 # 
 # let mut deps = mock_dependencies();
 #
@@ -122,7 +122,7 @@ let may_addr = OWNER.remove(&mut deps.storage);
 # use cosmwasm_std::{Addr, testing::{mock_dependencies, mock_info}, StdError};
 # use secret_toolkit_storage::Item;
 #
-# pub static OWNER: Item<Addr> = Item::new(b"owner");
+# pub static OWNER: Item<Addr> = Item::new("owner");
 # 
 # let mut deps = mock_dependencies();
 # let info = mock_info("sender", &[]);
@@ -157,7 +157,7 @@ use secret_toolkit::storage::{AppendStore};
 ```rust
 # use secret_toolkit_storage::AppendStore;
 # use cosmwasm_std::StdError;
-pub static COUNT_STORE: AppendStore<i32> = AppendStore::new(b"count");
+pub static COUNT_STORE: AppendStore<i32> = AppendStore::new("count");
 # Ok::<(), StdError>(())
 ```
 
@@ -169,7 +169,7 @@ Often times we need these storage objects to be associated to a user address or 
 # use secret_toolkit_storage::AppendStore;
 # use cosmwasm_std::testing::mock_info;
 # let info = mock_info("sender", &[]);
-# pub static COUNT_STORE: AppendStore<i32> = AppendStore::new(b"count");
+# pub static COUNT_STORE: AppendStore<i32> = AppendStore::new("count");
 #
 // The compiler knows that user_count_store is AppendStore<i32, Bincode2>
 let user_count_store = COUNT_STORE.add_suffix(info.sender.to_string().as_bytes());
@@ -179,7 +179,7 @@ Sometimes when iterating these objects, we may want to load the next `n` objects
 
 ```rust
 # use secret_toolkit_storage::AppendStore;
-pub static COUNT_STORE: AppendStore<i32> = AppendStore::new_with_page_size(b"count", 5);
+pub static COUNT_STORE: AppendStore<i32> = AppendStore::new_with_page_size("count", 5);
 ```
 
 #### **Read/Write**
@@ -193,7 +193,7 @@ AppendStore also implements a readonly iterator feature. This feature is also us
 ```rust
 # use cosmwasm_std::{StdError, testing::mock_dependencies};
 # use secret_toolkit_storage::AppendStore;
-# pub static COUNT_STORE: AppendStore<i32> = AppendStore::new_with_page_size(b"count", 5);
+# pub static COUNT_STORE: AppendStore<i32> = AppendStore::new_with_page_size("count", 5);
 # let deps = mock_dependencies();
 #
 let iter = COUNT_STORE.iter(&deps.storage)?;
@@ -205,7 +205,7 @@ More examples can be found in the unit tests. And the paging wrapper is used in 
 ```rust
 # use cosmwasm_std::{StdError, testing::mock_dependencies};
 # use secret_toolkit_storage::AppendStore;
-# pub static COUNT_STORE: AppendStore<i32> = AppendStore::new_with_page_size(b"count", 5);
+# pub static COUNT_STORE: AppendStore<i32> = AppendStore::new_with_page_size("count", 5);
 # let deps = mock_dependencies();
 #
 let start_page: u32 = 0;
@@ -229,7 +229,7 @@ use secret_toolkit::storage::{DequeStore};
 
 ```rust
 # use secret_toolkit_storage::DequeStore;
-pub static COUNT_STORE: DequeStore<i32> = DequeStore::new(b"count");
+pub static COUNT_STORE: DequeStore<i32> = DequeStore::new("count");
 ```
 
 > ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
@@ -463,7 +463,7 @@ use secret_toolkit::storage::{Keyset, KeysetBuilder};
 ```rust
 # use secret_toolkit_storage::Keyset;
 # use cosmwasm_std::Addr;
-pub static WHITELIST: Keyset<Addr> = Keyset::new(b"whitelist");
+pub static WHITELIST: Keyset<Addr> = Keyset::new("whitelist");
 ```
 
 > ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
