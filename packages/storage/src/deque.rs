@@ -1,4 +1,4 @@
-//! This is a storage wrapper based on AppendStore called DequeStore.
+//! This is a storage wrapper based on AppendStore called Deque.
 //! It guarantees constant-cost appending to and popping from a list of items in storage on both directions (front and back).
 //!
 //! This is achieved by storing each item in a separate storage entry.
@@ -22,7 +22,7 @@ const OFFSET_KEY: &[u8] = b"off";
 
 const DEFAULT_PAGE_SIZE: u32 = 1;
 
-pub struct DequeStore<'a, T, Ser = Bincode2>
+pub struct Deque<'a, T, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
@@ -38,7 +38,7 @@ where
     serialization_type: PhantomData<Ser>,
 }
 
-impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
+impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Deque<'a, T, Ser> {
     /// constructor
     pub const fn new(prefix: &'a [u8]) -> Self {
         Self {
@@ -68,8 +68,8 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         }
     }
 
-    /// This is used to produce a new DequeStorage. This can be used when you want to associate an AppendListStorage to each user
-    /// and you still get to define the DequeStorage as a static constant
+    /// This is used to produce a new Deque. This can be used when you want to associate an AppendListStorage to each user
+    /// and you still get to define the Dequeas a static constant
     pub fn add_suffix(&self, suffix: &[u8]) -> Self {
         let suffix = to_length_prefixed(suffix);
         let prefix = self.prefix.as_deref().unwrap_or(self.namespace);
@@ -86,7 +86,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 }
 
-impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
+impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Deque<'a, T, Ser> {
     fn as_slice(&self) -> &[u8] {
         if let Some(prefix) = &self.prefix {
             prefix
@@ -391,9 +391,9 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 
     /// Returns a readonly iterator
-    pub fn iter(&self, storage: &'a dyn Storage) -> StdResult<DequeStoreIter<T, Ser>> {
+    pub fn iter(&self, storage: &'a dyn Storage) -> StdResult<DequeIter<T, Ser>> {
         let len = self.get_len(storage)?;
-        let iter = DequeStoreIter::new(self, storage, 0, len);
+        let iter = DequeIter::new(self, storage, 0, len);
         Ok(iter)
     }
 
@@ -407,26 +407,26 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 }
 
 /// An iterator over the contents of the deque store.
-pub struct DequeStoreIter<'a, T, Ser>
+pub struct DequeIter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
-    deque_store: &'a DequeStore<'a, T, Ser>,
+    deque_store: &'a Deque<'a, T, Ser>,
     storage: &'a dyn Storage,
     start: u32,
     end: u32,
     cache: HashMap<u32, HashMap<u32, Vec<u8>>>,
 }
 
-impl<'a, T, Ser> DequeStoreIter<'a, T, Ser>
+impl<'a, T, Ser> DequeIter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
     /// constructor
     pub fn new(
-        deque_store: &'a DequeStore<'a, T, Ser>,
+        deque_store: &'a Deque<'a, T, Ser>,
         storage: &'a dyn Storage,
         start: u32,
         end: u32,
@@ -441,7 +441,7 @@ where
     }
 }
 
-impl<'a, T, Ser> Iterator for DequeStoreIter<'a, T, Ser>
+impl<'a, T, Ser> Iterator for DequeIter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
@@ -506,7 +506,7 @@ where
     }
 }
 
-impl<'a, T, Ser> DoubleEndedIterator for DequeStoreIter<'a, T, Ser>
+impl<'a, T, Ser> DoubleEndedIterator for DequeIter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
@@ -564,7 +564,7 @@ where
 }
 
 // This enables writing `deque_store.iter().skip(n).rev()`
-impl<'a, T, Ser> ExactSizeIterator for DequeStoreIter<'a, T, Ser>
+impl<'a, T, Ser> ExactSizeIterator for DequeIter<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
@@ -590,7 +590,7 @@ mod tests {
 
     fn test_pushs_pops_with_size(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", page_size);
+        let deque_store: Deque<i32> = Deque::new_with_page_size(b"test", page_size);
         deque_store.push_front(&mut storage, &4)?;
         deque_store.push_back(&mut storage, &5)?;
         deque_store.push_front(&mut storage, &3)?;
@@ -626,7 +626,7 @@ mod tests {
     #[test]
     fn test_remove() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: DequeStore<i32> = DequeStore::new(b"test");
+        let deque_store: Deque<i32> = Deque::new(b"test");
         deque_store.push_front(&mut storage, &2143)?;
         deque_store.push_back(&mut storage, &3412)?;
         deque_store.push_back(&mut storage, &3333)?;
@@ -649,7 +649,7 @@ mod tests {
 
     fn test_removes_with_page_size(size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", size);
+        let deque_store: Deque<i32> = Deque::new_with_page_size(b"test", size);
         deque_store.push_front(&mut storage, &2)?;
         deque_store.push_back(&mut storage, &3)?;
         deque_store.push_back(&mut storage, &4)?;
@@ -723,7 +723,7 @@ mod tests {
 
     fn test_overwrite_with_page_size(size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", size);
+        let deque_store: Deque<i32> = Deque::new_with_page_size(b"test", size);
         deque_store.push_front(&mut storage, &2)?;
         deque_store.push_back(&mut storage, &3)?;
         deque_store.push_back(&mut storage, &4)?;
@@ -820,7 +820,7 @@ mod tests {
     #[test]
     fn test_iterator() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: DequeStore<i32> = DequeStore::new(b"test");
+        let deque_store: Deque<i32> = Deque::new(b"test");
 
         deque_store.push_front(&mut storage, &2143)?;
         deque_store.push_back(&mut storage, &3333)?;
@@ -866,7 +866,7 @@ mod tests {
 
     fn test_reverse_iterator_with_size(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", page_size);
+        let deque_store: Deque<i32> = Deque::new_with_page_size(b"test", page_size);
         deque_store.push_front(&mut storage, &2143)?;
         deque_store.push_back(&mut storage, &3412)?;
         deque_store.push_back(&mut storage, &3333)?;
@@ -917,7 +917,7 @@ mod tests {
         // Check the default behavior is Bincode2
         let mut storage = MockStorage::new();
 
-        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", page_size);
+        let deque_store: Deque<i32> = Deque::new_with_page_size(b"test", page_size);
         deque_store.push_back(&mut storage, &1234)?;
 
         let key = [deque_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
@@ -933,8 +933,8 @@ mod tests {
 
         // Check that overriding the serializer with Json works
         let mut storage = MockStorage::new();
-        let json_deque_store: DequeStore<i32, Json> =
-            DequeStore::new_with_page_size(b"test2", page_size);
+        let json_deque_store: Deque<i32, Json> =
+            Deque::new_with_page_size(b"test2", page_size);
         json_deque_store.push_back(&mut storage, &1234)?;
 
         let key = [json_deque_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
@@ -955,7 +955,7 @@ mod tests {
     #[test]
     fn test_paging() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let append_store: DequeStore<u32> = DequeStore::new(b"test");
+        let append_store: Deque<u32> = Deque::new(b"test");
 
         let page_size: u32 = 5;
         let total_items: u32 = 50;
