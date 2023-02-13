@@ -215,7 +215,7 @@ let values = COUNT_STORE.paging(&deps.storage, start_page, page_size)?;
 # Ok::<(), StdError>(())
 ```
 
-### **DequeStore**
+### **Deque**
 
 This is a storage wrapper based on AppendStore that replicates a double ended list. This storage object allows the user to efficiently pop/push items to either end of the list.
 
@@ -224,12 +224,12 @@ This is a storage wrapper based on AppendStore that replicates a double ended li
 To import and initialize this storage object as a static constant in `state.rs`, do the following:
 
 ```ignore
-use secret_toolkit::storage::{DequeStore};
+use secret_toolkit::storage::{Deque};
 ```
 
 ```rust
-# use secret_toolkit_storage::DequeStore;
-pub static COUNT_STORE: DequeStore<i32> = DequeStore::new(b"count");
+# use secret_toolkit_storage::Deque;
+pub static COUNT_STORE: Deque<i32> = Deque::new(b"count");
 ```
 
 > ❗ Initializing the object as const instead of static will also work but be less efficient since the variable won't be able to cache length data.
@@ -238,7 +238,7 @@ pub static COUNT_STORE: DequeStore<i32> = DequeStore::new(b"count");
 
 #### **Read/Write**
 
-The main user facing methods to read/write to DequeStore are `pop_back`, `pop_front`, `push_back`, `push_front`, `get_len`, `get_off`, `set_at` (which replaces data at a position within the length bound), `clear` (which deletes all data in the storage), `remove` (which removes an item in an arbitrary position, this is very inefficient). An extensive list of examples of these being used can be found inside the unit tests of DequeStore found in `deque_store.rs`.
+The main user facing methods to read/write to Deque are `pop_back`, `pop_front`, `push_back`, `push_front`, `get_len`, `get_off`, `set_at` (which replaces data at a position within the length bound), `clear` (which deletes all data in the storage), `remove` (which removes an item in an arbitrary position, this is very inefficient). An extensive list of examples of these being used can be found inside the unit tests of Deque found in `deque_store.rs`.
 
 #### **Iterator**
 

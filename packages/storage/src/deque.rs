@@ -917,7 +917,7 @@ mod tests {
         // Check the default behavior is Bincode2
         let mut storage = MockStorage::new();
 
-        let deque_store: Deque<i32> = Deque::new_with_page_size("test", page_size);
+        let deque_store: Deque<i32> = Deque::new_with_page_size(b"test", page_size);
         deque_store.push_back(&mut storage, &1234)?;
 
         let key = [deque_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
