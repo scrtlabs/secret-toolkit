@@ -64,9 +64,9 @@ where
     Ser: Serde,
 {
     /// Creates a KeymapBuilder with default features
-    pub const fn new(namespace: &'a [u8]) -> Self {
+    pub const fn new(namespace: &'a str) -> Self {
         Self {
-            namespace,
+            namespace: namespace.as_bytes(),
             page_size: DEFAULT_PAGE_SIZE,
             key_type: PhantomData,
             item_type: PhantomData,
@@ -158,9 +158,9 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     Keymap<'a, K, T, Ser>
 {
     /// constructor
-    pub const fn new(namespace: &'a [u8]) -> Self {
+    pub const fn new(namespace: &'a str) -> Self {
         Self {
-            namespace,
+            namespace: namespace.as_bytes(),
             prefix: None,
             page_size: DEFAULT_PAGE_SIZE,
             length: Mutex::new(None),
@@ -173,8 +173,8 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 
     /// This is used to produce a new Keymap. This can be used when you want to associate an Keymap to each user
     /// and you still get to define the Keymap as a static constant
-    pub fn add_suffix(&self, suffix: &[u8]) -> Self {
-        let suffix = to_length_prefixed(suffix);
+    pub fn add_suffix(&self, suffix: &str) -> Self {
+        let suffix = to_length_prefixed(suffix.as_bytes());
         let prefix = self.prefix.as_deref().unwrap_or(self.namespace);
         let prefix = [prefix, suffix.as_slice()].concat();
         Self {
@@ -998,7 +998,7 @@ mod tests {
 
         let total_items = 1000;
 
-        let keymap: Keymap<Vec<u8>, i32> = Keymap::new(b"test");
+        let keymap: Keymap<Vec<u8>, i32> = Keymap::new("test");
 
         for i in 0..total_items {
             let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
@@ -1016,7 +1016,7 @@ mod tests {
 
         let total_items = 100;
 
-        let keymap: Keymap<i32, i32> = Keymap::new(b"test");
+        let keymap: Keymap<i32, i32> = Keymap::new("test");
 
         for i in 0..total_items {
             keymap.insert(&mut storage, &i, &i)?;
@@ -1037,7 +1037,7 @@ mod tests {
 
         let page_size: u32 = 5;
         let total_items: u32 = 50;
-        let keymap: Keymap<Vec<u8>, u32> = Keymap::new(b"test");
+        let keymap: Keymap<Vec<u8>, u32> = Keymap::new("test");
 
         for i in 0..total_items {
             let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
@@ -1066,7 +1066,7 @@ mod tests {
 
         let page_size = 50;
         let total_items = 10;
-        let keymap: Keymap<i32, u32> = Keymap::new(b"test");
+        let keymap: Keymap<i32, u32> = Keymap::new("test");
 
         for i in 0..total_items {
             keymap.insert(&mut storage, &(i as i32), &i)?;
@@ -1087,7 +1087,7 @@ mod tests {
     fn test_keymap_insert_multiple() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let keymap: Keymap<Vec<u8>, Foo> = Keymap::new(b"test");
+        let keymap: Keymap<Vec<u8>, Foo> = Keymap::new("test");
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -1112,7 +1112,7 @@ mod tests {
     fn test_keymap_contains() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let keymap: Keymap<Vec<u8>, Foo> = Keymap::new(b"test");
+        let keymap: Keymap<Vec<u8>, Foo> = Keymap::new("test");
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -1130,7 +1130,7 @@ mod tests {
     fn test_keymap_iter() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let keymap: Keymap<Vec<u8>, Foo> = Keymap::new(b"test");
+        let keymap: Keymap<Vec<u8>, Foo> = Keymap::new("test");
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -1158,7 +1158,7 @@ mod tests {
     fn test_keymap_iter_keys() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let keymap: Keymap<String, Foo> = Keymap::new(b"test");
+        let keymap: Keymap<String, Foo> = Keymap::new("test");
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -1189,7 +1189,7 @@ mod tests {
     fn test_keymap_overwrite() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let keymap: Keymap<Vec<u8>, Foo> = Keymap::new(b"test");
+        let keymap: Keymap<Vec<u8>, Foo> = Keymap::new("test");
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -1213,8 +1213,8 @@ mod tests {
     fn test_keymap_suffixed_basics() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let original_keymap: Keymap<String, Foo> = Keymap::new(b"test");
-        let keymap = original_keymap.add_suffix(b"test_suffix");
+        let original_keymap: Keymap<String, Foo> = Keymap::new("test");
+        let keymap = original_keymap.add_suffix("test_suffix");
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -1233,8 +1233,8 @@ mod tests {
         assert_eq!(foo1, read_foo1);
         assert_eq!(foo2, read_foo2);
 
-        let alternative_keymap: Keymap<String, Foo> = Keymap::new(b"alternative");
-        let alt_same_suffix = alternative_keymap.add_suffix(b"test_suffix");
+        let alternative_keymap: Keymap<String, Foo> = Keymap::new("alternative");
+        let alt_same_suffix = alternative_keymap.add_suffix("test_suffix");
 
         assert!(alt_same_suffix.is_empty(&storage)?);
 
@@ -1264,7 +1264,7 @@ mod tests {
     fn test_keymap_length_with_page_size(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let keymap: Keymap<String, Foo> = KeymapBuilder::new(b"test")
+        let keymap: Keymap<String, Foo> = KeymapBuilder::new("test")
             .with_page_size(page_size)
             .build();
         let foo1 = Foo {
@@ -1321,7 +1321,7 @@ mod tests {
     fn test_keymap_without_iter_custom_page(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let keymap: Keymap<String, Foo, Json, _> = KeymapBuilder::new(b"test")
+        let keymap: Keymap<String, Foo, Json, _> = KeymapBuilder::new("test")
             .with_page_size(page_size)
             .without_iter()
             .build();
@@ -1361,7 +1361,7 @@ mod tests {
 
         let page_size: u32 = 5;
         let total_items: u32 = 50;
-        let keymap: Keymap<Vec<u8>, u32> = KeymapBuilder::new(b"test").with_page_size(13).build();
+        let keymap: Keymap<Vec<u8>, u32> = KeymapBuilder::new("test").with_page_size(13).build();
 
         for i in 0..total_items {
             let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
@@ -1390,7 +1390,7 @@ mod tests {
 
         let page_size = 50;
         let total_items = 10;
-        let keymap: Keymap<i32, u32, Json> = KeymapBuilder::new(b"test").with_page_size(3).build();
+        let keymap: Keymap<i32, u32, Json> = KeymapBuilder::new("test").with_page_size(3).build();
 
         for i in 0..total_items {
             keymap.insert(&mut storage, &(i as i32), &i)?;
@@ -1411,7 +1411,7 @@ mod tests {
     fn test_keymap_custom_page_iter() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let keymap: Keymap<Vec<u8>, Foo> = KeymapBuilder::new(b"test").with_page_size(2).build();
+        let keymap: Keymap<Vec<u8>, Foo> = KeymapBuilder::new("test").with_page_size(2).build();
         let foo1 = Foo {
             string: "string one".to_string(),
             number: 1111,
@@ -1455,7 +1455,7 @@ mod tests {
 
     fn test_keymap_custom_page_reverse_iterator(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let keymap: Keymap<i32, i32> = KeymapBuilder::new(b"test")
+        let keymap: Keymap<i32, i32> = KeymapBuilder::new("test")
             .with_page_size(page_size)
             .build();
         keymap.insert(&mut storage, &1234, &1234)?;
@@ -1505,7 +1505,7 @@ mod tests {
         // Check the default behavior is Bincode2
         let mut storage = MockStorage::new();
 
-        let keymap: Keymap<i32, i32> = KeymapBuilder::new(b"test")
+        let keymap: Keymap<i32, i32> = KeymapBuilder::new("test")
             .with_page_size(page_size)
             .build();
         keymap.insert(&mut storage, &1234, &1234)?;
@@ -1523,7 +1523,7 @@ mod tests {
 
         // Check that overriding the serializer with Json works
         let mut storage = MockStorage::new();
-        let json_keymap: Keymap<i32, i32, Json> = KeymapBuilder::new(b"test2")
+        let json_keymap: Keymap<i32, i32, Json> = KeymapBuilder::new("test2")
             .with_page_size(page_size)
             .build();
         json_keymap.insert(&mut storage, &1234, &1234)?;

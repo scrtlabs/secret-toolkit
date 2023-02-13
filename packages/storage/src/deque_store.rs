@@ -40,9 +40,9 @@ where
 
 impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// constructor
-    pub const fn new(prefix: &'a [u8]) -> Self {
+    pub const fn new(prefix: &'a str) -> Self {
         Self {
-            namespace: prefix,
+            namespace: prefix.as_bytes(),
             prefix: None,
             page_size: DEFAULT_PAGE_SIZE,
             length: Mutex::new(None),
@@ -53,12 +53,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 
     /// constructor with indexes size
-    pub const fn new_with_page_size(prefix: &'a [u8], page_size: u32) -> Self {
+    pub const fn new_with_page_size(prefix: &'a str, page_size: u32) -> Self {
         if page_size == 0 {
             panic!("zero index page size used in deque_store")
         }
         Self {
-            namespace: prefix,
+            namespace: prefix.as_bytes(),
             prefix: None,
             page_size,
             length: Mutex::new(None),
@@ -590,7 +590,7 @@ mod tests {
 
     fn test_pushs_pops_with_size(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", page_size);
+        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size("test", page_size);
         deque_store.push_front(&mut storage, &4)?;
         deque_store.push_back(&mut storage, &5)?;
         deque_store.push_front(&mut storage, &3)?;
@@ -626,7 +626,7 @@ mod tests {
     #[test]
     fn test_remove() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: DequeStore<i32> = DequeStore::new(b"test");
+        let deque_store: DequeStore<i32> = DequeStore::new("test");
         deque_store.push_front(&mut storage, &2143)?;
         deque_store.push_back(&mut storage, &3412)?;
         deque_store.push_back(&mut storage, &3333)?;
@@ -649,7 +649,7 @@ mod tests {
 
     fn test_removes_with_page_size(size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", size);
+        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size("test", size);
         deque_store.push_front(&mut storage, &2)?;
         deque_store.push_back(&mut storage, &3)?;
         deque_store.push_back(&mut storage, &4)?;
@@ -723,7 +723,7 @@ mod tests {
 
     fn test_overwrite_with_page_size(size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", size);
+        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size("test", size);
         deque_store.push_front(&mut storage, &2)?;
         deque_store.push_back(&mut storage, &3)?;
         deque_store.push_back(&mut storage, &4)?;
@@ -820,7 +820,7 @@ mod tests {
     #[test]
     fn test_iterator() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: DequeStore<i32> = DequeStore::new(b"test");
+        let deque_store: DequeStore<i32> = DequeStore::new("test");
 
         deque_store.push_front(&mut storage, &2143)?;
         deque_store.push_back(&mut storage, &3333)?;
@@ -866,7 +866,7 @@ mod tests {
 
     fn test_reverse_iterator_with_size(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", page_size);
+        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size("test", page_size);
         deque_store.push_front(&mut storage, &2143)?;
         deque_store.push_back(&mut storage, &3412)?;
         deque_store.push_back(&mut storage, &3333)?;
@@ -917,7 +917,7 @@ mod tests {
         // Check the default behavior is Bincode2
         let mut storage = MockStorage::new();
 
-        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size(b"test", page_size);
+        let deque_store: DequeStore<i32> = DequeStore::new_with_page_size("test", page_size);
         deque_store.push_back(&mut storage, &1234)?;
 
         let key = [deque_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
@@ -934,7 +934,7 @@ mod tests {
         // Check that overriding the serializer with Json works
         let mut storage = MockStorage::new();
         let json_deque_store: DequeStore<i32, Json> =
-            DequeStore::new_with_page_size(b"test2", page_size);
+            DequeStore::new_with_page_size("test2", page_size);
         json_deque_store.push_back(&mut storage, &1234)?;
 
         let key = [json_deque_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
@@ -955,7 +955,7 @@ mod tests {
     #[test]
     fn test_paging() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let append_store: DequeStore<u32> = DequeStore::new(b"test");
+        let append_store: DequeStore<u32> = DequeStore::new("test");
 
         let page_size: u32 = 5;
         let total_items: u32 = 50;

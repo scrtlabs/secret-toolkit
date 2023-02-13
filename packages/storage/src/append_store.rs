@@ -36,9 +36,9 @@ where
 
 impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     /// constructor
-    pub const fn new(namespace: &'a [u8]) -> Self {
+    pub const fn new(namespace: &'a str) -> Self {
         Self {
-            namespace,
+            namespace: namespace.as_bytes(),
             prefix: None,
             page_size: DEFAULT_PAGE_SIZE,
             length: Mutex::new(None),
@@ -47,12 +47,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
         }
     }
 
-    pub const fn new_with_page_size(namespace: &'a [u8], page_size: u32) -> Self {
+    pub const fn new_with_page_size(namespace: &'a str, page_size: u32) -> Self {
         if page_size == 0 {
             panic!("zero index page size used in append_store")
         }
         Self {
-            namespace,
+            namespace: namespace.as_bytes(),
             prefix: None,
             page_size,
             length: Mutex::new(None),
@@ -447,7 +447,7 @@ mod tests {
     #[test]
     fn test_push_pop() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let append_store: AppendStore<i32> = AppendStore::new(b"test");
+        let append_store: AppendStore<i32> = AppendStore::new("test");
         append_store.push(&mut storage, &1234)?;
         append_store.push(&mut storage, &2143)?;
         append_store.push(&mut storage, &3412)?;
@@ -465,7 +465,7 @@ mod tests {
     #[test]
     fn test_length() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let append_store: AppendStore<i32> = AppendStore::new_with_page_size(b"test", 3);
+        let append_store: AppendStore<i32> = AppendStore::new_with_page_size("test", 3);
 
         assert!(append_store.length.lock().unwrap().eq(&None));
         assert_eq!(append_store.get_len(&storage)?, 0);
@@ -498,7 +498,7 @@ mod tests {
     #[test]
     fn test_iterator() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let append_store: AppendStore<i32> = AppendStore::new(b"test");
+        let append_store: AppendStore<i32> = AppendStore::new("test");
         append_store.push(&mut storage, &1234)?;
         append_store.push(&mut storage, &2143)?;
         append_store.push(&mut storage, &3412)?;
@@ -531,7 +531,7 @@ mod tests {
     #[test]
     fn test_reverse_iterator() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let append_store: AppendStore<i32> = AppendStore::new(b"test");
+        let append_store: AppendStore<i32> = AppendStore::new("test");
         append_store.push(&mut storage, &1234)?;
         append_store.push(&mut storage, &2143)?;
         append_store.push(&mut storage, &3412)?;
@@ -570,7 +570,7 @@ mod tests {
     #[test]
     fn test_json_push_pop() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let append_store: AppendStore<i32, Json> = AppendStore::new(b"test");
+        let append_store: AppendStore<i32, Json> = AppendStore::new("test");
         append_store.push(&mut storage, &1234)?;
         append_store.push(&mut storage, &2143)?;
         append_store.push(&mut storage, &3412)?;
@@ -589,7 +589,7 @@ mod tests {
     fn test_suffixed_pop() -> StdResult<()> {
         let mut storage = MockStorage::new();
         let suffix: &[u8] = b"test_suffix";
-        let original_store: AppendStore<i32> = AppendStore::new(b"test");
+        let original_store: AppendStore<i32> = AppendStore::new("test");
         let append_store = original_store.add_suffix(suffix);
         append_store.push(&mut storage, &1234)?;
         append_store.push(&mut storage, &2143)?;
@@ -616,7 +616,7 @@ mod tests {
     fn test_suffixed_reverse_iter_with_size(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
         let suffix: &[u8] = b"test_suffix";
-        let original_store: AppendStore<i32> = AppendStore::new_with_page_size(b"test", page_size);
+        let original_store: AppendStore<i32> = AppendStore::new_with_page_size("test", page_size);
         let append_store = original_store.add_suffix(suffix);
 
         append_store.push(&mut storage, &1234)?;
@@ -660,7 +660,7 @@ mod tests {
     fn test_suffix_iter() -> StdResult<()> {
         let mut storage = MockStorage::new();
         let suffix: &[u8] = b"test_suffix";
-        let original_store: AppendStore<i32> = AppendStore::new(b"test");
+        let original_store: AppendStore<i32> = AppendStore::new("test");
         let append_store = original_store.add_suffix(suffix);
 
         append_store.push(&mut storage, &1234)?;
@@ -704,7 +704,7 @@ mod tests {
         // Check the default behavior is Bincode2
         let mut storage = MockStorage::new();
 
-        let append_store: AppendStore<i32> = AppendStore::new_with_page_size(b"test", page_size);
+        let append_store: AppendStore<i32> = AppendStore::new_with_page_size("test", page_size);
         append_store.push(&mut storage, &1234)?;
 
         let key = [append_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
@@ -721,7 +721,7 @@ mod tests {
         // Check that overriding the serializer with Json works
         let mut storage = MockStorage::new();
         let json_append_store: AppendStore<i32, Json> =
-            AppendStore::new_with_page_size(b"test2", page_size);
+            AppendStore::new_with_page_size("test2", page_size);
         json_append_store.push(&mut storage, &1234)?;
 
         let key = [json_append_store.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
@@ -751,7 +751,7 @@ mod tests {
 
     fn test_removes_with_size(page_size: u32) -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let deque_store: AppendStore<i32> = AppendStore::new_with_page_size(b"test", page_size);
+        let deque_store: AppendStore<i32> = AppendStore::new_with_page_size("test", page_size);
         deque_store.push(&mut storage, &1)?;
         deque_store.push(&mut storage, &2)?;
         deque_store.push(&mut storage, &3)?;
@@ -815,7 +815,7 @@ mod tests {
     #[test]
     fn test_paging() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let append_store: AppendStore<u32> = AppendStore::new(b"test");
+        let append_store: AppendStore<u32> = AppendStore::new("test");
 
         let page_size: u32 = 5;
         let total_items: u32 = 50;
