@@ -1050,4 +1050,63 @@ mod tests {
         assert_eq!(deque.back(&store).unwrap(), Some(2));
         assert_eq!(deque.front(&store).unwrap(), Some(3));
     }
+
+    #[test]
+    fn test_cw_storage_plus_readme() -> StdResult<()> {
+        use serde::Deserialize;
+        #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+        struct Data {
+            pub name: String,
+            pub age: i32,
+        }
+
+        const DATA: DequeStore<Data> = DequeStore::new(b"data");
+        let mut store = MockStorage::new();
+
+        // read methods return a wrapped Option<T>, so None if the deque is empty
+        let empty = DATA.front(&store)?;
+        assert_eq!(None, empty);
+
+        // some example entries
+        let p1 = Data {
+            name: "admin".to_string(),
+            age: 1234,
+        };
+        let p2 = Data {
+            name: "user".to_string(),
+            age: 123,
+        };
+
+        // use it like a queue by pushing and popping at opposite ends
+        DATA.push_back(&mut store, &p1)?;
+        DATA.push_back(&mut store, &p2)?;
+
+        let admin = DATA.pop_front(&mut store)?;
+        assert_eq!(admin.as_ref(), Some(&p1));
+        let user = DATA.pop_front(&mut store)?;
+        assert_eq!(user.as_ref(), Some(&p2));
+
+        // or push and pop at the same end to use it as a stack
+        DATA.push_back(&mut store, &p1)?;
+        DATA.push_back(&mut store, &p2)?;
+
+        let user = DATA.pop_back(&mut store)?;
+        assert_eq!(user.as_ref(), Some(&p2));
+        let admin = DATA.pop_back(&mut store)?;
+        assert_eq!(admin.as_ref(), Some(&p1));
+
+        // you can also iterate over it
+        DATA.push_front(&mut store, &p1)?;
+        DATA.push_front(&mut store, &p2)?;
+
+        let all: StdResult<Vec<_>> = DATA.iter(&store)?.collect();
+        assert_eq!(all?, [p2.clone(), p1.clone()]);
+
+        // or access an index directly
+        assert_eq!(DATA.get(&store, 0)?, Some(p2));
+        assert_eq!(DATA.get(&store, 1)?, Some(p1));
+        assert_eq!(DATA.get(&store, 3)?, None);
+
+        Ok(())
+    }
 }
