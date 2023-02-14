@@ -96,7 +96,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 
     /// gets the length from storage, and otherwise sets it to 0
-    pub fn get_len(&self, storage: &dyn Storage) -> StdResult<u32> {
+    pub fn len(&self, storage: &dyn Storage) -> StdResult<u32> {
         let mut may_len = self.length.lock().unwrap();
         match *may_len {
             Some(len) => Ok(len),
@@ -142,12 +142,12 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 
     /// checks if the collection has any elements
     pub fn is_empty(&self, storage: &dyn Storage) -> StdResult<bool> {
-        Ok(self.get_len(storage)? == 0)
+        Ok(self.len(storage)? == 0)
     }
 
     /// gets the element at pos if within bounds
     pub fn get(&self, storage: &dyn Storage, pos: u32) -> StdResult<Option<T>> {
-        let len = self.get_len(storage)?;
+        let len = self.len(storage)?;
         if pos >= len {
             return Ok(None)
         }
@@ -242,7 +242,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 
     /// Replaces data at a position within bounds
     pub fn set_at(&self, storage: &mut dyn Storage, pos: u32, item: &T) -> StdResult<()> {
-        let len = self.get_len(storage)?;
+        let len = self.len(storage)?;
         if pos >= len {
             return Err(StdError::generic_err("deque_store access out of bounds"));
         }
@@ -262,7 +262,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 
     /// Pushes an item to the back
     pub fn push_back(&self, storage: &mut dyn Storage, item: &T) -> StdResult<()> {
-        let len = self.get_len(storage)?;
+        let len = self.len(storage)?;
         self.set_at_unchecked(storage, len, item)?;
         self.set_len(storage, len + 1);
         Ok(())
@@ -271,7 +271,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// Pushes an item to the front
     pub fn push_front(&self, storage: &mut dyn Storage, item: &T) -> StdResult<()> {
         let off = self.get_off(storage)?;
-        let len = self.get_len(storage)?;
+        let len = self.len(storage)?;
         self.set_off(storage, off.overflowing_sub(1).0);
         self.set_at_unchecked(storage, 0, item)?;
         self.set_len(storage, len + 1);
@@ -280,7 +280,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 
     /// Pops an item from the back
     pub fn pop_back(&self, storage: &mut dyn Storage) -> StdResult<Option<T>> {
-        if let Some(len) = self.get_len(storage)?.checked_sub(1) {
+        if let Some(len) = self.len(storage)?.checked_sub(1) {
             self.set_len(storage, len);
             self.get_at_unchecked(storage, len).map(Some)
         } else {
@@ -290,7 +290,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 
     /// Pops an item from the front
     pub fn pop_front(&self, storage: &mut dyn Storage) -> StdResult<Option<T>> {
-        if let Some(len) = self.get_len(storage)?.checked_sub(1) {
+        if let Some(len) = self.len(storage)?.checked_sub(1) {
             let off = self.get_off(storage)?;
             self.set_len(storage, len);
             let item = self.get_at_unchecked(storage, 0);
@@ -312,7 +312,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// has the worst runtime and gas cost.
     pub fn remove(&self, storage: &mut dyn Storage, pos: u32) -> StdResult<T> {
         let off = self.get_off(storage)?;
-        let len = self.get_len(storage)?;
+        let len = self.len(storage)?;
         if pos >= len {
             return Err(StdError::generic_err("deque_store access out of bounds"));
         }
@@ -392,7 +392,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 
     /// Returns a readonly iterator
     pub fn iter(&self, storage: &'a dyn Storage) -> StdResult<DequeStoreIter<T, Ser>> {
-        let len = self.get_len(storage)?;
+        let len = self.len(storage)?;
         let iter = DequeStoreIter::new(self, storage, 0, len);
         Ok(iter)
     }
@@ -633,11 +633,11 @@ mod tests {
         deque_store.push_front(&mut storage, &1234)?;
         deque_store.push_back(&mut storage, &4321)?;
 
-        assert_eq!(deque_store.get_len(&storage), Ok(5));
+        assert_eq!(deque_store.len(&storage), Ok(5));
 
         assert_eq!(deque_store.remove(&mut storage, 3), Ok(3333));
 
-        assert_eq!(deque_store.get_len(&storage), Ok(4));
+        assert_eq!(deque_store.len(&storage), Ok(4));
 
         assert_eq!(deque_store.get(&storage, 0)?, Some(1234));
         assert_eq!(deque_store.get(&storage, 1)?, Some(2143));
