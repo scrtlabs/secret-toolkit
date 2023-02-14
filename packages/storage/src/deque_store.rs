@@ -96,6 +96,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 
     /// gets the length from storage, and otherwise sets it to 0
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self, storage: &dyn Storage) -> StdResult<u32> {
         let mut may_len = self.length.lock().unwrap();
         match *may_len {
