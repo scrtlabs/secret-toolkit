@@ -154,6 +154,26 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
         self.get_at_unchecked(storage, pos).map(Some)
     }
 
+    /// Returns the last element of the deque without removing it
+    pub fn front(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
+        if self.len(storage)? > 0 {
+            let item = self.get_at_unchecked(storage, 0);
+            item.map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Returns the first element of the deque without removing it
+    pub fn back(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
+        if let Some(len) = self.len(storage)?.checked_sub(1) {
+            let item = self.get_at_unchecked(storage, len);
+            item.map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Used to get the indexes stored in the given page number
     fn get_indexes(&self, storage: &dyn Storage, page: u32) -> StdResult<HashMap<u32, Vec<u8>>> {
         let indexes_key = [self.as_slice(), INDEXES, page.to_be_bytes().as_slice()].concat();
@@ -1012,5 +1032,22 @@ mod tests {
         let mut iter = deque.iter(&store).unwrap();
         assert_eq!(iter.nth(1).unwrap().unwrap(), 2);
         assert_eq!(iter.next().unwrap().unwrap(), 3);
+    }
+
+    #[test]
+    fn front_back() {
+        let deque: DequeStore<u64> = DequeStore::new(b"test");
+        let mut store = MockStorage::new();
+
+        assert_eq!(deque.back(&store).unwrap(), None);
+        deque.push_back(&mut store, &1).unwrap();
+        assert_eq!(deque.back(&store).unwrap(), Some(1));
+        assert_eq!(deque.front(&store).unwrap(), Some(1));
+        deque.push_back(&mut store, &2).unwrap();
+        assert_eq!(deque.back(&store).unwrap(), Some(2));
+        assert_eq!(deque.front(&store).unwrap(), Some(1));
+        deque.push_front(&mut store, &3).unwrap();
+        assert_eq!(deque.back(&store).unwrap(), Some(2));
+        assert_eq!(deque.front(&store).unwrap(), Some(3));
     }
 }
