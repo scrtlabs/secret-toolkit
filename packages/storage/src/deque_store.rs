@@ -96,7 +96,8 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 
     /// gets the length from storage, and otherwise sets it to 0
-    pub fn get_len(&self, storage: &dyn Storage) -> StdResult<u32> {
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self, storage: &dyn Storage) -> StdResult<u32> {
         let mut may_len = self.length.lock().unwrap();
         match *may_len {
             Some(len) => Ok(len),
@@ -142,16 +143,36 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 
     /// checks if the collection has any elements
     pub fn is_empty(&self, storage: &dyn Storage) -> StdResult<bool> {
-        Ok(self.get_len(storage)? == 0)
+        Ok(self.len(storage)? == 0)
     }
 
     /// gets the element at pos if within bounds
-    pub fn get_at(&self, storage: &dyn Storage, pos: u32) -> StdResult<T> {
-        let len = self.get_len(storage)?;
+    pub fn get(&self, storage: &dyn Storage, pos: u32) -> StdResult<Option<T>> {
+        let len = self.len(storage)?;
         if pos >= len {
-            return Err(StdError::generic_err("deque_store access out of bounds"));
+            return Ok(None)
         }
-        self.get_at_unchecked(storage, pos)
+        self.get_at_unchecked(storage, pos).map(Some)
+    }
+
+    /// Returns the last element of the deque without removing it
+    pub fn front(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
+        if self.len(storage)? > 0 {
+            let item = self.get_at_unchecked(storage, 0);
+            item.map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Returns the first element of the deque without removing it
+    pub fn back(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
+        if let Some(len) = self.len(storage)?.checked_sub(1) {
+            let item = self.get_at_unchecked(storage, len);
+            item.map(Some)
+        } else {
+            Ok(None)
+        }
     }
 
     /// Used to get the indexes stored in the given page number
@@ -242,7 +263,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 
     /// Replaces data at a position within bounds
     pub fn set_at(&self, storage: &mut dyn Storage, pos: u32, item: &T) -> StdResult<()> {
-        let len = self.get_len(storage)?;
+        let len = self.len(storage)?;
         if pos >= len {
             return Err(StdError::generic_err("deque_store access out of bounds"));
         }
@@ -262,7 +283,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 
     /// Pushes an item to the back
     pub fn push_back(&self, storage: &mut dyn Storage, item: &T) -> StdResult<()> {
-        let len = self.get_len(storage)?;
+        let len = self.len(storage)?;
         self.set_at_unchecked(storage, len, item)?;
         self.set_len(storage, len + 1);
         Ok(())
@@ -271,7 +292,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// Pushes an item to the front
     pub fn push_front(&self, storage: &mut dyn Storage, item: &T) -> StdResult<()> {
         let off = self.get_off(storage)?;
-        let len = self.get_len(storage)?;
+        let len = self.len(storage)?;
         self.set_off(storage, off.overflowing_sub(1).0);
         self.set_at_unchecked(storage, 0, item)?;
         self.set_len(storage, len + 1);
@@ -279,25 +300,25 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     }
 
     /// Pops an item from the back
-    pub fn pop_back(&self, storage: &mut dyn Storage) -> StdResult<T> {
-        if let Some(len) = self.get_len(storage)?.checked_sub(1) {
+    pub fn pop_back(&self, storage: &mut dyn Storage) -> StdResult<Option<T>> {
+        if let Some(len) = self.len(storage)?.checked_sub(1) {
             self.set_len(storage, len);
-            self.get_at_unchecked(storage, len)
+            self.get_at_unchecked(storage, len).map(Some)
         } else {
-            Err(StdError::generic_err("cannot pop from empty deque_store"))
+            Ok(None)
         }
     }
 
     /// Pops an item from the front
-    pub fn pop_front(&self, storage: &mut dyn Storage) -> StdResult<T> {
-        if let Some(len) = self.get_len(storage)?.checked_sub(1) {
+    pub fn pop_front(&self, storage: &mut dyn Storage) -> StdResult<Option<T>> {
+        if let Some(len) = self.len(storage)?.checked_sub(1) {
             let off = self.get_off(storage)?;
             self.set_len(storage, len);
             let item = self.get_at_unchecked(storage, 0);
             self.set_off(storage, off.overflowing_add(1).0);
-            item
+            item.map(Some)
         } else {
-            Err(StdError::generic_err("cannot pop from empty deque_store"))
+            Ok(None)
         }
     }
 
@@ -312,7 +333,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
     /// has the worst runtime and gas cost.
     pub fn remove(&self, storage: &mut dyn Storage, pos: u32) -> StdResult<T> {
         let off = self.get_off(storage)?;
-        let len = self.get_len(storage)?;
+        let len = self.len(storage)?;
         if pos >= len {
             return Err(StdError::generic_err("deque_store access out of bounds"));
         }
@@ -392,7 +413,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> DequeStore<'a, T, Ser> {
 
     /// Returns a readonly iterator
     pub fn iter(&self, storage: &'a dyn Storage) -> StdResult<DequeStoreIter<T, Ser>> {
-        let len = self.get_len(storage)?;
+        let len = self.len(storage)?;
         let iter = DequeStoreIter::new(self, storage, 0, len);
         Ok(iter)
     }
@@ -501,9 +522,20 @@ where
     // In practice, this enables cheap paging over the storage by calling:
     // `deque_store.iter().skip(start).take(length).collect()`
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.start = self.start.saturating_add(n as u32);
+        // make sure that we don't skip past the end
+        if calc_len(self.start, self.end) < n as u32 {
+            // mark as empty
+            self.start = self.end;
+        } else {
+            self.start = self.start.saturating_add(n as u32);
+        }
         self.next()
     }
+}
+
+#[inline]
+fn calc_len(head: u32, tail: u32) -> u32 {
+    tail.saturating_sub(head)
 }
 
 impl<'a, T, Ser> DoubleEndedIterator for DequeStoreIter<'a, T, Ser>
@@ -600,15 +632,15 @@ mod tests {
         deque_store.push_front(&mut storage, &1)?;
         deque_store.push_back(&mut storage, &8)?;
 
-        assert_eq!(deque_store.pop_front(&mut storage), Ok(1));
-        assert_eq!(deque_store.pop_back(&mut storage), Ok(8));
-        assert_eq!(deque_store.pop_front(&mut storage), Ok(2));
-        assert_eq!(deque_store.pop_back(&mut storage), Ok(7));
-        assert_eq!(deque_store.pop_front(&mut storage), Ok(3));
-        assert_eq!(deque_store.pop_back(&mut storage), Ok(6));
-        assert_eq!(deque_store.pop_front(&mut storage), Ok(4));
-        assert_eq!(deque_store.pop_back(&mut storage), Ok(5));
-        assert!(deque_store.pop_back(&mut storage).is_err());
+        assert_eq!(deque_store.pop_front(&mut storage)?, Some(1));
+        assert_eq!(deque_store.pop_back(&mut storage)?, Some(8));
+        assert_eq!(deque_store.pop_front(&mut storage)?, Some(2));
+        assert_eq!(deque_store.pop_back(&mut storage)?, Some(7));
+        assert_eq!(deque_store.pop_front(&mut storage)?, Some(3));
+        assert_eq!(deque_store.pop_back(&mut storage)?, Some(6));
+        assert_eq!(deque_store.pop_front(&mut storage)?, Some(4));
+        assert_eq!(deque_store.pop_back(&mut storage)?, Some(5));
+        assert!(deque_store.pop_back(&mut storage)?.is_none());
         Ok(())
     }
 
@@ -633,16 +665,16 @@ mod tests {
         deque_store.push_front(&mut storage, &1234)?;
         deque_store.push_back(&mut storage, &4321)?;
 
-        assert_eq!(deque_store.get_len(&storage), Ok(5));
+        assert_eq!(deque_store.len(&storage), Ok(5));
 
         assert_eq!(deque_store.remove(&mut storage, 3), Ok(3333));
 
-        assert_eq!(deque_store.get_len(&storage), Ok(4));
+        assert_eq!(deque_store.len(&storage), Ok(4));
 
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1234));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(2143));
-        assert_eq!(deque_store.get_at(&storage, 2), Ok(3412));
-        assert_eq!(deque_store.get_at(&storage, 3), Ok(4321));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1234));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(2143));
+        assert_eq!(deque_store.get(&storage, 2)?, Some(3412));
+        assert_eq!(deque_store.get(&storage, 3)?, Some(4321));
 
         Ok(())
     }
@@ -663,46 +695,46 @@ mod tests {
         assert!(deque_store.remove(&mut storage, 9).is_err());
 
         assert_eq!(deque_store.remove(&mut storage, 7), Ok(8));
-        assert_eq!(deque_store.get_at(&storage, 6), Ok(7));
-        assert_eq!(deque_store.get_at(&storage, 5), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 4), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 3), Ok(4));
-        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 6)?, Some(7));
+        assert_eq!(deque_store.get(&storage, 5)?, Some(6));
+        assert_eq!(deque_store.get(&storage, 4)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 3)?, Some(4));
+        assert_eq!(deque_store.get(&storage, 2)?, Some(3));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(2));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         assert_eq!(deque_store.remove(&mut storage, 6), Ok(7));
-        assert_eq!(deque_store.get_at(&storage, 5), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 4), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 3), Ok(4));
-        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 5)?, Some(6));
+        assert_eq!(deque_store.get(&storage, 4)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 3)?, Some(4));
+        assert_eq!(deque_store.get(&storage, 2)?, Some(3));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(2));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         assert_eq!(deque_store.remove(&mut storage, 3), Ok(4));
-        assert_eq!(deque_store.get_at(&storage, 4), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 3), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 4)?, Some(6));
+        assert_eq!(deque_store.get(&storage, 3)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 2)?, Some(3));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(2));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         assert_eq!(deque_store.remove(&mut storage, 1), Ok(2));
-        assert_eq!(deque_store.get_at(&storage, 3), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 2), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(3));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 3)?, Some(6));
+        assert_eq!(deque_store.get(&storage, 2)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(3));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         assert_eq!(deque_store.remove(&mut storage, 2), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 2), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(3));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 2)?, Some(6));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(3));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         assert_eq!(deque_store.remove(&mut storage, 1), Ok(3));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(6));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         assert_eq!(deque_store.remove(&mut storage, 1), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         assert_eq!(deque_store.remove(&mut storage, 0), Ok(1));
 
@@ -737,59 +769,59 @@ mod tests {
         assert!(deque_store.remove(&mut storage, 9).is_err());
 
         assert_eq!(deque_store.remove(&mut storage, 7), Ok(8));
-        assert_eq!(deque_store.get_at(&storage, 6), Ok(7));
-        assert_eq!(deque_store.get_at(&storage, 5), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 4), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 3), Ok(4));
-        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 6)?, Some(7));
+        assert_eq!(deque_store.get(&storage, 5)?, Some(6));
+        assert_eq!(deque_store.get(&storage, 4)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 3)?, Some(4));
+        assert_eq!(deque_store.get(&storage, 2)?, Some(3));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(2));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         assert_eq!(deque_store.remove(&mut storage, 6), Ok(7));
-        assert_eq!(deque_store.get_at(&storage, 5), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 4), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 3), Ok(4));
-        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 5)?, Some(6));
+        assert_eq!(deque_store.get(&storage, 4)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 3)?, Some(4));
+        assert_eq!(deque_store.get(&storage, 2)?, Some(3));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(2));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         assert_eq!(deque_store.remove(&mut storage, 3), Ok(4));
-        assert_eq!(deque_store.get_at(&storage, 4), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 3), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
-        assert!(deque_store.get_at(&storage, 5).is_err());
+        assert_eq!(deque_store.get(&storage, 4)?, Some(6));
+        assert_eq!(deque_store.get(&storage, 3)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 2)?, Some(3));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(2));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
+        assert!(deque_store.get(&storage, 5)?.is_none());
 
         deque_store.push_back(&mut storage, &5)?;
-        assert_eq!(deque_store.get_at(&storage, 5), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 4), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 3), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 5)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 4)?, Some(6));
+        assert_eq!(deque_store.get(&storage, 3)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 2)?, Some(3));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(2));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         assert_eq!(deque_store.remove(&mut storage, 1), Ok(2));
-        assert_eq!(deque_store.get_at(&storage, 4), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 3), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 2), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(3));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 4)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 3)?, Some(6));
+        assert_eq!(deque_store.get(&storage, 2)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(3));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         assert_eq!(deque_store.remove(&mut storage, 2), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 3), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 2), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(3));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 3)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 2)?, Some(6));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(3));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         assert_eq!(deque_store.remove(&mut storage, 1), Ok(3));
-        assert_eq!(deque_store.get_at(&storage, 2), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 2)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(6));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         assert_eq!(deque_store.remove(&mut storage, 1), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         assert_eq!(deque_store.remove(&mut storage, 0), Ok(1));
         assert_eq!(deque_store.remove(&mut storage, 0), Ok(5));
@@ -805,14 +837,14 @@ mod tests {
         deque_store.push_back(&mut storage, &7)?;
         deque_store.push_back(&mut storage, &8)?;
 
-        assert_eq!(deque_store.get_at(&storage, 7), Ok(8));
-        assert_eq!(deque_store.get_at(&storage, 6), Ok(7));
-        assert_eq!(deque_store.get_at(&storage, 5), Ok(6));
-        assert_eq!(deque_store.get_at(&storage, 4), Ok(5));
-        assert_eq!(deque_store.get_at(&storage, 3), Ok(4));
-        assert_eq!(deque_store.get_at(&storage, 2), Ok(3));
-        assert_eq!(deque_store.get_at(&storage, 1), Ok(2));
-        assert_eq!(deque_store.get_at(&storage, 0), Ok(1));
+        assert_eq!(deque_store.get(&storage, 7)?, Some(8));
+        assert_eq!(deque_store.get(&storage, 6)?, Some(7));
+        assert_eq!(deque_store.get(&storage, 5)?, Some(6));
+        assert_eq!(deque_store.get(&storage, 4)?, Some(5));
+        assert_eq!(deque_store.get(&storage, 3)?, Some(4));
+        assert_eq!(deque_store.get(&storage, 2)?, Some(3));
+        assert_eq!(deque_store.get(&storage, 1)?, Some(2));
+        assert_eq!(deque_store.get(&storage, 0)?, Some(1));
 
         Ok(())
     }
@@ -974,6 +1006,107 @@ mod tests {
                 assert_eq!(value, &(page_size * start_page + index as u32 + 1))
             }
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_iterator_detect_skip() {
+        let deque: DequeStore<u32> = DequeStore::new("test".as_bytes());
+        let mut store = MockStorage::new();
+
+        // push some items
+        deque.push_back(&mut store, &1).unwrap();
+        deque.push_back(&mut store, &2).unwrap();
+        deque.push_back(&mut store, &3).unwrap();
+        deque.push_back(&mut store, &4).unwrap();
+
+        let items: StdResult<Vec<_>> = deque.iter(&store).unwrap().collect();
+        assert_eq!(items.unwrap(), [1, 2, 3, 4]);
+
+        // nth should work correctly
+        let mut iter = deque.iter(&store).unwrap();
+        assert_eq!(iter.nth(6), None);
+        assert_eq!(iter.start, iter.end, "iter should detect skipping too far");
+        assert_eq!(iter.next(), None);
+
+        let mut iter = deque.iter(&store).unwrap();
+        assert_eq!(iter.nth(1).unwrap().unwrap(), 2);
+        assert_eq!(iter.next().unwrap().unwrap(), 3);
+    }
+
+    #[test]
+    fn front_back() {
+        let deque: DequeStore<u64> = DequeStore::new(b"test");
+        let mut store = MockStorage::new();
+
+        assert_eq!(deque.back(&store).unwrap(), None);
+        deque.push_back(&mut store, &1).unwrap();
+        assert_eq!(deque.back(&store).unwrap(), Some(1));
+        assert_eq!(deque.front(&store).unwrap(), Some(1));
+        deque.push_back(&mut store, &2).unwrap();
+        assert_eq!(deque.back(&store).unwrap(), Some(2));
+        assert_eq!(deque.front(&store).unwrap(), Some(1));
+        deque.push_front(&mut store, &3).unwrap();
+        assert_eq!(deque.back(&store).unwrap(), Some(2));
+        assert_eq!(deque.front(&store).unwrap(), Some(3));
+    }
+
+    #[test]
+    fn test_cw_storage_plus_readme() -> StdResult<()> {
+        use serde::Deserialize;
+        #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+        struct Data {
+            pub name: String,
+            pub age: i32,
+        }
+
+        const DATA: DequeStore<Data> = DequeStore::new(b"data");
+        let mut store = MockStorage::new();
+
+        // read methods return a wrapped Option<T>, so None if the deque is empty
+        let empty = DATA.front(&store)?;
+        assert_eq!(None, empty);
+
+        // some example entries
+        let p1 = Data {
+            name: "admin".to_string(),
+            age: 1234,
+        };
+        let p2 = Data {
+            name: "user".to_string(),
+            age: 123,
+        };
+
+        // use it like a queue by pushing and popping at opposite ends
+        DATA.push_back(&mut store, &p1)?;
+        DATA.push_back(&mut store, &p2)?;
+
+        let admin = DATA.pop_front(&mut store)?;
+        assert_eq!(admin.as_ref(), Some(&p1));
+        let user = DATA.pop_front(&mut store)?;
+        assert_eq!(user.as_ref(), Some(&p2));
+
+        // or push and pop at the same end to use it as a stack
+        DATA.push_back(&mut store, &p1)?;
+        DATA.push_back(&mut store, &p2)?;
+
+        let user = DATA.pop_back(&mut store)?;
+        assert_eq!(user.as_ref(), Some(&p2));
+        let admin = DATA.pop_back(&mut store)?;
+        assert_eq!(admin.as_ref(), Some(&p1));
+
+        // you can also iterate over it
+        DATA.push_front(&mut store, &p1)?;
+        DATA.push_front(&mut store, &p2)?;
+
+        let all: StdResult<Vec<_>> = DATA.iter(&store)?.collect();
+        assert_eq!(all?, [p2.clone(), p1.clone()]);
+
+        // or access an index directly
+        assert_eq!(DATA.get(&store, 0)?, Some(p2));
+        assert_eq!(DATA.get(&store, 1)?, Some(p1));
+        assert_eq!(DATA.get(&store, 3)?, None);
 
         Ok(())
     }
