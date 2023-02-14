@@ -501,9 +501,20 @@ where
     // In practice, this enables cheap paging over the storage by calling:
     // `deque_store.iter().skip(start).take(length).collect()`
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.start = self.start.saturating_add(n as u32);
+        // make sure that we don't skip past the end
+        if calc_len(self.start, self.end) < n as u32 {
+            // mark as empty
+            self.start = self.end;
+        } else {
+            self.start = self.start.saturating_add(n as u32);
+        }
         self.next()
     }
+}
+
+#[inline]
+fn calc_len(head: u32, tail: u32) -> u32 {
+    tail.saturating_sub(head)
 }
 
 impl<'a, T, Ser> DoubleEndedIterator for DequeStoreIter<'a, T, Ser>
@@ -976,5 +987,30 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn test_iterator_detect_skip() {
+        let deque: DequeStore<u32> = DequeStore::new("test".as_bytes());
+        let mut store = MockStorage::new();
+
+        // push some items
+        deque.push_back(&mut store, &1).unwrap();
+        deque.push_back(&mut store, &2).unwrap();
+        deque.push_back(&mut store, &3).unwrap();
+        deque.push_back(&mut store, &4).unwrap();
+
+        let items: StdResult<Vec<_>> = deque.iter(&store).unwrap().collect();
+        assert_eq!(items.unwrap(), [1, 2, 3, 4]);
+
+        // nth should work correctly
+        let mut iter = deque.iter(&store).unwrap();
+        assert_eq!(iter.nth(6), None);
+        assert_eq!(iter.start, iter.end, "iter should detect skipping too far");
+        assert_eq!(iter.next(), None);
+
+        let mut iter = deque.iter(&store).unwrap();
+        assert_eq!(iter.nth(1).unwrap().unwrap(), 2);
+        assert_eq!(iter.next().unwrap().unwrap(), 3);
     }
 }
