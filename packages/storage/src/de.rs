@@ -2,11 +2,12 @@ use std::array::TryFromSliceError;
 use std::convert::TryInto;
 
 use cosmwasm_std::{Addr, StdError, StdResult};
+use serde::{Serialize, de::DeserializeOwned};
 
 use crate::int_key::IntKey;
 
 pub trait KeyDeserialize {
-    type Output: Sized;
+    type Output: Sized + DeserializeOwned + Serialize;
 
     fn from_vec(value: Vec<u8>) -> StdResult<Self::Output>;
 
