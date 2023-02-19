@@ -348,7 +348,7 @@ To insert, remove, read from the keymap, do the following:
 #
 # let mut deps = mock_dependencies();
 # let info = mock_info("sender", &[]);
-# pub static ADDR_VOTE: Keymap<Addr, Foo> = KeymapBuilder::new(b"page_vote").with_page_size(13).build();
+# pub static ADDR_VOTE: Keymap<&Addr, Foo> = KeymapBuilder::new(b"page_vote").with_page_size(13).build();
 #
 let user_addr: Addr = info.sender;
 
@@ -384,7 +384,7 @@ Here are some select examples from the unit tests:
 fn test_keymap_iter_keys() -> StdResult<()> {
     let mut storage = MockStorage::new();
 
-    let keymap: Keymap<String, Foo> = Keymap::new(b"test");
+    let keymap: Keymap<&str, Foo> = Keymap::new(b"test");
     let foo1 = Foo {
         string: "string one".to_string(),
         number: 1111,
@@ -394,19 +394,19 @@ fn test_keymap_iter_keys() -> StdResult<()> {
         number: 1111,
     };
 
-    let key1 = "key1".to_string();
-    let key2 = "key2".to_string();
+    let key1 = "key1";
+    let key2 = "key2";
 
-    keymap.insert(&mut storage, &key1, &foo1)?;
-    keymap.insert(&mut storage, &key2, &foo2)?;
+    keymap.insert(&mut storage, key1, &foo1)?;
+    keymap.insert(&mut storage, key2, &foo2)?;
 
     let mut x = keymap.iter_keys(&storage)?;
     let (len, _) = x.size_hint();
     assert_eq!(len, 2);
 
-    assert_eq!(x.next().unwrap()?, key1);
-
-    assert_eq!(x.next().unwrap()?, key2);
+    // slice types convert to owned types when iterating over keys
+    assert_eq!(x.next().unwrap()?, key1.to_string());
+    assert_eq!(x.next().unwrap()?, key2.to_string());
 
     Ok(())
 }
@@ -422,7 +422,7 @@ fn test_keymap_iter_keys() -> StdResult<()> {
 fn test_keymap_iter() -> StdResult<()> {
     let mut storage = MockStorage::new();
 
-    let keymap: Keymap<Vec<u8>, Foo> = Keymap::new(b"test");
+    let keymap: Keymap<&[u8], Foo> = Keymap::new(b"test");
     let foo1 = Foo {
         string: "string one".to_string(),
         number: 1111,
@@ -432,15 +432,14 @@ fn test_keymap_iter() -> StdResult<()> {
         number: 1111,
     };
 
-    keymap.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
-    keymap.insert(&mut storage, &b"key2".to_vec(), &foo2)?;
+    keymap.insert(&mut storage, b"key1", &foo1)?;
+    keymap.insert(&mut storage, b"key2", &foo2)?;
 
     let mut x = keymap.iter(&storage)?;
     let (len, _) = x.size_hint();
     assert_eq!(len, 2);
 
     assert_eq!(x.next().unwrap()?.1, foo1);
-
     assert_eq!(x.next().unwrap()?.1, foo2);
 
     Ok(())
