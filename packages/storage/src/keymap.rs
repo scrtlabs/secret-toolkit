@@ -1115,6 +1115,106 @@ mod tests {
     }
 
     #[test]
+    fn test_keymap_insert_multiple_borrowed_keys_bytes() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+
+        let keymap: Keymap<&[u8], Foo> = Keymap::new(b"test");
+        let foo1 = Foo {
+            string: "string one".to_string(),
+            number: 1111,
+        };
+        let foo2 = Foo {
+            string: "string two".to_string(),
+            number: 1111,
+        };
+
+        keymap.insert(&mut storage, b"key1", &foo1)?;
+        keymap.insert(&mut storage, b"key2", &foo2)?;
+
+        let read_foo1 = keymap.get(&storage, b"key1").unwrap();
+        let read_foo2 = keymap.get(&storage, b"key2").unwrap();
+
+        assert_eq!(foo1, read_foo1);
+        assert_eq!(foo2, read_foo2);
+
+        let is_foo1 = keymap.contains(&storage, b"key1");
+        let is_foo2 = keymap.contains(&storage, b"key2");
+
+        assert!(is_foo1);
+        assert!(is_foo2);
+
+        // test iter
+        let mut x = keymap.iter(&storage)?;
+        let (len, _) = x.size_hint();
+        assert_eq!(len, 2);
+
+        // keys are returned with ownership
+        assert_eq!(x.next().unwrap()?, (b"key1".to_vec(), foo1));
+        assert_eq!(x.next().unwrap()?, (b"key2".to_vec(), foo2));
+
+        // test iter keys
+        let mut x = keymap.iter_keys(&storage)?;
+        let (len, _) = x.size_hint();
+        assert_eq!(len, 2);
+
+        // keys are returned with ownership
+        assert_eq!(x.next().unwrap()?, (b"key1".to_vec()));
+        assert_eq!(x.next().unwrap()?, (b"key2".to_vec()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_keymap_insert_multiple_borrowed_keys_str() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+
+        let keymap: Keymap<&str, Foo> = Keymap::new(b"test");
+        let foo1 = Foo {
+            string: "string one".to_string(),
+            number: 1111,
+        };
+        let foo2 = Foo {
+            string: "string two".to_string(),
+            number: 1111,
+        };
+
+        keymap.insert(&mut storage, "key1", &foo1)?;
+        keymap.insert(&mut storage, "key2", &foo2)?;
+
+        let read_foo1 = keymap.get(&storage, "key1").unwrap();
+        let read_foo2 = keymap.get(&storage, "key2").unwrap();
+
+        assert_eq!(foo1, read_foo1);
+        assert_eq!(foo2, read_foo2);
+
+        let is_foo1 = keymap.contains(&storage, "key1");
+        let is_foo2 = keymap.contains(&storage, "key2");
+
+        assert!(is_foo1);
+        assert!(is_foo2);
+
+        // test iter
+        let mut x = keymap.iter(&storage)?;
+        let (len, _) = x.size_hint();
+        assert_eq!(len, 2);
+
+        // keys are returned with ownership
+        assert_eq!(x.next().unwrap()?, ("key1".to_string(), foo1));
+        assert_eq!(x.next().unwrap()?, ("key2".to_string(), foo2));
+
+        // test iter keys
+        let mut x = keymap.iter_keys(&storage)?;
+        let (len, _) = x.size_hint();
+        assert_eq!(len, 2);
+
+        // keys are returned with ownership
+        assert_eq!(x.next().unwrap()?, ("key1".to_string()));
+        assert_eq!(x.next().unwrap()?, ("key2".to_string()));
+
+        Ok(())
+    }
+
+    #[test]
     fn test_keymap_contains() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
