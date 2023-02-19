@@ -4,9 +4,10 @@ use std::convert::TryInto;
 use cosmwasm_std::{Addr, StdError, StdResult};
 
 use crate::int_key::IntKey;
+use crate::{Prefixer, PrimaryKey};
 
 pub trait KeyDeserialize {
-    type Output: Sized;
+    type Output: Sized + for<'a> PrimaryKey<'a> + KeyDeserialize + for<'a>Prefixer<'a>;
 
     fn from_vec(value: Vec<u8>) -> StdResult<Self::Output>;
 
