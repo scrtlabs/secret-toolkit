@@ -13,6 +13,7 @@ use cosmwasm_storage::to_length_prefixed;
 use secret_toolkit_serialization::{Bincode2, Serde};
 
 use crate::{IterOption, WithIter, WithoutIter};
+use crate::de::KeyDeserialize;
 
 const INDEXES: &[u8] = b"indexes";
 const MAP_LENGTH: &[u8] = b"length";
@@ -59,7 +60,7 @@ pub struct KeymapBuilder<'a, K, T, Ser = Bincode2, I = WithIter> {
 
 impl<'a, K, T, Ser> KeymapBuilder<'a, K, T, Ser, WithIter>
 where
-    K: Serialize + DeserializeOwned,
+    K: Serialize + KeyDeserialize,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
@@ -117,7 +118,7 @@ where
 // This enables writing `.iter().skip(n).rev()`
 impl<'a, K, T, Ser> KeymapBuilder<'a, K, T, Ser, WithoutIter>
 where
-    K: Serialize + DeserializeOwned,
+    K: Serialize + KeyDeserialize,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
@@ -137,7 +138,7 @@ where
 
 pub struct Keymap<'a, K, T, Ser = Bincode2, I = WithIter>
 where
-    K: Serialize + DeserializeOwned,
+    K: Serialize + KeyDeserialize,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
     I: IterOption,
@@ -154,7 +155,7 @@ where
     serialization_type: PhantomData<Ser>,
 }
 
-impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
+impl<'a, K: Serialize + KeyDeserialize, T: Serialize + DeserializeOwned, Ser: Serde>
     Keymap<'a, K, T, Ser>
 {
     /// constructor
@@ -190,7 +191,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 }
 
-impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
+impl<'a, K: Serialize + KeyDeserialize, T: Serialize + DeserializeOwned, Ser: Serde>
     Keymap<'a, K, T, Ser, WithoutIter>
 {
     /// Serialize key
@@ -232,7 +233,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 }
 
-impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
+impl<'a, K: Serialize + KeyDeserialize, T: Serialize + DeserializeOwned, Ser: Serde>
     Keymap<'a, K, T, Ser, WithIter>
 {
     /// Serialize key
@@ -241,7 +242,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 
     /// Deserialize key
-    fn deserialize_key(&self, key_data: &[u8]) -> StdResult<K> {
+    fn deserialize_key(&self, key_data: &[u8]) -> StdResult<K::Output> {
         Ser::deserialize(key_data)
     }
 
@@ -338,6 +339,11 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     /// internal item get function
     fn get_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<InternalItem<T, Ser>> {
         let key_vec = self.serialize_key(key)?;
+        self.load_impl(storage, &key_vec)
+    }
+
+    fn get_from_deserialized_key(&self, storage: &dyn Storage, key: &K::Output) -> StdResult<InternalItem<T, Ser>> {
+        let key_vec = Ser::serialize(key)?;
         self.load_impl(storage, &key_vec)
     }
 
@@ -444,7 +450,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         storage: &dyn Storage,
         start_page: u32,
         size: u32,
-    ) -> StdResult<Vec<(K, T)>> {
+    ) -> StdResult<Vec<(K::Output, T)>> {
         let start_pos = start_page * size;
         let mut end_pos = start_pos + size - 1;
 
@@ -470,7 +476,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         storage: &dyn Storage,
         start_page: u32,
         size: u32,
-    ) -> StdResult<Vec<K>> {
+    ) -> StdResult<Vec<K::Output>> {
         let start_pos = start_page * size;
         let mut end_pos = start_pos + size - 1;
 
@@ -496,7 +502,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         storage: &dyn Storage,
         start: u32,
         end: u32,
-    ) -> StdResult<Vec<K>> {
+    ) -> StdResult<Vec<K::Output>> {
         let start_page = self.page_from_position(start);
         let end_page = self.page_from_position(end);
 
@@ -529,7 +535,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         storage: &dyn Storage,
         start: u32,
         end: u32,
-    ) -> StdResult<Vec<(K, T)>> {
+    ) -> StdResult<Vec<(K::Output, T)>> {
         let start_page = self.page_from_position(start);
         let end_page = self.page_from_position(end);
 
@@ -572,7 +578,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 }
 
-impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
+impl<'a, K: Serialize + KeyDeserialize, T: Serialize + DeserializeOwned, Ser: Serde>
     PrefixedTypedStorage<InternalItem<T, Ser>, Bincode2> for Keymap<'a, K, T, Ser, WithIter>
 {
     fn as_slice(&self) -> &[u8] {
@@ -584,7 +590,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 }
 
-impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
+impl<'a, K: Serialize + KeyDeserialize, T: Serialize + DeserializeOwned, Ser: Serde>
     PrefixedTypedStorage<T, Ser> for Keymap<'a, K, T, Ser, WithoutIter>
 {
     fn as_slice(&self) -> &[u8] {
@@ -599,7 +605,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
 /// An iterator over the keys of the Keymap.
 pub struct KeyIter<'a, K, T, Ser>
 where
-    K: Serialize + DeserializeOwned,
+    K: Serialize + KeyDeserialize,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
@@ -612,7 +618,7 @@ where
 
 impl<'a, K, T, Ser> KeyIter<'a, K, T, Ser>
 where
-    K: Serialize + DeserializeOwned,
+    K: Serialize + KeyDeserialize,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
@@ -635,11 +641,11 @@ where
 
 impl<'a, K, T, Ser> Iterator for KeyIter<'a, K, T, Ser>
 where
-    K: Serialize + DeserializeOwned,
+    K: Serialize + KeyDeserialize,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
-    type Item = StdResult<K>;
+    type Item = StdResult<K::Output>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.start >= self.end {
@@ -688,7 +694,7 @@ where
 
 impl<'a, K, T, Ser> DoubleEndedIterator for KeyIter<'a, K, T, Ser>
 where
-    K: Serialize + DeserializeOwned,
+    K: Serialize + KeyDeserialize,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
@@ -734,7 +740,7 @@ where
 // This enables writing `.iter().skip(n).rev()`
 impl<'a, K, T, Ser> ExactSizeIterator for KeyIter<'a, K, T, Ser>
 where
-    K: Serialize + DeserializeOwned,
+    K: Serialize + KeyDeserialize,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
@@ -745,7 +751,7 @@ where
 /// An iterator over the (key, item) pairs of the Keymap. Less efficient than just iterating over keys.
 pub struct KeyItemIter<'a, K, T, Ser>
 where
-    K: Serialize + DeserializeOwned,
+    K: Serialize + KeyDeserialize,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
@@ -758,7 +764,7 @@ where
 
 impl<'a, K, T, Ser> KeyItemIter<'a, K, T, Ser>
 where
-    K: Serialize + DeserializeOwned,
+    K: Serialize + KeyDeserialize,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
@@ -781,11 +787,11 @@ where
 
 impl<'a, K, T, Ser> Iterator for KeyItemIter<'a, K, T, Ser>
 where
-    K: Serialize + DeserializeOwned,
+    K: Serialize + KeyDeserialize,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
-    type Item = StdResult<(K, T)>;
+    type Item = StdResult<(K::Output, T)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.start >= self.end {
@@ -813,7 +819,7 @@ where
         self.start += 1;
         // turn key into pair
         let pair = match key {
-            Ok(k) => match self.keymap.get_from_key(self.storage, &k) {
+            Ok(k) => match self.keymap.get_from_deserialized_key(self.storage, &k) {
                 Ok(internal_item) => match internal_item.get_item() {
                     Ok(item) => Ok((k, item)),
                     Err(e) => Err(e),
@@ -845,7 +851,7 @@ where
 
 impl<'a, K, T, Ser> DoubleEndedIterator for KeyItemIter<'a, K, T, Ser>
 where
-    K: Serialize + DeserializeOwned,
+    K: Serialize + KeyDeserialize,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {
@@ -875,7 +881,7 @@ where
         }
         // turn key into pair
         let pair = match key {
-            Ok(k) => match self.keymap.get_from_key(self.storage, &k) {
+            Ok(k) => match self.keymap.get_from_deserialized_key(self.storage, &k) {
                 Ok(internal_item) => match internal_item.get_item() {
                     Ok(item) => Ok((k, item)),
                     Err(e) => Err(e),
@@ -902,7 +908,7 @@ where
 // This enables writing `.iter().skip(n).rev()`
 impl<'a, K, T, Ser> ExactSizeIterator for KeyItemIter<'a, K, T, Ser>
 where
-    K: Serialize + DeserializeOwned,
+    K: Serialize + KeyDeserialize,
     T: Serialize + DeserializeOwned,
     Ser: Serde,
 {

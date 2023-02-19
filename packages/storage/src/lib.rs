@@ -5,6 +5,7 @@ pub mod deque_store;
 pub mod item;
 pub mod keymap;
 pub mod keyset;
+pub mod de;
 
 pub use append_store::AppendStore;
 pub use deque_store::DequeStore;
