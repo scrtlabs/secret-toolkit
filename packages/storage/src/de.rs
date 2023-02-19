@@ -3,6 +3,7 @@ use std::convert::TryInto;
 
 use cosmwasm_std::{Addr, StdError, StdResult};
 use serde::{Serialize, de::DeserializeOwned};
+use crate::int_key::IntKey;
 
 pub trait KeyDeserialize {
     type Output: Sized + DeserializeOwned + Serialize;
@@ -102,7 +103,7 @@ macro_rules! integer_de {
 
             #[inline(always)]
             fn from_vec(value: Vec<u8>) -> StdResult<Self::Output> {
-                Ok(<$t>::from_be_bytes(value.as_slice().try_into()
+                Ok(<$t>::from_cw_bytes(value.as_slice().try_into()
                     .map_err(|err: TryFromSliceError| StdError::generic_err(err.to_string()))?))
             }
         })*
