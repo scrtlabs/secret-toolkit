@@ -6,6 +6,7 @@ pub mod item;
 pub mod keymap;
 pub mod keyset;
 pub mod de;
+mod int_key;
 
 pub use append_store::AppendStore;
 pub use deque_store::DequeStore;
