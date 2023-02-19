@@ -5,10 +5,7 @@ pub mod deque_store;
 pub mod item;
 pub mod keymap;
 pub mod keyset;
-pub mod keys;
-mod de;
-mod helpers;
-mod int_key;
+pub mod de;
 
 pub use append_store::AppendStore;
 pub use deque_store::DequeStore;
@@ -17,7 +14,6 @@ pub use iter_options::WithoutIter;
 use iter_options::{IterOption, WithIter};
 pub use keymap::{Keymap, KeymapBuilder};
 pub use keyset::{Keyset, KeysetBuilder};
-pub use keys::{Key, Prefixer, PrimaryKey};
 
 pub mod iter_options {
     pub struct WithIter;
