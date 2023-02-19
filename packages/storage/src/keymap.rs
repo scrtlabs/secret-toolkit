@@ -200,33 +200,33 @@ impl<'a, K: Serialize + KeyDeserialize, T: Serialize + DeserializeOwned, Ser: Se
     }
 
     /// user facing get function
-    pub fn get(&self, storage: &dyn Storage, key: &K) -> Option<T> {
+    pub fn get(&self, storage: &dyn Storage, key: K) -> Option<T> {
         self.get_from_key(storage, key).ok()
     }
 
     /// internal item get function
-    fn get_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<T> {
-        let key_vec = self.serialize_key(key)?;
+    fn get_from_key(&self, storage: &dyn Storage, key: K) -> StdResult<T> {
+        let key_vec = self.serialize_key(&key)?;
         self.load_impl(storage, &key_vec)
     }
 
     /// user facing remove function
-    pub fn remove(&self, storage: &mut dyn Storage, key: &K) -> StdResult<()> {
-        let key_vec = self.serialize_key(key)?;
+    pub fn remove(&self, storage: &mut dyn Storage, key: K) -> StdResult<()> {
+        let key_vec = self.serialize_key(&key)?;
         self.remove_impl(storage, &key_vec);
 
         Ok(())
     }
 
     /// user facing insert function
-    pub fn insert(&self, storage: &mut dyn Storage, key: &K, item: &T) -> StdResult<()> {
-        let key_vec = self.serialize_key(key)?;
+    pub fn insert(&self, storage: &mut dyn Storage, key: K, item: &T) -> StdResult<()> {
+        let key_vec = self.serialize_key(&key)?;
         self.save_impl(storage, &key_vec, item)
     }
 
     /// user facing method that checks if any item is stored with this key.
-    pub fn contains(&self, storage: &dyn Storage, key: &K) -> bool {
-        match self.serialize_key(key) {
+    pub fn contains(&self, storage: &dyn Storage, key: K) -> bool {
+        match self.serialize_key(&key) {
             Ok(key_vec) => self.contains_impl(storage, &key_vec),
             Err(_) => false,
         }
@@ -328,7 +328,7 @@ impl<'a, K: Serialize + KeyDeserialize, T: Serialize + DeserializeOwned, Ser: Se
     }
 
     /// user facing get function
-    pub fn get(&self, storage: &dyn Storage, key: &K) -> Option<T> {
+    pub fn get(&self, storage: &dyn Storage, key: K) -> Option<T> {
         if let Ok(internal_item) = self.get_from_key(storage, key) {
             internal_item.get_item().ok()
         } else {
@@ -337,8 +337,8 @@ impl<'a, K: Serialize + KeyDeserialize, T: Serialize + DeserializeOwned, Ser: Se
     }
 
     /// internal item get function
-    fn get_from_key(&self, storage: &dyn Storage, key: &K) -> StdResult<InternalItem<T, Ser>> {
-        let key_vec = self.serialize_key(key)?;
+    fn get_from_key(&self, storage: &dyn Storage, key: K) -> StdResult<InternalItem<T, Ser>> {
+        let key_vec = self.serialize_key(&key)?;
         self.load_impl(storage, &key_vec)
     }
 
@@ -348,8 +348,8 @@ impl<'a, K: Serialize + KeyDeserialize, T: Serialize + DeserializeOwned, Ser: Se
     }
 
     /// user facing remove function
-    pub fn remove(&self, storage: &mut dyn Storage, key: &K) -> StdResult<()> {
-        let key_vec = self.serialize_key(key)?;
+    pub fn remove(&self, storage: &mut dyn Storage, key: K) -> StdResult<()> {
+        let key_vec = self.serialize_key(&key)?;
 
         let removed_pos = self.get_from_key(storage, key)?.index_pos.unwrap();
 
@@ -411,8 +411,8 @@ impl<'a, K: Serialize + KeyDeserialize, T: Serialize + DeserializeOwned, Ser: Se
     }
 
     /// user facing insert function
-    pub fn insert(&self, storage: &mut dyn Storage, key: &K, item: &T) -> StdResult<()> {
-        let key_vec = self.serialize_key(key)?;
+    pub fn insert(&self, storage: &mut dyn Storage, key: K, item: &T) -> StdResult<()> {
+        let key_vec = self.serialize_key(&key)?;
 
         match self.may_load_impl(storage, &key_vec)? {
             Some(existing_internal_item) => {
@@ -437,8 +437,8 @@ impl<'a, K: Serialize + KeyDeserialize, T: Serialize + DeserializeOwned, Ser: Se
     }
 
     /// user facing method that checks if any item is stored with this key.
-    pub fn contains(&self, storage: &dyn Storage, key: &K) -> bool {
-        match self.serialize_key(key) {
+    pub fn contains(&self, storage: &dyn Storage, key: K) -> bool {
+        match self.serialize_key(&key) {
             Ok(key_vec) => self.contains_impl(storage, &key_vec),
             Err(_) => false,
         }
@@ -1008,7 +1008,7 @@ mod tests {
 
         for i in 0..total_items {
             let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
-            keymap.insert(&mut storage, &key, &i)?;
+            keymap.insert(&mut storage, key, &i)?;
         }
 
         assert_eq!(keymap.get_len(&storage)?, 1000);
@@ -1025,11 +1025,11 @@ mod tests {
         let keymap: Keymap<i32, i32> = Keymap::new(b"test");
 
         for i in 0..total_items {
-            keymap.insert(&mut storage, &i, &i)?;
+            keymap.insert(&mut storage, i, &i)?;
         }
 
         for i in 0..total_items {
-            keymap.remove(&mut storage, &i)?;
+            keymap.remove(&mut storage, i)?;
         }
 
         assert_eq!(keymap.get_len(&storage)?, 0);
@@ -1047,7 +1047,7 @@ mod tests {
 
         for i in 0..total_items {
             let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
-            keymap.insert(&mut storage, &key, &i)?;
+            keymap.insert(&mut storage, key, &i)?;
         }
 
         for i in 0..((total_items / page_size) - 1) {
@@ -1075,7 +1075,7 @@ mod tests {
         let keymap: Keymap<i32, u32> = Keymap::new(b"test");
 
         for i in 0..total_items {
-            keymap.insert(&mut storage, &(i as i32), &i)?;
+            keymap.insert(&mut storage, i as i32, &i)?;
         }
 
         let values = keymap.paging_keys(&storage, 0, page_size)?;
@@ -1103,11 +1103,11 @@ mod tests {
             number: 1111,
         };
 
-        keymap.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
-        keymap.insert(&mut storage, &b"key2".to_vec(), &foo2)?;
+        keymap.insert(&mut storage, b"key1".to_vec(), &foo1)?;
+        keymap.insert(&mut storage, b"key2".to_vec(), &foo2)?;
 
-        let read_foo1 = keymap.get(&storage, &b"key1".to_vec()).unwrap();
-        let read_foo2 = keymap.get(&storage, &b"key2".to_vec()).unwrap();
+        let read_foo1 = keymap.get(&storage, b"key1".to_vec()).unwrap();
+        let read_foo2 = keymap.get(&storage, b"key2".to_vec()).unwrap();
 
         assert_eq!(foo1, read_foo1);
         assert_eq!(foo2, read_foo2);
@@ -1124,8 +1124,8 @@ mod tests {
             number: 1111,
         };
 
-        keymap.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
-        let contains_k1 = keymap.contains(&storage, &b"key1".to_vec());
+        keymap.insert(&mut storage, b"key1".to_vec(), &foo1)?;
+        let contains_k1 = keymap.contains(&storage, b"key1".to_vec());
 
         assert!(contains_k1);
 
@@ -1146,8 +1146,8 @@ mod tests {
             number: 1111,
         };
 
-        keymap.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
-        keymap.insert(&mut storage, &b"key2".to_vec(), &foo2)?;
+        keymap.insert(&mut storage, b"key1".to_vec(), &foo1)?;
+        keymap.insert(&mut storage, b"key2".to_vec(), &foo2)?;
 
         let mut x = keymap.iter(&storage)?;
         let (len, _) = x.size_hint();
@@ -1177,8 +1177,8 @@ mod tests {
         let key1 = "key1".to_string();
         let key2 = "key2".to_string();
 
-        keymap.insert(&mut storage, &key1, &foo1)?;
-        keymap.insert(&mut storage, &key2, &foo2)?;
+        keymap.insert(&mut storage, key1.clone(), &foo1)?;
+        keymap.insert(&mut storage, key2.clone(), &foo2)?;
 
         let mut x = keymap.iter_keys(&storage)?;
         let (len, _) = x.size_hint();
@@ -1205,10 +1205,10 @@ mod tests {
             number: 2222,
         };
 
-        keymap.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
-        keymap.insert(&mut storage, &b"key1".to_vec(), &foo2)?;
+        keymap.insert(&mut storage, b"key1".to_vec(), &foo1)?;
+        keymap.insert(&mut storage, b"key1".to_vec(), &foo2)?;
 
-        let foo3 = keymap.get(&storage, &b"key1".to_vec()).unwrap();
+        let foo3 = keymap.get(&storage, b"key1".to_vec()).unwrap();
 
         assert_eq!(foo3, foo2);
 
@@ -1229,11 +1229,11 @@ mod tests {
             string: "string one".to_string(),
             number: 1111,
         };
-        keymap.insert(&mut storage, &"key1".to_string(), &foo1)?;
-        keymap.insert(&mut storage, &"key2".to_string(), &foo2)?;
+        keymap.insert(&mut storage, "key1".to_string(), &foo1)?;
+        keymap.insert(&mut storage, "key2".to_string(), &foo2)?;
 
-        let read_foo1 = keymap.get(&storage, &"key1".to_string()).unwrap();
-        let read_foo2 = keymap.get(&storage, &"key2".to_string()).unwrap();
+        let read_foo1 = keymap.get(&storage, "key1".to_string()).unwrap();
+        let read_foo2 = keymap.get(&storage, "key2".to_string()).unwrap();
 
         assert_eq!(original_keymap.get_len(&storage)?, 0);
         assert_eq!(foo1, read_foo1);
@@ -1245,16 +1245,16 @@ mod tests {
         assert!(alt_same_suffix.is_empty(&storage)?);
 
         // show that it loads foo1 before removal
-        let before_remove_foo1 = keymap.get(&storage, &"key1".to_string());
+        let before_remove_foo1 = keymap.get(&storage, "key1".to_string());
         assert!(before_remove_foo1.is_some());
         assert_eq!(foo1, before_remove_foo1.unwrap());
         // and returns None after removal
-        keymap.remove(&mut storage, &"key1".to_string())?;
-        let removed_foo1 = keymap.get(&storage, &"key1".to_string());
+        keymap.remove(&mut storage, "key1".to_string())?;
+        let removed_foo1 = keymap.get(&storage, "key1".to_string());
         assert!(removed_foo1.is_none());
 
         // show what happens when reading from keys that have not been set yet.
-        assert!(keymap.get(&storage, &"key3".to_string()).is_none());
+        assert!(keymap.get(&storage, "key3".to_string()).is_none());
 
         Ok(())
     }
@@ -1289,27 +1289,27 @@ mod tests {
         let key1 = "k1".to_string();
         let key2 = "k2".to_string();
 
-        keymap.insert(&mut storage, &key1, &foo1)?;
+        keymap.insert(&mut storage, key1.clone(), &foo1)?;
         assert_eq!(keymap.get_len(&storage)?, 1);
         assert!(keymap.length.lock().unwrap().eq(&Some(1)));
 
         // add another item
-        keymap.insert(&mut storage, &key2, &foo2)?;
+        keymap.insert(&mut storage, key2.clone(), &foo2)?;
         assert_eq!(keymap.get_len(&storage)?, 2);
         assert!(keymap.length.lock().unwrap().eq(&Some(2)));
 
         // remove item and check length
-        keymap.remove(&mut storage, &key1)?;
+        keymap.remove(&mut storage, key1)?;
         assert_eq!(keymap.get_len(&storage)?, 1);
         assert!(keymap.length.lock().unwrap().eq(&Some(1)));
 
         // override item (should not change length)
-        keymap.insert(&mut storage, &key2, &foo1)?;
+        keymap.insert(&mut storage, key2.clone(), &foo1)?;
         assert_eq!(keymap.get_len(&storage)?, 1);
         assert!(keymap.length.lock().unwrap().eq(&Some(1)));
 
         // remove item and check length
-        keymap.remove(&mut storage, &key2)?;
+        keymap.remove(&mut storage, key2)?;
         assert_eq!(keymap.get_len(&storage)?, 0);
         assert!(keymap.length.lock().unwrap().eq(&Some(0)));
 
@@ -1340,20 +1340,20 @@ mod tests {
             string: "string one".to_string(),
             number: 1111,
         };
-        keymap.insert(&mut storage, &"key1".to_string(), &foo1)?;
-        keymap.insert(&mut storage, &"key2".to_string(), &foo2)?;
+        keymap.insert(&mut storage, "key1".to_string(), &foo1)?;
+        keymap.insert(&mut storage, "key2".to_string(), &foo2)?;
 
-        let read_foo1 = keymap.get(&storage, &"key1".to_string()).unwrap();
-        let read_foo2 = keymap.get(&storage, &"key2".to_string()).unwrap();
+        let read_foo1 = keymap.get(&storage, "key1".to_string()).unwrap();
+        let read_foo2 = keymap.get(&storage, "key2".to_string()).unwrap();
 
         assert_eq!(foo1, read_foo1);
         assert_eq!(foo2, read_foo2);
-        assert!(keymap.contains(&storage, &"key1".to_string()));
+        assert!(keymap.contains(&storage, "key1".to_string()));
 
-        keymap.remove(&mut storage, &"key1".to_string())?;
+        keymap.remove(&mut storage, "key1".to_string())?;
 
-        let read_foo1 = keymap.get(&storage, &"key1".to_string());
-        let read_foo2 = keymap.get(&storage, &"key2".to_string()).unwrap();
+        let read_foo1 = keymap.get(&storage, "key1".to_string());
+        let read_foo2 = keymap.get(&storage, "key2".to_string()).unwrap();
 
         assert!(read_foo1.is_none());
         assert_eq!(foo2, read_foo2);
@@ -1371,7 +1371,7 @@ mod tests {
 
         for i in 0..total_items {
             let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
-            keymap.insert(&mut storage, &key, &i)?;
+            keymap.insert(&mut storage, key, &i)?;
         }
 
         for i in 0..((total_items / page_size) - 1) {
@@ -1399,7 +1399,7 @@ mod tests {
         let keymap: Keymap<i32, u32, Json> = KeymapBuilder::new(b"test").with_page_size(3).build();
 
         for i in 0..total_items {
-            keymap.insert(&mut storage, &(i as i32), &i)?;
+            keymap.insert(&mut storage, i as i32, &i)?;
         }
 
         let values = keymap.paging_keys(&storage, 0, page_size)?;
@@ -1431,9 +1431,9 @@ mod tests {
             number: 1111,
         };
 
-        keymap.insert(&mut storage, &b"key1".to_vec(), &foo1)?;
-        keymap.insert(&mut storage, &b"key2".to_vec(), &foo2)?;
-        keymap.insert(&mut storage, &b"key3".to_vec(), &foo3)?;
+        keymap.insert(&mut storage, b"key1".to_vec(), &foo1)?;
+        keymap.insert(&mut storage, b"key2".to_vec(), &foo2)?;
+        keymap.insert(&mut storage, b"key3".to_vec(), &foo3)?;
 
         let mut x = keymap.iter(&storage)?;
         let (len, _) = x.size_hint();
@@ -1464,10 +1464,10 @@ mod tests {
         let keymap: Keymap<i32, i32> = KeymapBuilder::new(b"test")
             .with_page_size(page_size)
             .build();
-        keymap.insert(&mut storage, &1234, &1234)?;
-        keymap.insert(&mut storage, &2143, &2143)?;
-        keymap.insert(&mut storage, &3412, &3412)?;
-        keymap.insert(&mut storage, &4321, &4321)?;
+        keymap.insert(&mut storage, 1234, &1234)?;
+        keymap.insert(&mut storage, 2143, &2143)?;
+        keymap.insert(&mut storage, 3412, &3412)?;
+        keymap.insert(&mut storage, 4321, &4321)?;
 
         let mut iter = keymap.iter(&storage)?.rev();
         assert_eq!(iter.next(), Some(Ok((4321, 4321))));
@@ -1514,7 +1514,7 @@ mod tests {
         let keymap: Keymap<i32, i32> = KeymapBuilder::new(b"test")
             .with_page_size(page_size)
             .build();
-        keymap.insert(&mut storage, &1234, &1234)?;
+        keymap.insert(&mut storage, 1234, &1234)?;
 
         let page_key = [keymap.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
         if keymap.page_size == 1 {
@@ -1532,7 +1532,7 @@ mod tests {
         let json_keymap: Keymap<i32, i32, Json> = KeymapBuilder::new(b"test2")
             .with_page_size(page_size)
             .build();
-        json_keymap.insert(&mut storage, &1234, &1234)?;
+        json_keymap.insert(&mut storage, 1234, &1234)?;
 
         let key = [json_keymap.as_slice(), INDEXES, &0_u32.to_be_bytes()].concat();
         if json_keymap.page_size == 1 {
