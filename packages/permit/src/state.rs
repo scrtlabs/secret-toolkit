@@ -4,14 +4,14 @@ pub struct RevokedPermits;
 
 impl RevokedPermits {
     pub fn is_permit_revoked(
-        storgae: &dyn Storage,
+        storage: &dyn Storage,
         storage_prefix: &str,
         account: &str,
         permit_name: &str,
     ) -> bool {
         let storage_key = storage_prefix.to_string() + account + permit_name;
 
-        storgae.get(storage_key.as_bytes()).is_some()
+        storage.get(storage_key.as_bytes()).is_some()
     }
 
     pub fn revoke_permit(
