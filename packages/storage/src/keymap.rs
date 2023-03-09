@@ -996,12 +996,12 @@ mod tests {
     fn test_keymap_perf_insert() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let total_items = 1000;
+        let total_items: i32 = 1000;
 
         let keymap: Keymap<Vec<u8>, i32> = Keymap::new(b"test");
 
         for i in 0..total_items {
-            let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
+            let key: Vec<u8> = i.to_be_bytes().to_vec();
             keymap.insert(&mut storage, &key, &i)?;
         }
 
