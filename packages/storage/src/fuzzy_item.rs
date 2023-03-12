@@ -1,26 +1,20 @@
 use cosmwasm_std::{StdResult, Storage};
 use secret_toolkit_serialization::{Bincode2, Serde};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 
 use crate::Item;
 
-#[derive(Serialize, Deserialize)]
-pub struct FuzzyData<T> {
-    data: T,
-    fuzz: u8,
-}
-
-pub struct FuzzyItem<'a, T, Ser = Bincode2>
+pub struct SecureItem<'a, T, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned + Copy,
     Ser: Serde,
 {
-    item: Item<'a, FuzzyData<T>, Ser>,
+    item: Item<'a, T, Ser>,
     storage: &'a mut dyn Storage,
 }
 
-impl<'a, T: Serialize + DeserializeOwned + Copy, Ser: Serde> FuzzyItem<'a, T, Ser> {
-    pub fn new(item: Item<'a, FuzzyData<T>, Ser>, storage: &'a mut dyn Storage) -> Self {
+impl<'a, T: Serialize + DeserializeOwned + Copy, Ser: Serde> SecureItem<'a, T, Ser> {
+    pub fn new(item: Item<'a, T, Ser>, storage: &'a mut dyn Storage) -> Self {
         Self { item, storage }
     }
 
@@ -32,35 +26,24 @@ impl<'a, T: Serialize + DeserializeOwned + Copy, Ser: Serde> FuzzyItem<'a, T, Se
     }
 }
 
-impl<'a, T, Ser> Drop for FuzzyItem<'a, T, Ser>
+impl<'a, T, Ser> Drop for SecureItem<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned + Copy,
     Ser: Serde,
 {
     fn drop(&mut self) {
-        self.update(|fd| Ok(fd)).unwrap(); // This is not ideal but can't return `StdResult`
+        self.update(|data| Ok(data)).unwrap(); // This is not ideal but can't return `StdResult`
     }
 }
 
-impl<'a, T, Ser> FuzzyItem<'a, T, Ser>
+impl<'a, T, Ser> SecureItem<'a, T, Ser>
 where
     T: Serialize + DeserializeOwned + Copy,
     Ser: Serde,
 {
     /// save will serialize the model and store, returns an error on serialization issues
     pub fn save(&mut self, data: &T) -> StdResult<()> {
-        let new_data = match self.item.may_load(self.storage)? {
-            Some(fd) => FuzzyData {
-                data: *data,
-                fuzz: fd.fuzz.wrapping_add(1),
-            },
-            None => FuzzyData {
-                data: *data,
-                fuzz: 0,
-            },
-        };
-
-        self.item.save(self.storage, &new_data)
+        self.item.save(self.storage, data)
     }
 
     /// userfacing remove function
@@ -70,15 +53,13 @@ where
 
     /// load will return an error if no data is set at the given key, or on parse error
     pub fn load(&self) -> StdResult<T> {
-        let fuzzy_data = self.item.load(self.storage)?;
-        Ok(fuzzy_data.data)
+        self.item.load(self.storage)
     }
 
     /// may_load will parse the data stored at the key if present, returns `Ok(None)` if no data there.
     /// returns an error on issues parsing
     pub fn may_load(&self) -> StdResult<Option<T>> {
-        let maybe_fuzzy_data = self.item.may_load(self.storage)?;
-        Ok(maybe_fuzzy_data.map(|fd| fd.data))
+        self.item.may_load(self.storage)
     }
 
     /// efficient way to see if any object is currently saved.
@@ -95,11 +76,6 @@ where
     where
         A: FnOnce(T) -> StdResult<T>,
     {
-        let mut fuzzy_data = self.item.load(self.storage)?;
-        let input = fuzzy_data.data;
-        fuzzy_data.data = action(input)?;
-        fuzzy_data.fuzz = fuzzy_data.fuzz.wrapping_add(1);
-        self.item.save(self.storage, &fuzzy_data)?;
-        Ok(fuzzy_data.data)
+        self.item.update(self.storage, action)
     }
 }
