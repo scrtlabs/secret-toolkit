@@ -7,7 +7,7 @@ The APIs remains the same, but it is necessary to upgrade the contract's `cosmwa
 
 ### Breaking
 
-- This version will not work with `cosmwasm v1`. It is necessary to upgrade to `cosmwasm v1.1` in order to use this release.
+- Since `cosmwasm v1.1` had some breaking changes to it's dependencies, this version will not work with `cosmwasm v1`. It is necessary to upgrade to `cosmwasm v1.1` in order to use this release and vice verca. However, neither `cosmwasm v1.1` or this version did not have breaking changes to the APIs.
 
 ## v0.7.0
 

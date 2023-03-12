@@ -57,5 +57,5 @@ members = ["packages/*"]
 [workspace.dependencies]
 schemars = { version = "0.8.11" }
 serde = { version = "1.0" }
-cosmwasm-std = { git = "https://github.com/scrtlabs/cosmwasm", tag = "v1.1.0-secret", package = "secret-cosmwasm-std" }
-cosmwasm-storage = { git = "https://github.com/scrtlabs/cosmwasm", tag = "v1.1.0-secret", package = "secret-cosmwasm-storage" }
+cosmwasm-std = { git = "https://github.com/scrtlabs/cosmwasm", tag = "v1.1.9-secret" }
+cosmwasm-storage = { git = "https://github.com/scrtlabs/cosmwasm", tag = "v1.1.9-secret" }
