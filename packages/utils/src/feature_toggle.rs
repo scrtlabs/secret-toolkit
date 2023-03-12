@@ -187,16 +187,11 @@ pub trait FeatureToggleTrait {
     }
 }
 
-#[derive(Serialize, Debug, Deserialize, Clone, JsonSchema, PartialEq, Eq)]
+#[derive(Serialize, Debug, Deserialize, Clone, JsonSchema, PartialEq, Eq, Default)]
 pub enum Status {
+    #[default]
     NotPaused,
     Paused,
-}
-
-impl Default for Status {
-    fn default() -> Self {
-        Status::NotPaused
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
