@@ -1,5 +1,10 @@
 # Release notes for the Secret Toolkit
 
+## Unreleased
+
+- SecureItem - storage access pattern obfuscating Item (#82).
+- Change the internal `rng` field of the `Prng` struct to be public (#81),
+
 ## v0.8.0
 
 This release upgrades all `secret-toolkit` packages to be compatible with Cosmwasm v1.1.
@@ -48,13 +53,13 @@ are prone to bugs, or inefficient. Unless you are using these specific interface
 
 ## secret-toolkit-storage v0.4.2
 
-* BUGFIX: implementation of `.clone` method fixed
-* Added `.add_suffix` and `.clone` methods to `secret-toolkit::storage::Item`
-* Minor performance updates to `secret-toolkit::storage::Keymap`
+- BUGFIX: implementation of `.clone` method fixed
+- Added `.add_suffix` and `.clone` methods to `secret-toolkit::storage::Item`
+- Minor performance updates to `secret-toolkit::storage::Keymap`
 
 ## secret-toolkit-storage v0.4.1
 
-* BUGFIX: `Item::is_empty` was returning the opposite value from what you'd expect.
+- BUGFIX: `Item::is_empty` was returning the opposite value from what you'd expect.
 
 ## v0.4.0
 
@@ -65,40 +70,41 @@ to use. It also removes the `Cashmap` type from the incubator in favor of `KeyMa
 
 This is a summary of the changes and additions in this release:
 
-* Minimum Rust version is bumped to the latest v1.63. This is because we want to use `Mutex::new` in a `const fn`.
-* No more distinction between `Readonly*` and `*Mut` types. Instead, methods take references or mutable references to the storage every time.
-* Usage of `PrefixedStore` is made mostly unnecessary.
-* Storage type's constructors are const functions, which means they can be initialized as global static variables.
-* Added `secret-toolkit::storage::Item` which is similar to `Item` from `cw-storage-plus` or `TypedStore` from `cosmwasm_storage` v0.10.
-* Added `secret-toolkit::storage::KeyMap` which is similar to `Cashmap`.
-* `Cashmap` is completely removed.
+- Minimum Rust version is bumped to the latest v1.63. This is because we want to use `Mutex::new` in a `const fn`.
+- No more distinction between `Readonly*` and `*Mut` types. Instead, methods take references or mutable references to the storage every time.
+- Usage of `PrefixedStore` is made mostly unnecessary.
+- Storage type's constructors are const functions, which means they can be initialized as global static variables.
+- Added `secret-toolkit::storage::Item` which is similar to `Item` from `cw-storage-plus` or `TypedStore` from `cosmwasm_storage` v0.10.
+- Added `secret-toolkit::storage::KeyMap` which is similar to `Cashmap`.
+- `Cashmap` is completely removed.
 
 A full guide to using the new `storage` types can be found
 [in the package's readme file](https://github.com/srdtrk/secret-toolkit/blob/3725530aebe149d14f7f3f1662844340eb27e015/packages/storage/Readme.md).
 
 ## secret-toolkit-incubator v0.3.1
 
-* Fixed compilation issue with Rust v1.61 (#46, #48)
-* Removed Siphasher dependency (#46, #48)
+- Fixed compilation issue with Rust v1.61 (#46, #48)
+- Removed Siphasher dependency (#46, #48)
 
 ## secret-toolkit-utils v0.3.1
 
 ### Security
 
-* BUGFIX: `secret-toolkit::utils::FeatureToggle::handle_pause` had an inverse authorization check: only non-pausers
+- BUGFIX: `secret-toolkit::utils::FeatureToggle::handle_pause` had an inverse authorization check: only non-pausers
   could pause features.
 
 ## secret-toolkit-permit v0.3.1
 
-* Removed the `ecc-secp256k1` feature from `secret-toolkit-crypto` dependency of `secret-toolkit-permit`.
-  * This tiny change significantly reduces the size of binaries that only use the permit feature.
+- Removed the `ecc-secp256k1` feature from `secret-toolkit-crypto` dependency of `secret-toolkit-permit`.
+  - This tiny change significantly reduces the size of binaries that only use the permit feature.
 
 ## v0.3.0
 
-* Added `clear` method to `AppendStore` and `DequeStore` to quickly reset the collections (#34)
-* docs.rs documentation now includes all sub-crates.
-* BUGFIX: `secret-toolkit::snip721::Metadata` was severely out of date with the SNIP-721 specification, and not useful.
+- Added `clear` method to `AppendStore` and `DequeStore` to quickly reset the collections (#34)
+- docs.rs documentation now includes all sub-crates.
+- BUGFIX: `secret-toolkit::snip721::Metadata` was severely out of date with the SNIP-721 specification, and not useful.
   It is now compatible with deployed SNIP-721 contracts.
+
 - Added `types` module under the `util` package, to standardize often used types.
 - Added `secret-toolkit::viewing_key`, which can be imported by enabling the `viewing-key` feature.
 - Added `secret-toolkit::permit::PubKey::canonical_address()`.
@@ -108,10 +114,11 @@ A full guide to using the new `storage` types can be found
 
 ### Breaking
 
-* `secret-toolkit::permit::validate()` Now supports validating any type of Cosmos address.
+- `secret-toolkit::permit::validate()` Now supports validating any type of Cosmos address.
 Interface changes: Now takes a reference to the current token address instead
 of taking it by value and an optional hrp string.
 In addition, it returns a String and not HumanAddr.
+
 - Renamed `secret-toolkit::permit::Permission` to `secret-toolkit::permit::TokenPermission`.
 - `secret-toolkit-crypto` now has features `["hash", "rng" and "ecc-secp256k1"]` which are all off by default - enable those you need.
 - `secret-toolkit-crypto::secp256k1::PublicKey::parse` now returns `StdResult<Self>`.
@@ -127,16 +134,17 @@ In addition, it returns a String and not HumanAddr.
 This release includes a ton of new features, and a few breaking changes in various interfaces.
 This version is also the first released to [crates.io](https://crates.io)!
 
-* Change: when a query fails because of a bad viewing key, this now correctly fails with `StdError::Unauthorized`
-* Added support for some missing SNIP-20 functionality, such as `CreateViewingKey`
-* Added support for SNIP-21 queries (memos and improved history) which broke some interfaces
-* Added support for SNIP-22 messages (batch operations)
-* Added support for SNIP-23 messages (improved Send operations) which broke some interfaces
-* Added support for SNIP-24 permits
-* Added `Base64Of<S: Serde, T>`, `Base64JsonOf<T>`, and `Base64Bincode2Of<T>`,
+- Change: when a query fails because of a bad viewing key, this now correctly fails with `StdError::Unauthorized`
+- Added support for some missing SNIP-20 functionality, such as `CreateViewingKey`
+- Added support for SNIP-21 queries (memos and improved history) which broke some interfaces
+- Added support for SNIP-22 messages (batch operations)
+- Added support for SNIP-23 messages (improved Send operations) which broke some interfaces
+- Added support for SNIP-24 permits
+- Added `Base64Of<S: Serde, T>`, `Base64JsonOf<T>`, and `Base64Bincode2Of<T>`,
     which are wrappers that automatically deserializes base64 strings to `T`.
     It can be used in message types' fields instead of `Binary` when the contents of the string
     should have more specific contents.
+
 - Added `storage::DequeStore` - Similar to `AppendStore` but allows pushing and popping on both ends
 - Added the `secret-toolkit::incubator` package intended for experimental features. It contains:
   - `CashMap` - A hashmap like storage abstraction
@@ -146,7 +154,7 @@ This version is also the first released to [crates.io](https://crates.io)!
 
 ## v0.1.1
 
-* Removed unused dev-dependency that was slowing down test compilation times.
+- Removed unused dev-dependency that was slowing down test compilation times.
 
 ## v0.1.0
 
@@ -163,7 +171,8 @@ This is the first release of `secret-toolkit`. It supports:
   techniques: `AppendStore` and `TypedStore`, using `bincode2` by default.
 - `secret-toolkit::serialization` - marker types for overriding the storage
   format used by types in `secret-toolkit::storage`. `Json` and `Bincode2`.
-* `secret-toolkit::utils` - General utilities for writing contract code.
-  * `padding` - tools for padding queries and responses.
-  * `calls` - Tools for marking types as messages in queries and callbacks
+
+- `secret-toolkit::utils` - General utilities for writing contract code.
+  - `padding` - tools for padding queries and responses.
+  - `calls` - Tools for marking types as messages in queries and callbacks
       to other contracts.
