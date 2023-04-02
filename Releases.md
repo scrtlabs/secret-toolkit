@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed a bug in `Keymap` and `Keyset` (#84).
 - SecureItem - storage access pattern obfuscating Item (#82).
 - Change the internal `rng` field of the `Prng` struct to be public (#81),
 

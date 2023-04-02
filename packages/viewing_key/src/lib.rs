@@ -2,6 +2,7 @@
 
 extern crate core;
 
+use base64::{engine::general_purpose, Engine as _};
 use subtle::ConstantTimeEq;
 
 use cosmwasm_std::{Env, MessageInfo, StdError, StdResult, Storage};
@@ -107,7 +108,7 @@ fn new_viewing_key(
 
     let key = sha_256(&rand_slice);
 
-    let viewing_key = VIEWING_KEY_PREFIX.to_string() + &base64::encode(key);
+    let viewing_key = VIEWING_KEY_PREFIX.to_string() + &general_purpose::STANDARD.encode(key);
     (viewing_key, rand_slice)
 }
 

@@ -836,4 +836,22 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_paging_last_page() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let append_store: AppendStore<u32> = AppendStore::new(b"test");
+
+        let total_items: u32 = 20;
+
+        for i in 0..total_items {
+            append_store.push(&mut storage, &i)?;
+        }
+
+        assert_eq!(append_store.paging(&storage, 0, 23)?.len(), 20);
+        assert_eq!(append_store.paging(&storage, 2, 8)?.len(), 4);
+        assert_eq!(append_store.paging(&storage, 2, 7)?.len(), 6);
+
+        Ok(())
+    }
 }

@@ -16,7 +16,7 @@ all-features = true
 [dependencies]
 serde = {  workspace = true }
 schemars = { workspace = true }
-base64 = "0.13.0"
+base64 = "0.21.0"
 subtle = { version = "2.2.3", default-features = false }
 cosmwasm-std = { workspace = true }
 cosmwasm-storage = { workspace = true }

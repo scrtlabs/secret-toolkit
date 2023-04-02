@@ -446,7 +446,6 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         size: u32,
     ) -> StdResult<Vec<(K, T)>> {
         let start_pos = start_page * size;
-        let mut end_pos = start_pos + size - 1;
 
         let max_size = self.get_len(storage)?;
 
@@ -458,10 +457,12 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             return Err(StdError::NotFound {
                 kind: "out of bounds".to_string(),
             });
-        } else if end_pos > max_size {
-            end_pos = max_size - 1;
         }
-        self.get_pairs_at_positions(storage, start_pos, end_pos)
+
+        self.iter(storage)?
+            .skip(start_pos as usize)
+            .take(size as usize)
+            .collect()
     }
 
     /// paginates only the keys. More efficient than paginating both items and keys
@@ -472,7 +473,6 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         size: u32,
     ) -> StdResult<Vec<K>> {
         let start_pos = start_page * size;
-        let mut end_pos = start_pos + size - 1;
 
         let max_size = self.get_len(storage)?;
 
@@ -484,77 +484,12 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             return Err(StdError::NotFound {
                 kind: "out of bounds".to_string(),
             });
-        } else if end_pos > max_size {
-            end_pos = max_size - 1;
         }
-        self.get_keys_at_positions(storage, start_pos, end_pos)
-    }
 
-    /// tries to list keys without checking start/end bounds
-    fn get_keys_at_positions(
-        &self,
-        storage: &dyn Storage,
-        start: u32,
-        end: u32,
-    ) -> StdResult<Vec<K>> {
-        let start_page = self.page_from_position(start);
-        let end_page = self.page_from_position(end);
-
-        let mut res = vec![];
-
-        for page in start_page..=end_page {
-            let indexes = self.get_indexes(storage, page)?;
-            let start_page_pos = if page == start_page {
-                start % self.page_size
-            } else {
-                0
-            };
-            let end_page_pos = if page == end_page {
-                end % self.page_size
-            } else {
-                self.page_size - 1
-            };
-            for i in start_page_pos..=end_page_pos {
-                let key_vec = &indexes[i as usize];
-                let key = self.deserialize_key(key_vec)?;
-                res.push(key);
-            }
-        }
-        Ok(res)
-    }
-
-    /// tries to list (key, item) pairs without checking start/end bounds
-    fn get_pairs_at_positions(
-        &self,
-        storage: &dyn Storage,
-        start: u32,
-        end: u32,
-    ) -> StdResult<Vec<(K, T)>> {
-        let start_page = self.page_from_position(start);
-        let end_page = self.page_from_position(end);
-
-        let mut res = vec![];
-
-        for page in start_page..=end_page {
-            let indexes = self.get_indexes(storage, page)?;
-            let start_page_pos = if page == start_page {
-                start % self.page_size
-            } else {
-                0
-            };
-            let end_page_pos = if page == end_page {
-                end % self.page_size
-            } else {
-                self.page_size - 1
-            };
-            for i in start_page_pos..=end_page_pos {
-                let key_vec = &indexes[i as usize];
-                let key = self.deserialize_key(key_vec)?;
-                let item = self.load_impl(storage, key_vec)?.get_item()?;
-                res.push((key, item));
-            }
-        }
-        Ok(res)
+        self.iter_keys(storage)?
+            .skip(start_pos as usize)
+            .take(size as usize)
+            .collect()
     }
 
     /// Returns a readonly iterator only for keys. More efficient than iter().
@@ -996,12 +931,12 @@ mod tests {
     fn test_keymap_perf_insert() -> StdResult<()> {
         let mut storage = MockStorage::new();
 
-        let total_items = 1000;
+        let total_items: i32 = 1000;
 
         let keymap: Keymap<Vec<u8>, i32> = Keymap::new(b"test");
 
         for i in 0..total_items {
-            let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
+            let key: Vec<u8> = i.to_be_bytes().to_vec();
             keymap.insert(&mut storage, &key, &i)?;
         }
 
@@ -1538,6 +1473,28 @@ mod tests {
             let expected = Bincode2::serialize(&vec![b"1234".to_vec()])?;
             assert_eq!(bytes, Some(expected));
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_keymap_paging_last_page() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+
+        let total_items: u32 = 20;
+        let keymap: Keymap<Vec<u8>, u32> = Keymap::new(b"test");
+
+        for i in 0..total_items {
+            let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
+            keymap.insert(&mut storage, &key, &i)?;
+        }
+
+        assert_eq!(keymap.paging(&storage, 0, 23)?.len(), 20);
+        assert_eq!(keymap.paging_keys(&storage, 0, 23)?.len(), 20);
+        assert_eq!(keymap.paging(&storage, 2, 8)?.len(), 4);
+        assert_eq!(keymap.paging_keys(&storage, 2, 8)?.len(), 4);
+        assert_eq!(keymap.paging(&storage, 2, 7)?.len(), 6);
+        assert_eq!(keymap.paging_keys(&storage, 2, 7)?.len(), 6);
 
         Ok(())
     }

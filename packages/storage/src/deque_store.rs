@@ -955,25 +955,43 @@ mod tests {
     #[test]
     fn test_paging() -> StdResult<()> {
         let mut storage = MockStorage::new();
-        let append_store: DequeStore<u32> = DequeStore::new(b"test");
+        let deque_store: DequeStore<u32> = DequeStore::new(b"test");
 
         let page_size: u32 = 5;
         let total_items: u32 = 50;
 
         for j in 0..total_items {
             let i = total_items - j;
-            append_store.push_front(&mut storage, &i)?;
+            deque_store.push_front(&mut storage, &i)?;
         }
 
         for i in 0..((total_items / page_size) - 1) {
             let start_page = i;
 
-            let values = append_store.paging(&storage, start_page, page_size)?;
+            let values = deque_store.paging(&storage, start_page, page_size)?;
 
             for (index, value) in values.iter().enumerate() {
                 assert_eq!(value, &(page_size * start_page + index as u32 + 1))
             }
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_paging_last_page() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let deque_store: DequeStore<u32> = DequeStore::new(b"test");
+
+        let total_items: u32 = 20;
+
+        for i in 0..total_items {
+            deque_store.push_back(&mut storage, &i)?;
+        }
+
+        assert_eq!(deque_store.paging(&storage, 0, 23)?.len(), 20);
+        assert_eq!(deque_store.paging(&storage, 2, 8)?.len(), 4);
+        assert_eq!(deque_store.paging(&storage, 2, 7)?.len(), 6);
 
         Ok(())
     }
