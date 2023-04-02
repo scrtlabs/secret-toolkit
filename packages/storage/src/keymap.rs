@@ -458,7 +458,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             return Err(StdError::NotFound {
                 kind: "out of bounds".to_string(),
             });
-        } else if end_pos > max_size {
+        } else if end_pos >= max_size {
             end_pos = max_size - 1;
         }
         self.get_pairs_at_positions(storage, start_pos, end_pos)
@@ -484,7 +484,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
             return Err(StdError::NotFound {
                 kind: "out of bounds".to_string(),
             });
-        } else if end_pos > max_size {
+        } else if end_pos >= max_size {
             end_pos = max_size - 1;
         }
         self.get_keys_at_positions(storage, start_pos, end_pos)
@@ -1538,6 +1538,28 @@ mod tests {
             let expected = Bincode2::serialize(&vec![b"1234".to_vec()])?;
             assert_eq!(bytes, Some(expected));
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_keymap_paging_last_page() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+
+        let total_items: u32 = 20;
+        let keymap: Keymap<Vec<u8>, u32> = Keymap::new(b"test");
+
+        for i in 0..total_items {
+            let key: Vec<u8> = (i as i32).to_be_bytes().to_vec();
+            keymap.insert(&mut storage, &key, &i)?;
+        }
+
+        assert_eq!(keymap.paging(&storage, 0, 23)?.len(), 20);
+        assert_eq!(keymap.paging_keys(&storage, 0, 23)?.len(), 20);
+        assert_eq!(keymap.paging(&storage, 2, 8)?.len(), 4);
+        assert_eq!(keymap.paging_keys(&storage, 2, 8)?.len(), 4);
+        assert_eq!(keymap.paging(&storage, 2, 7)?.len(), 6);
+        assert_eq!(keymap.paging_keys(&storage, 2, 7)?.len(), 6);
 
         Ok(())
     }

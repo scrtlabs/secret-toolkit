@@ -429,7 +429,7 @@ impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser, WithIte
             return Err(StdError::NotFound {
                 kind: "out of bounds".to_string(),
             });
-        } else if end_pos > max_size {
+        } else if end_pos >= max_size {
             end_pos = max_size - 1;
         }
         self.get_keys_at_positions(storage, start_pos, end_pos)
@@ -1058,6 +1058,24 @@ mod tests {
         assert_eq!(iter.next(), Some(Ok(4321)));
         assert_eq!(iter.next(), Some(Ok(3412)));
         assert_eq!(iter.next(), None);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_keymap_paging_last_page() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+
+        let total_items: u32 = 20;
+        let keyset: Keyset<u32> = Keyset::new(b"test");
+
+        for i in 0..total_items {
+            keyset.insert(&mut storage, &i)?;
+        }
+
+        assert_eq!(keyset.paging(&storage, 0, 23)?.len(), 20);
+        assert_eq!(keyset.paging(&storage, 2, 8)?.len(), 4);
+        assert_eq!(keyset.paging(&storage, 2, 7)?.len(), 6);
 
         Ok(())
     }
