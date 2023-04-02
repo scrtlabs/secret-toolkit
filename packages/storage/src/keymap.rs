@@ -487,7 +487,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         }
 
         self.iter_keys(storage)?
-            .skip((start_page as usize) * (size as usize))
+            .skip(start_pos as usize)
             .take(size as usize)
             .collect()
     }
