@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-utils"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -14,7 +14,7 @@ keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 all-features = true
 
 [dependencies]
-serde = {  workspace = true }
+serde = { workspace = true }
 schemars = { workspace = true }
-cosmwasm-std = {  workspace = true }
+cosmwasm-std = { workspace = true }
 cosmwasm-storage = { workspace = true }

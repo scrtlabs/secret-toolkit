@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-viewing-key"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -14,7 +14,7 @@ keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 all-features = true
 
 [dependencies]
-serde = {  workspace = true }
+serde = { workspace = true }
 schemars = { workspace = true }
 base64 = "0.21.0"
 subtle = { version = "2.2.3", default-features = false }

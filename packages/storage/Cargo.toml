@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-storage"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -15,6 +15,6 @@ all-features = true
 
 [dependencies]
 serde = { workspace = true }
-cosmwasm-std = { workspace = true  }
+cosmwasm-std = { workspace = true }
 cosmwasm-storage = { workspace = true }
 secret-toolkit-serialization = { version = "0.8", path = "../serialization" }

@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-permit"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -20,6 +20,6 @@ ripemd = { version = "0.1.3", default-features = false }
 schemars = { workspace = true }
 bech32 = "0.9.1"
 remain = "0.2.2"
-secret-toolkit-crypto = { version = "0.8.0", path = "../crypto", features = [
+secret-toolkit-crypto = { version = "0.8.1", path = "../crypto", features = [
     "hash",
 ] }
