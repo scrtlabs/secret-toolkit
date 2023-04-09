@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-- Fixed a bug in `Keymap` and `Keyset` (#84).
-- SecureItem - storage access pattern obfuscating Item (#82).
-- Change the internal `rng` field of the `Prng` struct to be public (#81),
+- Fixed a bug in `Keymap` and `Keyset` ([#84](https://github.com/scrtlabs/secret-toolkit/pull/84)).
+- SecureItem - storage access pattern obfuscating Item ([#82](https://github.com/scrtlabs/secret-toolkit/pull/82)).
+- Change the internal `rng` field of the `Prng` struct to be public ([#81](https://github.com/scrtlabs/secret-toolkit/pull/81)),
 
 ## v0.8.0
 
