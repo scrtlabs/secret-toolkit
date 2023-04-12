@@ -343,6 +343,7 @@ impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser, WithIte
         if len == 0 || len == removed_pos {
             indexes.pop();
             self.set_indexes_page(storage, page, &indexes)?;
+            storage.remove(&key_vec);
             return Ok(());
         }
 
@@ -1045,6 +1046,19 @@ mod tests {
         assert_eq!(keyset.paging(&storage, 2, 8)?.len(), 4);
         assert_eq!(keyset.paging(&storage, 2, 7)?.len(), 6);
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_add_remove_one() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let keyset: Keyset<i32> = Keyset::new(b"test");
+        keyset.insert(&mut storage, &1)?;
+        assert_eq!(keyset.get_len(&storage)?, 1);
+        keyset.remove(&mut storage, &1)?;
+        assert_eq!(keyset.get_len(&storage)?, 0);
+        keyset.insert(&mut storage, &1)?;
+        assert_eq!(keyset.get_len(&storage)?, 1);
         Ok(())
     }
 }
