@@ -1508,6 +1508,7 @@ mod tests {
         assert_eq!(keymap.get_len(&storage)?, 1);
         keymap.remove(&mut storage, &1)?;
         assert_eq!(keymap.get_len(&storage)?, 0);
+        assert!(keymap.get(&storage, &1).is_none());
         keymap.insert(&mut storage, &1, &1)?;
         assert_eq!(keymap.get_len(&storage)?, 1);
         Ok(())
