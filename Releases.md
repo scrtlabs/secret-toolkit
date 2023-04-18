@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed a remove bug in `Keymap` and `Keyset` ([#86](https://github.com/scrtlabs/secret-toolkit/pull/86)).
+
 ## v0.8.1
 
 ### Bug fixes
@@ -123,9 +125,9 @@ A full guide to using the new `storage` types can be found
 ### Breaking
 
 - `secret-toolkit::permit::validate()` Now supports validating any type of Cosmos address.
-Interface changes: Now takes a reference to the current token address instead
-of taking it by value and an optional hrp string.
-In addition, it returns a String and not HumanAddr.
+  Interface changes: Now takes a reference to the current token address instead
+  of taking it by value and an optional hrp string.
+  In addition, it returns a String and not HumanAddr.
 
 - Renamed `secret-toolkit::permit::Permission` to `secret-toolkit::permit::TokenPermission`.
 - `secret-toolkit-crypto` now has features `["hash", "rng" and "ecc-secp256k1"]` which are all off by default - enable those you need.
@@ -149,16 +151,16 @@ This version is also the first released to [crates.io](https://crates.io)!
 - Added support for SNIP-23 messages (improved Send operations) which broke some interfaces
 - Added support for SNIP-24 permits
 - Added `Base64Of<S: Serde, T>`, `Base64JsonOf<T>`, and `Base64Bincode2Of<T>`,
-    which are wrappers that automatically deserializes base64 strings to `T`.
-    It can be used in message types' fields instead of `Binary` when the contents of the string
-    should have more specific contents.
+  which are wrappers that automatically deserializes base64 strings to `T`.
+  It can be used in message types' fields instead of `Binary` when the contents of the string
+  should have more specific contents.
 
 - Added `storage::DequeStore` - Similar to `AppendStore` but allows pushing and popping on both ends
 - Added the `secret-toolkit::incubator` package intended for experimental features. It contains:
   - `CashMap` - A hashmap like storage abstraction
   - `GenerationalIndex` - A generational index storage abstraction
 - The various subpackages can now be selected using feature flags. The default flags are `["serialization", "snip20", "snip721", "storage", "utils"]`
-    while `["crypto", "permit", "incubator"]` are left disabled by default.
+  while `["crypto", "permit", "incubator"]` are left disabled by default.
 
 ## v0.1.1
 
@@ -183,4 +185,4 @@ This is the first release of `secret-toolkit`. It supports:
 - `secret-toolkit::utils` - General utilities for writing contract code.
   - `padding` - tools for padding queries and responses.
   - `calls` - Tools for marking types as messages in queries and callbacks
-      to other contracts.
+    to other contracts.
