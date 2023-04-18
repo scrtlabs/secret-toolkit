@@ -1057,6 +1057,7 @@ mod tests {
         assert_eq!(keyset.get_len(&storage)?, 1);
         keyset.remove(&mut storage, &1)?;
         assert_eq!(keyset.get_len(&storage)?, 0);
+        assert!(!keyset.contains(&storage, &1));
         keyset.insert(&mut storage, &1)?;
         assert_eq!(keyset.get_len(&storage)?, 1);
         Ok(())
