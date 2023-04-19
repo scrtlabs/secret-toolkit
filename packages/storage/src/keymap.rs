@@ -367,6 +367,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         if len == 0 || len == removed_pos {
             indexes.pop();
             self.set_indexes_page(storage, page, &indexes)?;
+            self.remove_impl(storage, &key_vec);
             return Ok(());
         }
 
@@ -1496,6 +1497,20 @@ mod tests {
         assert_eq!(keymap.paging(&storage, 2, 7)?.len(), 6);
         assert_eq!(keymap.paging_keys(&storage, 2, 7)?.len(), 6);
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_add_remove_one() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let keymap: Keymap<i32, i32> = Keymap::new(b"test");
+        keymap.insert(&mut storage, &1, &1)?;
+        assert_eq!(keymap.get_len(&storage)?, 1);
+        keymap.remove(&mut storage, &1)?;
+        assert_eq!(keymap.get_len(&storage)?, 0);
+        assert!(keymap.get(&storage, &1).is_none());
+        keymap.insert(&mut storage, &1, &1)?;
+        assert_eq!(keymap.get_len(&storage)?, 1);
         Ok(())
     }
 }
