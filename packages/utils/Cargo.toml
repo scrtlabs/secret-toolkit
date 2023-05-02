@@ -13,8 +13,14 @@ keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+default = ["gas"]
+gas = ["secret-toolkit-crypto"]
+
 [dependencies]
 serde = { workspace = true }
 schemars = { workspace = true }
 cosmwasm-std = { workspace = true }
 cosmwasm-storage = { workspace = true }
+
+secret-toolkit-crypto = {path = "../crypto", optional = true}
