@@ -8,7 +8,7 @@ use subtle::ConstantTimeEq;
 use cosmwasm_std::{Env, MessageInfo, StdError, StdResult, Storage};
 use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
 
-use secret_toolkit_crypto::{sha_256, Prng, SHA256_HASH_SIZE};
+use secret_toolkit_crypto::{sha_256, ContractPrng, SHA256_HASH_SIZE};
 
 pub const VIEWING_KEY_SIZE: usize = SHA256_HASH_SIZE;
 pub const VIEWING_KEY_PREFIX: &str = "api_key_";
@@ -102,7 +102,7 @@ fn new_viewing_key(
     rng_entropy.extend_from_slice(info.sender.as_bytes());
     rng_entropy.extend_from_slice(entropy);
 
-    let mut rng = Prng::new(seed, &rng_entropy);
+    let mut rng = ContractPrng::new(seed, &rng_entropy);
 
     let rand_slice = rng.rand_bytes();
 

@@ -11,33 +11,33 @@ Add the following to your `cargo.toml` file:
 
 ```toml
 [dependencies]
-secret-toolkit = { version = "0.8.1", features = ["crypto"] }
-secret-toolkit-crypto = { version = "0.8.1", features = ["hash", "rand", "ecc-secp256k1"] }
+secret-toolkit = { version = "0.9.0", features = ["crypto"] }
+secret-toolkit-crypto = { version = "0.9.0", features = ["hash", "rand", "ecc-secp256k1"] }
 ```
 
 ## Example usage
 
 ```rust
-# extern crate secret_toolkit_crypto;
+extern crate secret_toolkit_crypto;
 
-# use secret_toolkit_crypto::{sha_256, Prng, secp256k1::{PrivateKey, PublicKey, Signature}};
-# use base64;
-# use cosmwasm_std::{StdError, testing::mock_dependencies};
+use secret_toolkit_crypto::{sha_256, ContractPrng, secp256k1::{PrivateKey, PublicKey, Signature}};
+use base64;
+use cosmwasm_std::{StdError, testing::mock_dependencies};
 
-# fn main() -> Result<(), StdError> {
-# let deps = mock_dependencies();
+fn main() -> Result<(), StdError> {
+let deps = mock_dependencies();
 let entropy: String = "secret".to_owned();
 let prng_seed: Vec<u8> = sha_256(base64::encode(&entropy.clone()).as_bytes()).to_vec();
 
-let mut rng = Prng::new(&prng_seed, entropy.as_bytes());
+let mut rng = ContractPrng::new(&prng_seed, entropy.as_bytes());
 
 let private_key: PrivateKey = PrivateKey::parse(&rng.rand_bytes())?;
 let public_key: PublicKey = private_key.pubkey();
 
 let message: &[u8] = b"message";
 let signature: Signature = private_key.sign(message, deps.api);
-# Ok(())
-# }
+Ok(())
+}
 ```
 
 ### Cargo Features

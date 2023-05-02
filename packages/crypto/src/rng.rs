@@ -1,12 +1,21 @@
 use rand_chacha::ChaChaRng;
-use rand_core::{RngCore, SeedableRng};
+use rand_core::{CryptoRng, RngCore, SeedableRng};
 use sha2::{Digest, Sha256};
 
-pub struct Prng {
+use cosmwasm_std::Env;
+
+pub struct ContractPrng {
     pub rng: ChaChaRng,
 }
 
-impl Prng {
+impl ContractPrng {
+
+    pub fn from_env(env: &Env) -> Self {
+        let seed = env.block.random.as_ref().unwrap();
+
+        Self::new(seed.as_slice(), &[])
+    }
+
     pub fn new(seed: &[u8], entropy: &[u8]) -> Self {
         let mut hasher = Sha256::new();
 
@@ -35,6 +44,26 @@ impl Prng {
     }
 }
 
+impl RngCore for ContractPrng {
+    fn next_u32(&mut self) -> u32 {
+        self.rng.next_u32()
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        self.rng.next_u64()
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        self.rng.fill_bytes(dest)
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
+        self.rng.try_fill_bytes(dest)
+    }
+}
+
+impl CryptoRng for ContractPrng {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -43,7 +72,7 @@ mod tests {
     /// different random bytes every time it is called.
     #[test]
     fn test_rng() {
-        let mut rng = Prng::new(b"foo", b"bar!");
+        let mut rng = ContractPrng::new(b"foo", b"bar!");
         let r1: [u8; 32] = [
             155, 11, 21, 97, 252, 65, 160, 190, 100, 126, 85, 251, 47, 73, 160, 49, 216, 182, 93,
             30, 185, 67, 166, 22, 34, 10, 213, 112, 21, 136, 49, 214,
@@ -68,7 +97,7 @@ mod tests {
 
     #[test]
     fn test_rand_bytes_counter() {
-        let mut rng = Prng::new(b"foo", b"bar");
+        let mut rng = ContractPrng::new(b"foo", b"bar");
 
         let r1: [u8; 32] = [
             114, 227, 179, 76, 120, 34, 236, 42, 204, 27, 153, 74, 44, 29, 158, 162, 180, 202, 165,
