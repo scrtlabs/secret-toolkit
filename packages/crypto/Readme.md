@@ -18,13 +18,13 @@ secret-toolkit-crypto = { version = "0.9.0", features = ["hash", "rand", "ecc-se
 ## Example usage
 
 ```rust
-extern crate secret_toolkit_crypto;
+# extern crate secret_toolkit_crypto;
 
-use secret_toolkit_crypto::{sha_256, ContractPrng, secp256k1::{PrivateKey, PublicKey, Signature}};
-use base64;
-use cosmwasm_std::{StdError, testing::mock_dependencies};
+# use secret_toolkit_crypto::{sha_256, ContractPrng, secp256k1::{PrivateKey, PublicKey, Signature}};
+# use base64;
+# use cosmwasm_std::{StdError, testing::mock_dependencies};
 
-fn main() -> Result<(), StdError> {
+# fn main() -> Result<(), StdError> {
 let deps = mock_dependencies();
 let entropy: String = "secret".to_owned();
 let prng_seed: Vec<u8> = sha_256(base64::encode(&entropy.clone()).as_bytes()).to_vec();
@@ -36,8 +36,8 @@ let public_key: PublicKey = private_key.pubkey();
 
 let message: &[u8] = b"message";
 let signature: Signature = private_key.sign(message, deps.api);
-Ok(())
-}
+# Ok(())
+# }
 ```
 
 ### Cargo Features
