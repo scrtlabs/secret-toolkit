@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.8.2
+
+### Bug fixes
+
 - Fixed a remove bug in `Keymap` and `Keyset` ([#86](https://github.com/scrtlabs/secret-toolkit/pull/86)).
 
 ## v0.8.1
