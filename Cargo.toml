@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit"
-version = "0.8.2"
+version = "0.9.0"
 edition = "2021"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "LICENSE"
@@ -36,15 +36,15 @@ utils = ["secret-toolkit-utils"]
 viewing-key = ["secret-toolkit-viewing-key"]
 
 [dependencies]
-secret-toolkit-crypto = { version = "0.8", path = "packages/crypto", optional = true }
-secret-toolkit-incubator = { version = "0.8", path = "packages/incubator", optional = true }
-secret-toolkit-permit = { version = "0.8", path = "packages/permit", optional = true }
-secret-toolkit-serialization = { version = "0.8", path = "packages/serialization", optional = true }
-secret-toolkit-snip20 = { version = "0.8", path = "packages/snip20", optional = true }
-secret-toolkit-snip721 = { version = "0.8", path = "packages/snip721", optional = true }
-secret-toolkit-storage = { version = "0.8", path = "packages/storage", optional = true }
-secret-toolkit-utils = { version = "0.8", path = "packages/utils", optional = true }
-secret-toolkit-viewing-key = { version = "0.8", path = "packages/viewing_key", optional = true }
+secret-toolkit-crypto = { version = "0.9", path = "packages/crypto", optional = true }
+secret-toolkit-incubator = { version = "0.9", path = "packages/incubator", optional = true }
+secret-toolkit-permit = { version = "0.9", path = "packages/permit", optional = true }
+secret-toolkit-serialization = { version = "0.9", path = "packages/serialization", optional = true }
+secret-toolkit-snip20 = { version = "0.9", path = "packages/snip20", optional = true }
+secret-toolkit-snip721 = { version = "0.9", path = "packages/snip721", optional = true }
+secret-toolkit-storage = { version = "0.9", path = "packages/storage", optional = true }
+secret-toolkit-utils = { version = "0.9", path = "packages/utils", optional = true }
+secret-toolkit-viewing-key = { version = "0.9", path = "packages/viewing_key", optional = true }
 
 
 [workspace]
@@ -57,5 +57,7 @@ members = ["packages/*"]
 [workspace.dependencies]
 schemars = { version = "0.8.11" }
 serde = { version = "1.0" }
-cosmwasm-std = { git = "https://github.com/scrtlabs/cosmwasm", tag = "v1.1.9-secret" }
-cosmwasm-storage = { git = "https://github.com/scrtlabs/cosmwasm", tag = "v1.1.9-secret" }
+cosmwasm-std = { package = "secret-cosmwasm-std", version = "1.1.10", features = [
+    "random",
+] }
+cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "1.1.10" }

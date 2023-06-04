@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-crypto"
-version = "0.8.2"
+version = "0.9.0"
 edition = "2021"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -14,21 +14,22 @@ keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
 all-features = true
 
 [features]
+default = ["hash", "ecc-secp256k1", "rand"]
 hash = ["sha2"]
 ecc-secp256k1 = ["secp256k1"]
-rand = ["rand_chacha", "rand_core"]
+rand = ["hash", "rand_chacha", "rand_core"]
 
 [dependencies]
 rand_core = { version = "0.6.4", default-features = false, optional = true }
 rand_chacha = { version = "0.3.1", default-features = false, optional = true }
 sha2 = { version = "0.10.6", default-features = false, optional = true }
-secp256k1 = { version = "0.24.1", default-features = false, features = [
+secp256k1 = { version = "0.27.0", default-features = false, features = [
     "alloc",
 ], optional = true }
 cosmwasm-std = { workspace = true }
 
 [dev-dependencies]
-secp256k1 = { version = "0.24.1", default-features = false, features = [
+secp256k1 = { version = "0.27.0", default-features = false, features = [
     "alloc",
     "rand-std",
 ] }

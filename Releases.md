@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## v0.9.0
+
+### Features
+
+- Replace `cosmwasm-std` with `secret-cosmwasm-std` in prep for crates.io packages ([#87](https://github.com/scrtlabs/secret-toolkit/pull/87)).
+- Add `RngCore` & `CryptoRng` trait to `Prng` ([#87](https://github.com/scrtlabs/secret-toolkit/pull/87)).
+- Added `from_env` function for `ContractPrng` that consumes `env.block.random` ([#87](https://github.com/scrtlabs/secret-toolkit/pull/87)).
+
+### Breaking
+
+- Renamed `Prng` as `ContractPrng` ([#87](https://github.com/scrtlabs/secret-toolkit/pull/87)).
+
 ## v0.8.2
 
 ### Bug fixes
