@@ -309,9 +309,7 @@ impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser, WithIte
                     .map_err(|err| StdError::parse_err("u32", err))?;
                 Ok(u32::from_be_bytes(pos_bytes))
             }
-            None => Err(StdError::NotFound {
-                kind: "keyset value not found.".to_string(),
-            }),
+            None => Err(StdError::not_found("keyset value not found.")),
         }
     }
 
@@ -426,9 +424,7 @@ impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser, WithIte
         }
 
         if start_pos > max_size {
-            return Err(StdError::NotFound {
-                kind: "out of bounds".to_string(),
-            });
+            return Err(StdError::not_found("out of bounds"));
         }
 
         self.iter(storage)?
