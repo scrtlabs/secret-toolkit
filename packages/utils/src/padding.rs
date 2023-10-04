@@ -30,10 +30,13 @@ where
             data
         });
         for attribute in &mut response.attributes {
-            // Safety: These two are safe because we know the characters that
-            // `space_pad` appends are valid UTF-8
-            unsafe { space_pad(attribute.key.as_mut_vec(), block_size) };
-            unsafe { space_pad(attribute.value.as_mut_vec(), block_size) };
+            // do not pad plaintext attributes
+            if attribute.encrypted {
+                // Safety: These two are safe because we know the characters that
+                // `space_pad` appends are valid UTF-8
+                unsafe { space_pad(attribute.key.as_mut_vec(), block_size) };
+                unsafe { space_pad(attribute.value.as_mut_vec(), block_size) };
+            }
         }
         response
     })
