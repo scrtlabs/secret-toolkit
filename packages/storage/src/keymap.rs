@@ -455,9 +455,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         }
 
         if start_pos > max_size {
-            return Err(StdError::NotFound {
-                kind: "out of bounds".to_string(),
-            });
+            return Err(StdError::not_found("out of bounds"));
         }
 
         self.iter(storage)?
@@ -482,9 +480,7 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
         }
 
         if start_pos > max_size {
-            return Err(StdError::NotFound {
-                kind: "out of bounds".to_string(),
-            });
+            return Err(StdError::not_found("out of bounds"));
         }
 
         self.iter_keys(storage)?
