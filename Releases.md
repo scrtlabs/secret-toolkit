@@ -15,7 +15,9 @@
 ### Bug fixes
 
 - Only padding encrypted attributes in `utils::pad_handle_result` ([#92]).
+- Support `backtraces` feature for `KeyMap` and `KeySet` ([#90]).
 
+[#90]: https://github.com/scrtlabs/secret-toolkit/pull/90
 [#92]: https://github.com/scrtlabs/secret-toolkit/pull/92
 [#93]: https://github.com/scrtlabs/secret-toolkit/pull/93
 
