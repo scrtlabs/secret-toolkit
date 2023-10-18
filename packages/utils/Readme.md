@@ -13,7 +13,7 @@ elsewhere. There isn't an overarching theme for the items in this package.
 
 ## Calls module
 
-This module contains traits used to call another contract.  Do not forget to add the `use` statement for the traits you want.
+This module contains traits used to call another contract. Do not forget to add the `use` statement for the traits you want.
 
 ```ignore
 use secret_toolkit::utils::{InitCallback, HandleCallback};
@@ -23,7 +23,7 @@ Also, don't forget to add the toolkit dependency to your Cargo.toml
 
 ### Instantiating another contract
 
-If you want to instantiate another contract, you should first copy/paste the InitMsg of that contract.  For example, if you wanted to create an instance of the counter contract at <https://github.com/enigmampc/secret-template>
+If you want to instantiate another contract, you should first copy/paste the InitMsg of that contract. For example, if you wanted to create an instance of the counter contract at <https://github.com/enigmampc/secret-template>
 
 ```rust
 # use secret_toolkit_utils::InitCallback;
@@ -40,7 +40,7 @@ impl InitCallback for CounterInitMsg {
 }
 ```
 
-You would copy/paste its InitMsg, and rename it so that it does not conflict with the InitMsg you have defined for your own contract.  Then you would implement the `InitCallback` trait as above, setting the BLOCK_SIZE constant to the size of the blocks you want your instantiation message padded to.
+You would copy/paste its InitMsg, and rename it so that it does not conflict with the InitMsg you have defined for your own contract. Then you would implement the `InitCallback` trait as above, setting the BLOCK_SIZE constant to the size of the blocks you want your instantiation message padded to.
 
 ```rust
 # use secret_toolkit_utils::InitCallback;
@@ -60,10 +60,11 @@ You would copy/paste its InitMsg, and rename it so that it does not conflict wit
 # let response: StdResult<Response>;
 #
 let counter_init_msg = CounterInitMsg {
-     count: 100 
+     count: 100
 };
 
 let cosmos_msg = counter_init_msg.to_cosmos_msg(
+    None,
     "new_contract_label".to_string(),
     123,
     "CODE_HASH_OF_CONTRACT_YOU_WANT_TO_INSTANTIATE".to_string(),
@@ -74,11 +75,11 @@ response = Ok(Response::new().add_message(cosmos_msg));
 # Ok::<(), StdError>(())
 ```
 
-Next, in the init or handle function that will instantiate the other contract, you will create an instance of the CounterInitMsg, call its `to_cosmos_msg`, and place the resulting CosmosMsg in the `messages` Vec of the InitResponse or HandleResponse that your function is returning.  In this example, we are pretending that the code id of the counter contract is 123.  Also, in this example, you are not sending any SCRT with the InitMsg, but if you needed to send 1 SCRT, you would replace the None in the `to_cosmos_msg` call with `Some(Uint128(1000000))`.  The amount sent is in uscrt.  Any CosmosMsg placed in the `messages` Vec will be executed after your contract has finished its own processing.
+Next, in the init or handle function that will instantiate the other contract, you will create an instance of the CounterInitMsg, call its `to_cosmos_msg`, and place the resulting CosmosMsg in the `messages` Vec of the InitResponse or HandleResponse that your function is returning. In this example, we are pretending that the code id of the counter contract is 123. Also, in this example, you are not sending any SCRT with the InitMsg, but if you needed to send 1 SCRT, you would replace the None in the `to_cosmos_msg` call with `Some(Uint128(1000000))`. The amount sent is in uscrt. Any CosmosMsg placed in the `messages` Vec will be executed after your contract has finished its own processing.
 
 ### Calling a handle function of another contract
 
-You should first copy/paste the specific HandleMsg(s) you want to call.  For example, if you wanted to reset the counter you instantiated above
+You should first copy/paste the specific HandleMsg(s) you want to call. For example, if you wanted to reset the counter you instantiated above
 
 ```rust
 # use secret_toolkit_utils::HandleCallback;
@@ -95,7 +96,7 @@ impl HandleCallback for CounterHandleMsg {
 }
 ```
 
-You would copy/paste the Reset variant of its HandleMsg enum, and rename the enum so that it does not conflict with the HandleMsg enum you have defined for your own contract.  Then you would implement the `HandleCallback` trait as above, setting the BLOCK_SIZE constant to the size of the blocks you want your Reset message padded to.  If you need to call multiple different Handle messages, even if they are to different contracts, you can include all the Handle messages as variants in the same enum (you can not have two variants with the same name within the same enum, though).
+You would copy/paste the Reset variant of its HandleMsg enum, and rename the enum so that it does not conflict with the HandleMsg enum you have defined for your own contract. Then you would implement the `HandleCallback` trait as above, setting the BLOCK_SIZE constant to the size of the blocks you want your Reset message padded to. If you need to call multiple different Handle messages, even if they are to different contracts, you can include all the Handle messages as variants in the same enum (you can not have two variants with the same name within the same enum, though).
 
 ```rust
 # use secret_toolkit_utils::HandleCallback;
@@ -107,7 +108,7 @@ You would copy/paste the Reset variant of its HandleMsg enum, and rename the enu
 # pub enum CounterHandleMsg {
 #     Reset { count: i32 },
 # }
-# 
+#
 # impl HandleCallback for CounterHandleMsg {
 #     const BLOCK_SIZE: usize = 256;
 # }
@@ -128,11 +129,11 @@ response = Ok(Response::new().add_message(cosmos_msg));
 # Ok::<(), StdError>(())
 ```
 
-Next, in the init or handle function that will call the other contract, you will create an instance of the CounterHandleMsg::Reset variant, call its `to_cosmos_msg`, and place the resulting CosmosMsg in the `messages` Vec of the InitResponse or HandleResponse that your function is returning.  In this example, you are not sending any SCRT with the Reset message, but if you needed to send 1 SCRT, you would replace the None in the `to_cosmos_msg` call with `Some(Uint128(1000000))`.  The amount sent is in uscrt.  Any CosmosMsg placed in the `messages` Vec will be executed after your contract has finished its own processing.
+Next, in the init or handle function that will call the other contract, you will create an instance of the CounterHandleMsg::Reset variant, call its `to_cosmos_msg`, and place the resulting CosmosMsg in the `messages` Vec of the InitResponse or HandleResponse that your function is returning. In this example, you are not sending any SCRT with the Reset message, but if you needed to send 1 SCRT, you would replace the None in the `to_cosmos_msg` call with `Some(Uint128(1000000))`. The amount sent is in uscrt. Any CosmosMsg placed in the `messages` Vec will be executed after your contract has finished its own processing.
 
 ### Querying another contract
 
-You should first copy/paste the specific QueryMsg(s) you want to call.  For example, if you wanted to get the count of the counter you instantiated above
+You should first copy/paste the specific QueryMsg(s) you want to call. For example, if you wanted to get the count of the counter you instantiated above
 
 ```rust
 # use secret_toolkit_utils::Query;
@@ -150,7 +151,7 @@ impl Query for CounterQueryMsg {
 }
 ```
 
-You would copy/paste the GetCount variant of its QueryMsg enum, and rename the enum so that it does not conflict with the QueryMsg enum you have defined for your own contract.  Then you would implement the `Query` trait as above, setting the BLOCK_SIZE constant to the size of the blocks you want your query message padded to.  If you need to perform multiple different queries, even if they are to different contracts, you can include all the Query messages as variants in the same enum (you can not have two variants with the same name within the same enum, though).
+You would copy/paste the GetCount variant of its QueryMsg enum, and rename the enum so that it does not conflict with the QueryMsg enum you have defined for your own contract. Then you would implement the `Query` trait as above, setting the BLOCK_SIZE constant to the size of the blocks you want your query message padded to. If you need to perform multiple different queries, even if they are to different contracts, you can include all the Query messages as variants in the same enum (you can not have two variants with the same name within the same enum, though).
 
 ```rust
 # use secret_toolkit_utils::Query;
@@ -163,9 +164,9 @@ pub struct CountResponse {
 }
 ```
 
-Next, you will copy/paste the response of the query.  If the other contract defines its response to the query with a struct, you are good to go.
+Next, you will copy/paste the response of the query. If the other contract defines its response to the query with a struct, you are good to go.
 
-If, however, the other contract returns an enum variant, one approach is to copy the fields of the variant and place them in a struct.  Because an enum variant gets serialized with the name of the variant, you will then also want to create a wrapper struct whose only field has the name of the variant, and whose type is the struct you defined with the variant's fields.  For example, if you wanted to do a token_info query of the [SNIP20 reference implementation](https://github.com/enigmampc/snip20-reference-impl), I would recommend using the SNIP20 toolkit function, but just for the sake of example, let's say you forgot that toolkit existed.
+If, however, the other contract returns an enum variant, one approach is to copy the fields of the variant and place them in a struct. Because an enum variant gets serialized with the name of the variant, you will then also want to create a wrapper struct whose only field has the name of the variant, and whose type is the struct you defined with the variant's fields. For example, if you wanted to do a token_info query of the [SNIP20 reference implementation](https://github.com/enigmampc/snip20-reference-impl), I would recommend using the SNIP20 toolkit function, but just for the sake of example, let's say you forgot that toolkit existed.
 
 ```rust
 # use secret_toolkit_utils::Query;
@@ -187,7 +188,7 @@ pub struct TokenInfoResponse {
 }
 ```
 
-You would copy the QueryAnswer::TokenInfo enum variant and create a TokenInfo struct with those fields.  You should make all those fields public if you need to access them.  Then you would create the TokenInfoResponse wrapper struct, which has only one field whose name is the name of the QueryAnswer variant in snake case (token_info).  As a reminder, you only need to do this to properly deserialize the response if it was defined as an enum in the other contract.
+You would copy the QueryAnswer::TokenInfo enum variant and create a TokenInfo struct with those fields. You should make all those fields public if you need to access them. Then you would create the TokenInfoResponse wrapper struct, which has only one field whose name is the name of the QueryAnswer variant in snake case (token_info). As a reminder, you only need to do this to properly deserialize the response if it was defined as an enum in the other contract.
 
 Now to perform the query
 
@@ -202,7 +203,7 @@ Now to perform the query
 # pub enum CounterQueryMsg {
 #    GetCount {},
 # }
-# 
+#
 # impl Query for CounterQueryMsg {
 #     const BLOCK_SIZE: usize = 256;
 # }
@@ -228,7 +229,7 @@ let count_response: StdResult<CountResponse> = get_count.query(
 # Ok::<(), StdError>(())
 ```
 
-You create an instance of the CounterQueryMsg::GetCount variant, and call its `query` function, returning its value to a variable of the response type.  If you were doing a token_info query, you would write `let token_info_resp: TokenInfoResponse = ...`.  You MUST use explicit type annotation here.
+You create an instance of the CounterQueryMsg::GetCount variant, and call its `query` function, returning its value to a variable of the response type. If you were doing a token_info query, you would write `let token_info_resp: TokenInfoResponse = ...`. You MUST use explicit type annotation here.
 
 ## Feature Toggle
 
@@ -274,7 +275,7 @@ pub fn instantiate(
         ],
         vec![info.sender], // Can put more than one pauser
     )?;
-    
+
     Ok(Response::new())
 }
 ```
@@ -327,7 +328,7 @@ fn redeem(
     amount: Option<u128>,
 ) -> StdResult<Response> {
     FeatureToggle::require_not_paused(deps.as_ref().storage, vec![Features::Redeem])?;
-    
+
     // Continue with function's operation
     Ok(Response::new())
 }

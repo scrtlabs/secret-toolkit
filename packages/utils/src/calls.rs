@@ -29,6 +29,7 @@ pub trait InitCallback: Serialize {
     /// * `funds_amount` - Optional Uint128 amount of native coin to send with instantiation message
     fn to_cosmos_msg(
         &self,
+        admin: Option<String>,
         label: String,
         code_id: u64,
         code_hash: String,
@@ -50,6 +51,7 @@ pub trait InitCallback: Serialize {
             });
         }
         let init = WasmMsg::Instantiate {
+            admin,
             code_id,
             msg,
             code_hash,
@@ -220,22 +222,30 @@ mod tests {
 
     #[test]
     fn test_init_callback_implementation_works() -> StdResult<()> {
+        let adm = "addr1".to_string();
         let lbl = "testlabel".to_string();
         let id = 17u64;
         let hash = "asdf".to_string();
         let amount = Uint128::new(1234);
 
-        let cosmos_message: CosmosMsg =
-            FooInit { f1: 1, f2: 2 }.to_cosmos_msg(lbl.clone(), id, hash.clone(), Some(amount))?;
+        let cosmos_message: CosmosMsg = FooInit { f1: 1, f2: 2 }.to_cosmos_msg(
+            Some(adm.clone()),
+            lbl.clone(),
+            id,
+            hash.clone(),
+            Some(amount),
+        )?;
 
         match cosmos_message {
             CosmosMsg::Wasm(WasmMsg::Instantiate {
+                admin,
                 code_id,
                 msg,
                 code_hash,
                 funds,
                 label,
             }) => {
+                assert_eq!(admin, Some(adm));
                 assert_eq!(code_id, id);
                 let mut expected_msg = r#"{"f1":1,"f2":2}"#.as_bytes().to_vec();
                 space_pad(&mut expected_msg, 256);
