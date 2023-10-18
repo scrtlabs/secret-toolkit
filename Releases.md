@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## v0.10.0
+
+### Features
+
+- Bumped `cosmwasm-std` version to `v1.1.11` ([#93]).
+
+### Breaking
+
+- Added optional `admin` field to `utils::InitCallback::to_cosmos_msg` ([#93]).
+
+### Bug fixes
+
+- Only padding encrypted attributes in `utils::pad_handle_result` ([#92]).
+- Support `backtraces` feature for `KeyMap` and `KeySet` ([#90]).
+
+[#90]: https://github.com/scrtlabs/secret-toolkit/pull/90
+[#92]: https://github.com/scrtlabs/secret-toolkit/pull/92
+[#93]: https://github.com/scrtlabs/secret-toolkit/pull/93
+
 ## v0.9.0
 
 ### Features
