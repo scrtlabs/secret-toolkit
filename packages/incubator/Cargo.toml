@@ -16,7 +16,7 @@ all-features = true
 [dependencies]
 serde = { workspace = true, optional = true }
 cosmwasm-std = { workspace = true, optional = true }
-secret-toolkit-serialization = { version = "0.9", path = "../serialization", optional = true }
+secret-toolkit-serialization = { version = "0.10.0", path = "../serialization", optional = true }
 
 [features]
 generational-store = ["secret-toolkit-serialization", "serde", "cosmwasm-std"]

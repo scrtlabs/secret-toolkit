@@ -17,4 +17,4 @@ all-features = true
 serde = { workspace = true }
 cosmwasm-std = { workspace = true }
 cosmwasm-storage = { workspace = true }
-secret-toolkit-serialization = { version = "0.9", path = "../serialization" }
+secret-toolkit-serialization = { version = "0.10.0", path = "../serialization" }
