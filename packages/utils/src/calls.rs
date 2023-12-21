@@ -26,14 +26,14 @@ pub trait InitCallback: Serialize {
     /// * `label` - String holding the label for the new contract instance
     /// * `code_id` - code ID of the contract to be instantiated
     /// * `code_hash` - String holding the code hash of the contract to be instantiated
-    /// * `funds_amount` - Optional vec of Coins to send with the instantiation message
+    /// * `funds` - Vec of Coins to send with instantiation message
     fn to_cosmos_msg(
         &self,
         admin: Option<String>,
         label: String,
         code_id: u64,
         code_hash: String,
-        funds: Option<Vec<Coin>>,
+        funds: Vec<Coin>,
     ) -> StdResult<CosmosMsg> {
         let mut msg = to_binary(self)?;
         // can not have 0 block size
@@ -44,14 +44,12 @@ pub trait InitCallback: Serialize {
         };
         space_pad(&mut msg.0, padding);
 
-        let funds = funds.unwrap_or_else(Vec::new); // Use funds if Some, else use empty Vec
-
         let init = WasmMsg::Instantiate {
             admin,
             code_id,
             msg,
             code_hash,
-            funds,
+            funds, // Using the passed funds directly
             label,
         };
         Ok(init.into())
@@ -76,12 +74,12 @@ pub trait HandleCallback: Serialize {
     ///
     /// * `code_hash` - String holding the code hash of the contract to be executed
     /// * `contract_addr` - address of the contract being called
-    /// * `funds` - Optional vec of Coins to send with the handle message
+    /// * `funds_amount` - Vec of Coins to send with the handle message
     fn to_cosmos_msg(
         &self,
         code_hash: String,
         contract_addr: String,
-        funds: Option<Vec<Coin>>,
+        funds: Vec<Coin>,
     ) -> StdResult<CosmosMsg> {
         let mut msg = to_binary(self)?;
         // can not have 0 block size
@@ -91,8 +89,6 @@ pub trait HandleCallback: Serialize {
             Self::BLOCK_SIZE
         };
         space_pad(&mut msg.0, padding);
-
-        let funds = funds.unwrap_or_else(Vec::new); // Use funds if Some, else use empty Vec
 
         let execute = WasmMsg::Execute {
             msg,
@@ -185,14 +181,11 @@ mod tests {
     fn test_handle_callback_implementation_works() -> StdResult<()> {
         let address = "secret1xyzasdf".to_string();
         let hash = "asdf".to_string();
-        let coin = vec![Coin::new(1234, "uscrt")];
         let amount = Uint128::new(1234);
+        let coin = vec![Coin::new(1234, "uscrt")];
 
-        let cosmos_message: CosmosMsg = FooHandle::Var1 { f1: 1, f2: 2 }.to_cosmos_msg(
-            hash.clone(),
-            address.clone(),
-            Some(coin),
-        )?;
+        let cosmos_message: CosmosMsg =
+            FooHandle::Var1 { f1: 1, f2: 2 }.to_cosmos_msg(hash.clone(), address.clone(), coin)?;
 
         match cosmos_message {
             CosmosMsg::Wasm(WasmMsg::Execute {
@@ -221,13 +214,14 @@ mod tests {
         let id = 17u64;
         let hash = "asdf".to_string();
         let amount = Uint128::new(1234);
+        let coin = vec![Coin::new(1234, "uscrt")];
 
         let cosmos_message: CosmosMsg = FooInit { f1: 1, f2: 2 }.to_cosmos_msg(
             Some(adm.clone()),
             lbl.clone(),
             id,
             hash.clone(),
-            Some([Coin::new(amount.u128(), "uscrt")].to_vec()),
+            coin,
         )?;
 
         match cosmos_message {
