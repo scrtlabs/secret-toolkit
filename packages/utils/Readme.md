@@ -77,7 +77,7 @@ response = Ok(Response::new().add_message(cosmos_msg));
 # Ok::<(), StdError>(())
 ```
 
-Next, in the init or handle function that will instantiate the other contract, you will create an instance of the CounterInitMsg, call its `to_cosmos_msg`, and place the resulting CosmosMsg in the `messages` Vec of the InitResponse or HandleResponse that your function is returning. In this example, we are pretending that the code id of the counter contract is 123. Also, in this example, you are not sending any SCRT with the InitMsg, but if you needed to send 1 SCRT, you would replace the None in the `to_cosmos_msg` call with `Some(Uint128(1000000))`. The amount sent is in uscrt. Any CosmosMsg placed in the `messages` Vec will be executed after your contract has finished its own processing.
+Next, in the init or handle function that will instantiate the other contract, you will create an instance of the CounterInitMsg, call its `to_cosmos_msg`, and place the resulting CosmosMsg in the `messages` Vec of the InitResponse or HandleResponse that your function is returning. In this example, we are pretending that the code id of the counter contract is 123. Also, in this example, you are sending 1234 SCRT with the InitMsg as seen in the `funds` parameter. The amount sent is in uscrt, but it can be sent in any denom of your choice. Any CosmosMsg placed in the `messages` Vec will be executed after your contract has finished its own processing.
 
 ### Calling a handle function of another contract
 
@@ -133,7 +133,7 @@ response = Ok(Response::new().add_message(cosmos_msg));
 # Ok::<(), StdError>(())
 ```
 
-Next, in the init or handle function that will call the other contract, you will create an instance of the CounterHandleMsg::Reset variant, call its `to_cosmos_msg`, and place the resulting CosmosMsg in the `messages` Vec of the InitResponse or HandleResponse that your function is returning. In this example, you are not sending any SCRT with the Reset message, but if you needed to send 1 SCRT, you would replace the None in the `to_cosmos_msg` call with `Some(Uint128(1000000))`. The amount sent is in uscrt. Any CosmosMsg placed in the `messages` Vec will be executed after your contract has finished its own processing.
+Next, in the init or handle function that will call the other contract, you will create an instance of the CounterHandleMsg::Reset variant, call its `to_cosmos_msg`, and place the resulting CosmosMsg in the `messages` Vec of the InitResponse or HandleResponse that your function is returning. In this example, you are sending 1234 SCRT with the Reset message, as seen in the `funds` parameter. The amount sent is in uscrt, but it can be sent in any denom of your choice. Any CosmosMsg placed in the `messages` Vec will be executed after your contract has finished its own processing.
 
 ### Querying another contract
 
