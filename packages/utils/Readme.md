@@ -44,7 +44,7 @@ You would copy/paste its InitMsg, and rename it so that it does not conflict wit
 
 ```rust
 # use secret_toolkit_utils::InitCallback;
-# use cosmwasm_std::{StdResult, StdError, Response};
+# use cosmwasm_std::{StdResult, StdError, Response, Coin};
 # use serde::{Serialize, Deserialize};
 # use schemars::JsonSchema;
 #
@@ -63,12 +63,14 @@ let counter_init_msg = CounterInitMsg {
      count: 100
 };
 
+let funds = vec![Coin::new(1234, "uscrt")];
+
 let cosmos_msg = counter_init_msg.to_cosmos_msg(
     None,
     "new_contract_label".to_string(),
     123,
     "CODE_HASH_OF_CONTRACT_YOU_WANT_TO_INSTANTIATE".to_string(),
-    None,
+    funds,
 )?;
 
 response = Ok(Response::new().add_message(cosmos_msg));
@@ -100,7 +102,7 @@ You would copy/paste the Reset variant of its HandleMsg enum, and rename the enu
 
 ```rust
 # use secret_toolkit_utils::HandleCallback;
-# use cosmwasm_std::{StdResult, StdError, Response};
+# use cosmwasm_std::{StdResult, StdError, Response, Coin};
 # use serde::{Serialize, Deserialize};
 # use schemars::JsonSchema;
 #
@@ -119,10 +121,12 @@ let reset_msg = CounterHandleMsg::Reset {
     count: 200,
 };
 
+let funds = vec![Coin::new(1234, "uscrt")];
+
 let cosmos_msg = reset_msg.to_cosmos_msg(
     "CODE_HASH_OF_CONTRACT_YOU_WANT_TO_EXECUTE".to_string(),
     "ADDRESS_OF_CONTRACT_YOU_ARE_CALLING".to_string(),
-    None,
+    funds,
 )?;
 
 response = Ok(Response::new().add_message(cosmos_msg));
