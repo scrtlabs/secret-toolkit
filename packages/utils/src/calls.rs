@@ -1,8 +1,8 @@
 use serde::{de::DeserializeOwned, Serialize};
 
 use cosmwasm_std::{
-    to_binary, Coin, CosmosMsg, CustomQuery, QuerierWrapper, QueryRequest, StdResult, Uint128,
-    WasmMsg, WasmQuery,
+    to_binary, Coin, CosmosMsg, CustomQuery, QuerierWrapper, QueryRequest, StdResult, WasmMsg,
+    WasmQuery,
 };
 
 use super::space_pad;
@@ -26,14 +26,14 @@ pub trait InitCallback: Serialize {
     /// * `label` - String holding the label for the new contract instance
     /// * `code_id` - code ID of the contract to be instantiated
     /// * `code_hash` - String holding the code hash of the contract to be instantiated
-    /// * `funds_amount` - Optional Uint128 amount of native coin to send with instantiation message
+    /// * `funds` - Vec of Coins to send with instantiation message
     fn to_cosmos_msg(
         &self,
         admin: Option<String>,
         label: String,
         code_id: u64,
         code_hash: String,
-        funds_amount: Option<Uint128>,
+        funds: Vec<Coin>,
     ) -> StdResult<CosmosMsg> {
         let mut msg = to_binary(self)?;
         // can not have 0 block size
@@ -43,13 +43,7 @@ pub trait InitCallback: Serialize {
             Self::BLOCK_SIZE
         };
         space_pad(&mut msg.0, padding);
-        let mut funds = Vec::new();
-        if let Some(amount) = funds_amount {
-            funds.push(Coin {
-                amount,
-                denom: String::from("uscrt"),
-            });
-        }
+
         let init = WasmMsg::Instantiate {
             admin,
             code_id,
@@ -80,12 +74,12 @@ pub trait HandleCallback: Serialize {
     ///
     /// * `code_hash` - String holding the code hash of the contract to be executed
     /// * `contract_addr` - address of the contract being called
-    /// * `funds_amount` - Optional Uint128 amount of native coin to send with the handle message
+    /// * `funds` - Vec of Coins to send with the handle message
     fn to_cosmos_msg(
         &self,
         code_hash: String,
         contract_addr: String,
-        funds_amount: Option<Uint128>,
+        funds: Vec<Coin>,
     ) -> StdResult<CosmosMsg> {
         let mut msg = to_binary(self)?;
         // can not have 0 block size
@@ -95,13 +89,7 @@ pub trait HandleCallback: Serialize {
             Self::BLOCK_SIZE
         };
         space_pad(&mut msg.0, padding);
-        let mut funds = Vec::new();
-        if let Some(amount) = funds_amount {
-            funds.push(Coin {
-                amount,
-                denom: String::from("uscrt"),
-            });
-        }
+
         let execute = WasmMsg::Execute {
             msg,
             contract_addr,
@@ -192,12 +180,11 @@ mod tests {
     fn test_handle_callback_implementation_works() -> StdResult<()> {
         let address = "secret1xyzasdf".to_string();
         let hash = "asdf".to_string();
-        let amount = Uint128::new(1234);
-
+        let amount = Coin::new(1234, "uscrt");
         let cosmos_message: CosmosMsg = FooHandle::Var1 { f1: 1, f2: 2 }.to_cosmos_msg(
             hash.clone(),
             address.clone(),
-            Some(amount),
+            vec![amount],
         )?;
 
         match cosmos_message {
@@ -212,7 +199,7 @@ mod tests {
                 let mut expected_msg = r#"{"Var1":{"f1":1,"f2":2}}"#.as_bytes().to_vec();
                 space_pad(&mut expected_msg, 256);
                 assert_eq!(msg.0, expected_msg);
-                assert_eq!(funds, vec![Coin::new(amount.u128(), "uscrt")])
+                assert_eq!(funds, vec![Coin::new(1234, "uscrt")])
             }
             other => panic!("unexpected CosmosMsg variant: {:?}", other),
         };
@@ -226,14 +213,14 @@ mod tests {
         let lbl = "testlabel".to_string();
         let id = 17u64;
         let hash = "asdf".to_string();
-        let amount = Uint128::new(1234);
+        let amount = Coin::new(1234, "uscrt");
 
         let cosmos_message: CosmosMsg = FooInit { f1: 1, f2: 2 }.to_cosmos_msg(
             Some(adm.clone()),
             lbl.clone(),
             id,
             hash.clone(),
-            Some(amount),
+            vec![amount],
         )?;
 
         match cosmos_message {
@@ -251,7 +238,7 @@ mod tests {
                 space_pad(&mut expected_msg, 256);
                 assert_eq!(msg.0, expected_msg);
                 assert_eq!(code_hash, hash);
-                assert_eq!(funds, vec![Coin::new(amount.u128(), "uscrt")]);
+                assert_eq!(funds, vec![Coin::new(1234, "uscrt")]);
                 assert_eq!(label, lbl)
             }
             other => panic!("unexpected CosmosMsg variant: {:?}", other),
