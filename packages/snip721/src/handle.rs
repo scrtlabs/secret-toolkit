@@ -1296,6 +1296,7 @@ mod tests {
                 youtube_url: None,
                 media: None,
                 protected_attributes: None,
+                token_subtype: None,
             }),
         });
         let private_metadata = Some(Metadata {
@@ -1317,6 +1318,7 @@ mod tests {
                 youtube_url: None,
                 media: None,
                 protected_attributes: None,
+                token_subtype: None,
             }),
         });
         let memo = Some("memo".to_string());
@@ -1462,6 +1464,7 @@ mod tests {
                 youtube_url: None,
                 media: None,
                 protected_attributes: None,
+                token_subtype: None,
             }),
         });
         let private_metadata = Some(Metadata {
@@ -1483,6 +1486,7 @@ mod tests {
                 youtube_url: None,
                 media: None,
                 protected_attributes: None,
+                token_subtype: None,
             }),
         });
         let padding = None;
@@ -1540,6 +1544,7 @@ mod tests {
                         youtube_url: None,
                         media: None,
                         protected_attributes: None,
+                        token_subtype: None,
                     }),
                 }),
                 private_metadata: None,
@@ -1567,6 +1572,7 @@ mod tests {
                         youtube_url: None,
                         media: None,
                         protected_attributes: None,
+                        token_subtype: None,
                     }),
                 }),
                 private_metadata: Some(Metadata {
@@ -1588,6 +1594,7 @@ mod tests {
                         youtube_url: None,
                         media: None,
                         protected_attributes: None,
+                        token_subtype: None,
                     }),
                 }),
                 memo: None,
@@ -1615,6 +1622,7 @@ mod tests {
                         youtube_url: None,
                         media: None,
                         protected_attributes: None,
+                        token_subtype: None,
                     }),
                 }),
                 memo: Some("memo 3".to_string()),

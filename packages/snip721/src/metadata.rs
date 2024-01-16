@@ -46,6 +46,9 @@ pub struct Extension {
     /// a select list of trait_types that are in the private metadata.  This will only ever be used
     /// in public metadata
     pub protected_attributes: Option<Vec<String>>,
+    /// token subtypes used by Stashh for display groupings (primarily used for badges, which are specified
+    /// by using "badge" as the token_subtype)
+    pub token_subtype: Option<String>,
 }
 
 /// attribute trait
