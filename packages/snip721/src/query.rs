@@ -1323,6 +1323,7 @@ mod tests {
                             youtube_url: None,
                             media: None,
                             protected_attributes: None,
+                            token_subtype: None,
                         }),
                     },
                 };
@@ -1357,6 +1358,7 @@ mod tests {
                 youtube_url: None,
                 media: None,
                 protected_attributes: None,
+                token_subtype: None,
             }),
         };
 
@@ -1431,6 +1433,7 @@ mod tests {
                                 youtube_url: None,
                                 media: None,
                                 protected_attributes: None,
+                                token_subtype: None,
                             }),
                         }),
                     },
@@ -1485,6 +1488,7 @@ mod tests {
                     youtube_url: None,
                     media: None,
                     protected_attributes: None,
+                    token_subtype: None,
                 }),
             }),
         };
@@ -1550,6 +1554,7 @@ mod tests {
                             youtube_url: None,
                             media: None,
                             protected_attributes: None,
+                            token_subtype: None
                         }),
                     },
                 };
@@ -1588,6 +1593,7 @@ mod tests {
                 youtube_url: None,
                 media: None,
                 protected_attributes: None,
+                token_subtype: None,
             }),
         };
 
@@ -1650,6 +1656,7 @@ mod tests {
                                 youtube_url: None,
                                 media: None,
                                 protected_attributes: None,
+                                token_subtype: None,
                             }),
                         }),
                         private_metadata: None,
@@ -1713,6 +1720,7 @@ mod tests {
                     youtube_url: None,
                     media: None,
                     protected_attributes: None,
+                    token_subtype: None,
                 }),
             }),
             private_metadata: None,
