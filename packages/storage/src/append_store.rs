@@ -160,7 +160,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> AppendStore<'a, T, Ser> {
     /// gets the element at pos if within bounds
     pub fn get_at(&self, storage: &dyn Storage, pos: u32) -> StdResult<T> {
         let len = self.get_len(storage)?;
-        if pos > len {
+        if pos >= len {
             return Err(StdError::generic_err("append_store access out of bounds"));
         }
         self.get_at_unchecked(storage, pos)
