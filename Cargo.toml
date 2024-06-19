@@ -34,6 +34,7 @@ snip721 = ["secret-toolkit-snip721", "utils"]
 storage = ["secret-toolkit-storage", "serialization"]
 utils = ["secret-toolkit-utils"]
 viewing-key = ["secret-toolkit-viewing-key"]
+notification = ["secret-toolkit-notification"]
 
 [dependencies]
 secret-toolkit-crypto = { version = "0.10.0", path = "packages/crypto", optional = true }
@@ -45,7 +46,7 @@ secret-toolkit-snip721 = { version = "0.10.0", path = "packages/snip721", option
 secret-toolkit-storage = { version = "0.10.0", path = "packages/storage", optional = true }
 secret-toolkit-utils = { version = "0.10.0", path = "packages/utils", optional = true }
 secret-toolkit-viewing-key = { version = "0.10.0", path = "packages/viewing_key", optional = true }
-
+secret-toolkit-notification = { version = "0.10.0", path = "packages/notification", optional = true }
 
 [workspace]
 members = ["packages/*"]
