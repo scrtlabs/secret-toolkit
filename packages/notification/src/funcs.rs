@@ -1,7 +1,7 @@
 use cosmwasm_std::{Binary, CanonicalAddr, StdResult};
-use secret_toolkit_crypto::sha_256;
+use secret_toolkit_crypto::{sha_256, hkdf_sha_256, HmacSha256};
 use hkdf::hmac::Mac;
-use crate::{cipher_data, hkdf_sha_256, HmacSha256};
+use crate::cipher_data;
 
 pub const NOTIFICATION_BLOCK_SIZE: usize = 36;
 pub const SEED_LEN: usize = 32;

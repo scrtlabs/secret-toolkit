@@ -2,7 +2,7 @@
 
 pub mod structs;
 pub mod funcs;
-pub mod crypto;
+pub mod cipher;
 pub use structs::*;
 pub use funcs::*;
-pub use crypto::*;
+pub use cipher::*;
