@@ -25,6 +25,7 @@ impl<T: NotificationData> Notification<T> {
         api: &dyn Api,
         env: &Env,
         secret: &[u8],
+        block_size: Option<usize>,
     ) -> StdResult<TxHashNotification> {
         let tx_hash = env.transaction.clone().ok_or(StdError::generic_err("no tx hash found"))?.hash;
         let notification_for_raw = api.addr_canonicalize(self.notification_for.as_str())?;
@@ -37,8 +38,14 @@ impl<T: NotificationData> Notification<T> {
         let cbor_data = self.data.to_cbor(api)?;
 
         // encrypt the receiver message
-        let encrypted_data =
-            encrypt_notification_data(&env.block.height, &tx_hash, &seed, self.data.channel_id(), cbor_data)?;
+        let encrypted_data = encrypt_notification_data(
+            &env.block.height,
+            &tx_hash,
+            &seed,
+            self.data.channel_id(),
+            cbor_data,
+            block_size,
+        )?;
 
         Ok(TxHashNotification {
             id,

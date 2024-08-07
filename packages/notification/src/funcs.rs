@@ -3,8 +3,9 @@ use secret_toolkit_crypto::{sha_256, hkdf_sha_256, HmacSha256};
 use hkdf::hmac::Mac;
 use crate::cipher_data;
 
+/// default notification block size in bytes
 pub const NOTIFICATION_BLOCK_SIZE: usize = 36;
-pub const SEED_LEN: usize = 32;
+pub const SEED_LEN: usize = 32; // 256 bits
 
 ///
 /// fn notification_id
@@ -25,7 +26,8 @@ pub fn notification_id(seed: &Binary, channel: &str, tx_hash: &String) -> StdRes
 ///
 /// fn encrypt_notification_data
 ///
-///   Returns encrypted bytes given plaintext bytes, address, and channel id.
+///   Returns encrypted bytes given plaintext bytes, address, and channel id. 
+///   Optionally, can set block size (default 36).
 ///
 pub fn encrypt_notification_data(
     block_height: &u64,
@@ -33,9 +35,10 @@ pub fn encrypt_notification_data(
     seed: &Binary,
     channel: &str,
     plaintext: Vec<u8>,
+    block_size: Option<usize>,
 ) -> StdResult<Binary> {
     let mut padded_plaintext = plaintext.clone();
-    zero_pad(&mut padded_plaintext, NOTIFICATION_BLOCK_SIZE);
+    zero_pad(&mut padded_plaintext, block_size.unwrap_or(NOTIFICATION_BLOCK_SIZE));
 
     let channel_id_bytes = sha_256(channel.as_bytes())[..12].to_vec();
     let salt_bytes = tx_hash.as_bytes()[..12].to_vec();
