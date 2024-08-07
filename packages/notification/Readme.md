@@ -6,7 +6,7 @@ These functions are meant to help you easily create notification channels for pr
 
 ### Implementing a `NotificationData` struct
 
-Each notification channel will have a specified data format, which is defined by defining a struct that implements the `NotificationData` trait that has two methods: `to_cbor` and `channel_id`. The following example illustrates how you might implement this for a channel called `my_channel` and notification data containing two fields: `address` and `amount`.
+Each notification channel will have a specified data format, which is defined by creating a struct that implements the `NotificationData` trait that has two methods: `to_cbor` and `channel_id`. The following example illustrates how you might implement this for a channel called `my_channel` and notification data containing two fields: `address` and `amount`.
 
 ```rust
 #[derive(Serialize, Debug, Deserialize, Clone)]
