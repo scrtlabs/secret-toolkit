@@ -11,13 +11,13 @@ pub fn hkdf_sha_256(
     info: &[u8],
     length: usize,
 ) -> StdResult<Vec<u8>> {
-    let hk: Hkdf<Sha256> = Hkdf::<Sha256>::new(salt.as_deref().map(|s| s), ikm);
+    let hk: Hkdf<Sha256> = Hkdf::<Sha256>::new(salt.as_deref(), ikm);
     let mut zero_bytes = vec![0u8; length];
-    let mut okm = zero_bytes.as_mut_slice();
-    match hk.expand(info, &mut okm) {
+    let okm = zero_bytes.as_mut_slice();
+    match hk.expand(info, okm) {
         Ok(_) => Ok(okm.to_vec()),
         Err(e) => {
-            return Err(StdError::generic_err(format!("{:?}", e)));
+            Err(StdError::generic_err(format!("{:?}", e)))
         }
     }
 }
@@ -28,13 +28,13 @@ pub fn hkdf_sha_512(
     info: &[u8],
     length: usize,
 ) -> StdResult<Vec<u8>> {
-    let hk: Hkdf<Sha512> = Hkdf::<Sha512>::new(salt.as_deref().map(|s| s), ikm);
+    let hk: Hkdf<Sha512> = Hkdf::<Sha512>::new(salt.as_deref(), ikm);
     let mut zero_bytes = vec![0u8; length];
-    let mut okm = zero_bytes.as_mut_slice();
-    match hk.expand(info, &mut okm) {
+    let okm = zero_bytes.as_mut_slice();
+    match hk.expand(info, okm) {
         Ok(_) => Ok(okm.to_vec()),
         Err(e) => {
-            return Err(StdError::generic_err(format!("{:?}", e)));
+            Err(StdError::generic_err(format!("{:?}", e)))
         }
     }
 }
