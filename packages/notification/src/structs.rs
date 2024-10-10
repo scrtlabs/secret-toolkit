@@ -1,4 +1,5 @@
-use cosmwasm_std::{Addr, Api, Binary, Env, StdError, StdResult};
+use cosmwasm_std::{Addr, Api, Binary, Env, StdError, StdResult, Uint64};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{encrypt_notification_data, get_seed, notification_id};
@@ -74,4 +75,63 @@ impl TxHashNotification {
     pub fn data_plaintext(&self) -> String {
         self.encrypted_data.to_base64()
     }
+}
+
+// types for channel info response
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
+pub struct ChannelInfoData {
+    /// same as query input
+    pub channel: String,
+    /// "counter", "txhash", "bloom"
+    pub mode: String,
+
+    /// txhash / bloom fields only
+    /// if txhash argument was given, this will be its computed Notification ID
+    pub answer_id: Option<Binary>,
+
+    /// bloom fields only
+    /// bloom filter parameters
+    pub parameters: Option<BloomParameters>,
+    /// bloom filter data
+    pub data: Option<Descriptor>,
+
+    /// counter fields only
+    /// current counter value
+    pub counter: Option<Uint64>,
+    /// the next Notification ID
+    pub next_id: Option<Binary>,
+
+    /// counter / txhash field only
+    /// optional CDDL schema definition string for the CBOR-encoded notification data
+    pub cddl: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
+pub struct BloomParameters {
+    pub m: u32,
+    pub k: u32,
+    pub h: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
+pub struct Descriptor {
+    pub r#type: String,
+    pub version: String,
+    pub packet_size: u32,
+    pub data: StructDescriptor,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
+pub struct StructDescriptor {
+    pub r#type: String,
+    pub label: String,
+    pub members: Vec<FlatDescriptor>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
+pub struct FlatDescriptor {
+    pub r#type: String,
+    pub label: String,
+    pub description: Option<String>,
 }
