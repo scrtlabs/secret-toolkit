@@ -58,6 +58,7 @@ impl<T: NotificationData> Notification<T> {
 pub trait NotificationData {
     fn to_cbor(&self, api: &dyn Api) -> StdResult<Vec<u8>>;
     fn channel_id(&self) -> &str;
+    fn id_to_string() -> String;
 }
 
 #[derive(Serialize, Debug, Deserialize, Clone)]
