@@ -12,3 +12,8 @@ pub use hash::{sha_256, SHA256_HASH_SIZE};
 
 #[cfg(feature = "rand")]
 pub use rng::ContractPrng;
+
+#[cfg(feature = "hkdf")]
+pub mod hkdf;
+#[cfg(feature = "hkdf")]
+pub use crate::hkdf::*;

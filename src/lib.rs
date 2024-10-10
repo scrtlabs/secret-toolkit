@@ -18,3 +18,5 @@ pub use secret_toolkit_storage as storage;
 pub use secret_toolkit_utils as utils;
 #[cfg(feature = "viewing-key")]
 pub use secret_toolkit_viewing_key as viewing_key;
+#[cfg(feature = "notification")]
+pub use secret_toolkit_notification as notification;
