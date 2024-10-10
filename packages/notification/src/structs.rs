@@ -56,10 +56,10 @@ impl<T: NotificationData> Notification<T> {
 }
 
 pub trait NotificationData {
-    const CHANNEL_ID: String;
+    const CHANNEL_ID: &'static str;
     fn to_cbor(&self, api: &dyn Api) -> StdResult<Vec<u8>>;
     fn channel_id(&self) -> String {
-        Self::CHANNEL_ID
+        Self::CHANNEL_ID.to_string()
     }
 }
 
