@@ -33,7 +33,7 @@ impl<T: NotificationData> Notification<T> {
         let seed = get_seed(&notification_for_raw, secret)?;
 
         // get notification id
-        let id = notification_id(&seed, self.data.channel_id(), &tx_hash)?;
+        let id = notification_id(&seed, self.data.channel_id().as_str(), &tx_hash)?;
 
         // use CBOR to encode the data
         let cbor_data = self.data.to_cbor(api)?;
@@ -43,7 +43,7 @@ impl<T: NotificationData> Notification<T> {
             &env.block.height,
             &tx_hash,
             &seed,
-            self.data.channel_id(),
+            self.data.channel_id().as_str(),
             cbor_data,
             block_size,
         )?;
@@ -56,9 +56,11 @@ impl<T: NotificationData> Notification<T> {
 }
 
 pub trait NotificationData {
+    const CHANNEL_ID: String;
     fn to_cbor(&self, api: &dyn Api) -> StdResult<Vec<u8>>;
-    fn channel_id(&self) -> &str;
-    fn id_to_string() -> String;
+    fn channel_id(&self) -> String {
+        Self::CHANNEL_ID
+    }
 }
 
 #[derive(Serialize, Debug, Deserialize, Clone)]
