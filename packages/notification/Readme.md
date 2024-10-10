@@ -11,6 +11,11 @@ Each notification channel will have a specified data format, which is defined by
 The following example illustrates how you might implement this for a channel called `my_channel` and notification data containing two fields: `message` and `amount`.
 
 ```rust
+use cosmwasm_std::{Api, StdError, StdResult};
+use secret_toolkit::notification::NotificationData;
+use serde::{Deserialize, Serialize};
+use minicbor_ser as cbor;
+
 #[derive(Serialize, Debug, Deserialize, Clone)]
 pub struct MyNotificationData {
     pub message: String,
