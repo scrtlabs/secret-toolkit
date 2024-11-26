@@ -14,7 +14,7 @@ pub const SEED_LEN: usize = 32; // 256 bits
 ///
 pub fn notification_id(seed: &Binary, channel: &str, tx_hash: &String) -> StdResult<Binary> {
     // compute notification ID for this event
-    let material = [channel.as_bytes(), ":".as_bytes(), tx_hash.as_bytes()].concat();
+    let material = [channel.as_bytes(), ":".as_bytes(), tx_hash.to_ascii_uppercase().as_bytes()].concat();
 
     let mut mac: HmacSha256 = HmacSha256::new_from_slice(seed.0.as_slice()).unwrap();
     mac.update(material.as_slice());
@@ -41,7 +41,7 @@ pub fn encrypt_notification_data(
     zero_pad(&mut padded_plaintext, block_size.unwrap_or(NOTIFICATION_BLOCK_SIZE));
 
     let channel_id_bytes = sha_256(channel.as_bytes())[..12].to_vec();
-    let salt_bytes = tx_hash.as_bytes()[..12].to_vec();
+    let salt_bytes = tx_hash.to_ascii_uppercase().as_bytes()[..12].to_vec();
     let nonce: Vec<u8> = channel_id_bytes
         .iter()
         .zip(salt_bytes.iter())

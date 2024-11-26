@@ -28,7 +28,7 @@ impl<T: NotificationData> Notification<T> {
         secret: &[u8],
         block_size: Option<usize>,
     ) -> StdResult<TxHashNotification> {
-        let tx_hash = env.transaction.clone().ok_or(StdError::generic_err("no tx hash found"))?.hash;
+        let tx_hash = env.transaction.clone().ok_or(StdError::generic_err("no tx hash found"))?.hash.to_ascii_uppercase();
         let notification_for_raw = api.addr_canonicalize(self.notification_for.as_str())?;
         let seed = get_seed(&notification_for_raw, secret)?;
 
