@@ -1,7 +1,7 @@
 use cosmwasm_std::{Addr, Api, Binary, Env, StdError, StdResult, Uint64};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use minicbor_ser::{encode as cbor_encode, Encoder};
+use minicbor::{encode as cbor_encode, Encoder};
 
 use crate::{encrypt_notification_data, get_seed, notification_id};
 
