@@ -1,6 +1,7 @@
 use cosmwasm_std::{Addr, Api, Binary, Env, StdError, StdResult, Uint64};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use minicbor_ser::{encode as cbor_encode, Encoder};
 
 use crate::{encrypt_notification_data, get_seed, notification_id};
 
@@ -13,6 +14,10 @@ pub struct Notification<T: NotificationData> {
     pub data: T,
 }
 
+
+pub fn cbor_to_std_error<T>(e: cbor_encode::Error<T>) -> StdError {
+    StdError::generic_err("CBOR encoding error")
+}
 
 pub trait NotificationData {
     const CHANNEL_ID: &'static str;
