@@ -51,7 +51,7 @@ pub trait EncoderExt {
 	fn ext_timestamp(&mut self, value: u64) -> StdResult<&mut Self>;
 }
 
-pub impl<T: cbor_encode::Write> EncoderExt for Encoder<T> {
+impl<T: cbor_encode::Write> EncoderExt for Encoder<T> {
 	#[inline]
 	fn ext_tag(&mut self, tag: cbor_data::IanaTag) -> StdResult<&mut Self> {
 		 self
