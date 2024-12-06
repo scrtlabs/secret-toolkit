@@ -14,11 +14,14 @@ pub fn notification_id(seed: &Binary, channel: &str, tx_hash: &String) -> StdRes
     // compute notification ID for this event
     let material = [channel.as_bytes(), ":".as_bytes(), tx_hash.to_ascii_uppercase().as_bytes()].concat();
 
+    // create HMAC from seed
     let mut mac: HmacSha256 = HmacSha256::new_from_slice(seed.0.as_slice()).unwrap();
+
+    // add material to input stream
     mac.update(material.as_slice());
-    let result = mac.finalize();
-    let code_bytes = result.into_bytes();
-    Ok(Binary::from(code_bytes.as_slice()))
+
+    // finalize the digest and convert to CW Binary
+    Ok(Binary::from(mac.finalize().into_bytes().as_slice()))
 }
 
 ///
@@ -35,18 +38,26 @@ pub fn encrypt_notification_data(
     plaintext: Vec<u8>,
     block_size: Option<usize>,
 ) -> StdResult<Binary> {
+    // pad the plaintext to the optionally given block size
     let mut padded_plaintext = plaintext.clone();
     if let Some(size) = block_size {
-        zero_pad(&mut padded_plaintext, size);
+        zero_pad_right(&mut padded_plaintext, size);
     }
 
+    // take the last 12 bytes of the channel name's hash to create the channel ID
     let channel_id_bytes = sha_256(channel.as_bytes())[..12].to_vec();
+
+    // take the last 12 bytes of the tx hash (after hex-decoding) to use for salt
     let salt_bytes = hex::decode(tx_hash).unwrap()[..12].to_vec();
+
+    // generate nonce by XOR'ing channel ID with salt
     let nonce: Vec<u8> = channel_id_bytes
         .iter()
         .zip(salt_bytes.iter())
         .map(|(&b1, &b2)| b1 ^ b2)
         .collect();
+
+    // secure this message by attaching the block height and tx hash to the additional authenticated data
     let aad = format!("{}:{}", block_height, tx_hash);
 
     // encrypt notification data for this event
@@ -68,11 +79,12 @@ pub fn get_seed(addr: &CanonicalAddr, secret: &[u8]) -> StdResult<Binary> {
         addr.as_slice(),
         SEED_LEN,
     )?;
+
     Ok(Binary::from(seed))
 }
 
-/// Take a Vec<u8> and pad it up to a multiple of `block_size`, using 0x00 at the end.
-fn zero_pad(message: &mut Vec<u8>, block_size: usize) -> &mut Vec<u8> {
+/// take a Vec<u8> and pad it up to a multiple of `block_size`, using 0x00 at the end
+fn zero_pad_right(message: &mut Vec<u8>, block_size: usize) -> &mut Vec<u8> {
     let len = message.len();
     let surplus = len % block_size;
     if surplus == 0 {

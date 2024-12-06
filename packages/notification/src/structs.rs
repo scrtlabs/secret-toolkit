@@ -3,7 +3,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use minicbor::{encode as cbor_encode, Encoder};
 
-use crate::{encrypt_notification_data, get_seed, notification_id};
+use crate::{encrypt_notification_data, get_seed, notification_id, cbor_to_std_error};
 
 #[derive(Serialize, Debug, Deserialize, Clone)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
@@ -12,11 +12,6 @@ pub struct Notification<T: NotificationData> {
     pub notification_for: Addr,
     /// Typed notification data
     pub data: T,
-}
-
-
-pub fn cbor_to_std_error<T>(e: cbor_encode::Error<T>) -> StdError {
-    StdError::generic_err("CBOR encoding error")
 }
 
 pub trait NotificationData {
@@ -46,13 +41,14 @@ pub trait NotificationData {
         // encode CBOR data
         self.encode_cbor(api, &mut encoder)?;
 
-        // return buffer
+        // return buffer (already right-padded with zero bytes)
         Ok(buffer)
     }
 
     /// CBOR encodes notification data into the encoder
     fn encode_cbor(&self, api: &dyn Api, encoder: &mut Encoder<&mut [u8]>) -> StdResult<()>;
 }
+
 
 
 impl<T: NotificationData> Notification<T> {
