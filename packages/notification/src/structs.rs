@@ -7,14 +7,14 @@ use crate::{encrypt_notification_data, get_seed, notification_id, cbor_to_std_er
 
 #[derive(Serialize, Debug, Deserialize, Clone)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
-pub struct Notification<T: NotificationData> {
+pub struct Notification<T: DirectChannel> {
     /// Recipient address of the notification
     pub notification_for: Addr,
     /// Typed notification data
     pub data: T,
 }
 
-pub trait NotificationData {
+pub trait DirectChannel {
     const CHANNEL_ID: &'static str;
     const CDDL_SCHEMA: &'static str;
     const ELEMENTS: u64;
@@ -50,8 +50,7 @@ pub trait NotificationData {
 }
 
 
-
-impl<T: NotificationData> Notification<T> {
+impl<T: DirectChannel> Notification<T> {
     pub fn new(notification_for: Addr, data: T) -> Self {
         Notification {
             notification_for,
@@ -177,3 +176,18 @@ pub struct FlatDescriptor {
     pub label: String,
     pub description: Option<String>,
 }
+
+pub trait GroupChannel<D: DirectChannel> {
+    const CHANNEL_ID: &'static str;
+    const BLOOM_N: usize;
+    const BLOOM_M: u32;
+    const BLOOM_K: u32;
+    const PACKET_SIZE: usize;
+
+    const BLOOM_M_LOG2: u32 = Self::BLOOM_M.ilog2();
+
+    fn build_packet(&self, api: &dyn Api, data: &D) -> StdResult<Vec<u8>>;
+
+    fn notifications(&self) -> Vec<Notification<D>>;
+}
+
