@@ -4,42 +4,43 @@
 
 These functions are meant to help you easily create notification channels for private push notifications in secret contracts (see [SNIP-52 Private Push Notification](https://github.com/SolarRepublic/SNIPs/blob/feat/snip-52/SNIP-52.md)).
 
-### Implementing a `NotificationData` struct
+### Implementing a `DirectChannel` struct
 
-Each notification channel will have a specified data format, which is defined by creating a struct that implements the `NotificationData` trait, which has two methods: `to_cbor` and `channel_id`. 
+Each notification channel will have a specified data format, which is defined by creating a struct that implements the `DirectChannel` trait, which has one method: `encode_cbor`. 
 
-The following example illustrates how you might implement this for a channel called `my_channel` and notification data containing two fields: `message` and `amount`.
+The following example illustrates how you might implement this for a channel called `my_channel` and notification data containing two fields: `sender` and `amount`.
 
 ```rust
 use cosmwasm_std::{Api, StdError, StdResult};
-use secret_toolkit::notification::NotificationData;
+use secret_toolkit::notification::{EncoderExt, CBL_ARRAY_SHORT, CBL_BIGNUM_U64, CBL_U8, Notification, DirectChannel, GroupChannel};
 use serde::{Deserialize, Serialize};
 use minicbor_ser as cbor;
 
 #[derive(Serialize, Debug, Deserialize, Clone)]
-pub struct MyNotificationData {
-    pub message: String,
+pub struct MyNotification {
+    pub sender: Addr,
     pub amount: u128,
 }
 
-impl NotificationData for MyNotificationData {
-    fn to_cbor(&self, _api: &dyn Api) -> StdResult<Vec<u8>> {
-        let my_data = cbor::to_vec(&(
-            self.message.as_bytes(),
-            self.amount.to_be_bytes(),
-        ))
-        .map_err(|e| StdError::generic_err(format!("{:?}", e)))?;
+impl DirectChannel for MyNotification {
+    const CHANNEL_ID: &'static str = "my_channel";
+    const CDDL_SCHEMA: &'static str = "my_channel=[sender:bstr .size 20,amount:uint .size 8]";
+    const ELEMENTS: u64 = 2;
+    const PAYLOAD_SIZE: usize = CBL_ARRAY_SHORT + CBL_BIGNUM_U64 + CBL_U8;
 
-        Ok(my_data)
-    }
+    fn encode_cbor(&self, api: &dyn Api, encoder: &mut Encoder<&mut [u8]>) -> StdResult<()> {
+        // amount:biguint (8-byte uint)
+        encoder.ext_u64_from_u128(self.amount)?;
 
-    fn channel_id(&self) -> &str {
-        "my_channel"
+        // sender:bstr (20-byte address)
+        let sender_raw = api.addr_canonicalize(sender.as_str())?;
+        encoder.ext_address(sender_raw)?;
+
+        Ok(())
     }
 }
 ```
 
-The `api` parameter for `to_cbor` is not used in this example, but is there for cases where you might want to convert an `Addr` to a `CanonicalAddr` before encoding using CBOR.
 
 ### Sending a TxHash notification
 
@@ -50,8 +51,8 @@ The following code snippet creates a notification for the above `my_channel` and
 ```rust
 let notification = Notification::new(
     recipient,
-    MyNotificationData {
-        "hello".to_string(),
+    MyNotification {
+        sender,
         1000_u128,
     }
 )

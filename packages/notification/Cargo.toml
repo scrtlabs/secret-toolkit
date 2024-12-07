@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-notification"
-version = "0.10.0"
+version = "0.10.1"
 edition = "2021"
 authors = ["darwinzer0","blake-regalia"]
 license-file = "../../LICENSE"
@@ -30,6 +30,6 @@ primitive-types = { version = "0.12.2", default-features = false }
 hex = "0.4.3"
 minicbor = "0.25.1"
 
-secret-toolkit-crypto = { version = "0.10.0", path = "../crypto", features = [
+secret-toolkit-crypto = { version = "0.10.1", path = "../crypto", features = [
     "hash", "hkdf"
 ] }
