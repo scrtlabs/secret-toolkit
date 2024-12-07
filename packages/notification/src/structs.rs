@@ -188,6 +188,6 @@ pub trait GroupChannel<D: DirectChannel> {
 
     fn build_packet(&self, api: &dyn Api, data: &D) -> StdResult<Vec<u8>>;
 
-    fn notifications(&self) -> Vec<Notification<D>>;
+    fn notifications(&self) -> &Vec<Notification<D>>;
 }
 
