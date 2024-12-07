@@ -48,11 +48,11 @@ pub struct NumTokens {
 /// response for [`AllTokens`](QueryMsg::AllTokens) and [`Tokens`](QueryMsg::Tokens)
 ///
 /// * AllTokens:
-/// display an optionally paginated list of all the tokens controlled by the contract.
-/// The token supply must either be public, or the querier must be authorized to view
+///   display an optionally paginated list of all the tokens controlled by the contract.
+///   The token supply must either be public, or the querier must be authorized to view
 /// * Tokens:
-/// displays a list of all the tokens belonging to the input owner in which the viewer
-/// has view_owner permission
+///   displays a list of all the tokens belonging to the input owner in which the viewer
+///   has view_owner permission
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct TokenList {
     /// list of token IDs

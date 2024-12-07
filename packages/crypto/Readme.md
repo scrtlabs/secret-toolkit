@@ -11,8 +11,8 @@ Add the following to your `cargo.toml` file:
 
 ```toml
 [dependencies]
-secret-toolkit = { version = "0.10.0", features = ["crypto"] }
-secret-toolkit-crypto = { version = "0.10.0", features = ["hash", "rand", "ecc-secp256k1"] }
+secret-toolkit = { version = "0.10.1", features = ["crypto"] }
+secret-toolkit-crypto = { version = "0.10.1", features = ["hash", "rand", "ecc-secp256k1"] }
 ```
 
 ## Example usage
