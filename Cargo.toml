@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit"
-version = "0.10.0"
+version = "0.10.1"
 edition = "2021"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "LICENSE"
@@ -37,16 +37,16 @@ viewing-key = ["secret-toolkit-viewing-key"]
 notification = ["secret-toolkit-notification"]
 
 [dependencies]
-secret-toolkit-crypto = { version = "0.10.0", path = "packages/crypto", optional = true }
-secret-toolkit-incubator = { version = "0.10.0", path = "packages/incubator", optional = true }
-secret-toolkit-permit = { version = "0.10.0", path = "packages/permit", optional = true }
-secret-toolkit-serialization = { version = "0.10.0", path = "packages/serialization", optional = true }
-secret-toolkit-snip20 = { version = "0.10.0", path = "packages/snip20", optional = true }
-secret-toolkit-snip721 = { version = "0.10.0", path = "packages/snip721", optional = true }
-secret-toolkit-storage = { version = "0.10.0", path = "packages/storage", optional = true }
-secret-toolkit-utils = { version = "0.10.0", path = "packages/utils", optional = true }
-secret-toolkit-viewing-key = { version = "0.10.0", path = "packages/viewing_key", optional = true }
-secret-toolkit-notification = { version = "0.10.0", path = "packages/notification", optional = true }
+secret-toolkit-crypto = { version = "0.10.1", path = "packages/crypto", optional = true }
+secret-toolkit-incubator = { version = "0.10.1", path = "packages/incubator", optional = true }
+secret-toolkit-permit = { version = "0.10.1", path = "packages/permit", optional = true }
+secret-toolkit-serialization = { version = "0.10.1", path = "packages/serialization", optional = true }
+secret-toolkit-snip20 = { version = "0.10.1", path = "packages/snip20", optional = true }
+secret-toolkit-snip721 = { version = "0.10.1", path = "packages/snip721", optional = true }
+secret-toolkit-storage = { version = "0.10.1", path = "packages/storage", optional = true }
+secret-toolkit-utils = { version = "0.10.1", path = "packages/utils", optional = true }
+secret-toolkit-viewing-key = { version = "0.10.1", path = "packages/viewing_key", optional = true }
+secret-toolkit-notification = { version = "0.10.1", path = "packages/notification", optional = true }
 
 [workspace]
 members = ["packages/*"]

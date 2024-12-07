@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-utils"
-version = "0.10.0"
+version = "0.10.1"
 edition = "2021"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"

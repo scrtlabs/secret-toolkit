@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.10.1
+
+### Bug fixes
+
+- Fixed `Wasm contract requires unsupported import: "env.rustsecp256k1_v0_8_1_context_preallocated_size` error by freezing `cc` version to `1.1.10`.
+
 ## v0.10.0
 
 ### Features
