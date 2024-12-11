@@ -1,4 +1,4 @@
-use cosmwasm_std::{CanonicalAddr, StdResult, StdError};
+use cosmwasm_std::{CanonicalAddr, StdError, StdResult};
 use minicbor::{data as cbor_data, encode as cbor_encode, Encoder};
 
 /// Length of encoding an arry header that holds less than 24 items
@@ -35,68 +35,59 @@ pub const CBL_TIMESTAMP: usize = 1 + 1 + 8;
 pub const CBL_ADDRESS: usize = 1 + 20;
 
 /// Wraps the CBOR error to CosmWasm StdError
-pub fn cbor_to_std_error<T>(e: cbor_encode::Error<T>) -> StdError {
-	StdError::generic_err("CBOR encoding error")
+pub fn cbor_to_std_error<T>(_e: cbor_encode::Error<T>) -> StdError {
+    StdError::generic_err("CBOR encoding error")
 }
 
 /// Extends the minicbor encoder with wrapper functions that handle CBOR errors
 pub trait EncoderExt {
-	fn ext_tag(&mut self, tag: cbor_data::IanaTag) -> StdResult<&mut Self>;
+    fn ext_tag(&mut self, tag: cbor_data::IanaTag) -> StdResult<&mut Self>;
 
-	fn ext_u8(&mut self, value: u8) -> StdResult<&mut Self>;
-	fn ext_u32(&mut self, value: u32) -> StdResult<&mut Self>;
-	fn ext_u64_from_u128(&mut self, value: u128) -> StdResult<&mut Self>;
-	fn ext_address(&mut self, value: CanonicalAddr) -> StdResult<&mut Self>;
-	fn ext_bytes(&mut self, value: &[u8]) -> StdResult<&mut Self>;
-	fn ext_timestamp(&mut self, value: u64) -> StdResult<&mut Self>;
+    fn ext_u8(&mut self, value: u8) -> StdResult<&mut Self>;
+    fn ext_u32(&mut self, value: u32) -> StdResult<&mut Self>;
+    fn ext_u64_from_u128(&mut self, value: u128) -> StdResult<&mut Self>;
+    fn ext_address(&mut self, value: CanonicalAddr) -> StdResult<&mut Self>;
+    fn ext_bytes(&mut self, value: &[u8]) -> StdResult<&mut Self>;
+    fn ext_timestamp(&mut self, value: u64) -> StdResult<&mut Self>;
 }
 
 impl<T: cbor_encode::Write> EncoderExt for Encoder<T> {
-	#[inline]
-	fn ext_tag(&mut self, tag: cbor_data::IanaTag) -> StdResult<&mut Self> {
-		 self
-			  .tag(cbor_data::Tag::from(tag))
-					.map_err(cbor_to_std_error)
-	}
+    #[inline]
+    fn ext_tag(&mut self, tag: cbor_data::IanaTag) -> StdResult<&mut Self> {
+        self.tag(cbor_data::Tag::from(tag))
+            .map_err(cbor_to_std_error)
+    }
 
-	#[inline]
-	fn ext_u8(&mut self, value: u8) -> StdResult<&mut Self> {
-		 self
-			  .u8(value)
-					.map_err(cbor_to_std_error)
-	}
+    #[inline]
+    fn ext_u8(&mut self, value: u8) -> StdResult<&mut Self> {
+        self.u8(value).map_err(cbor_to_std_error)
+    }
 
-	#[inline]
-	fn ext_u32(&mut self, value: u32) -> StdResult<&mut Self> {
-		 self
-			  .u32(value)
-					.map_err(cbor_to_std_error)
-	}
+    #[inline]
+    fn ext_u32(&mut self, value: u32) -> StdResult<&mut Self> {
+        self.u32(value).map_err(cbor_to_std_error)
+    }
 
-	#[inline]
-	fn ext_u64_from_u128(&mut self, value: u128) -> StdResult<&mut Self> {
-		 self
-			  .ext_tag(cbor_data::IanaTag::PosBignum)?
-			  .ext_bytes(&value.to_be_bytes()[8..])
-	}
+    #[inline]
+    fn ext_u64_from_u128(&mut self, value: u128) -> StdResult<&mut Self> {
+        self.ext_tag(cbor_data::IanaTag::PosBignum)?
+            .ext_bytes(&value.to_be_bytes()[8..])
+    }
 
-	#[inline]
-	fn ext_address(&mut self, value: CanonicalAddr) -> StdResult<&mut Self> {
-		 self.ext_bytes(&value.as_slice())
-	}
+    #[inline]
+    fn ext_address(&mut self, value: CanonicalAddr) -> StdResult<&mut Self> {
+        self.ext_bytes(value.as_slice())
+    }
 
-	#[inline]
-	fn ext_bytes(&mut self, value: &[u8]) -> StdResult<&mut Self> {
-		 self
-			  .bytes(&value)
-					.map_err(cbor_to_std_error)
-	}
+    #[inline]
+    fn ext_bytes(&mut self, value: &[u8]) -> StdResult<&mut Self> {
+        self.bytes(value).map_err(cbor_to_std_error)
+    }
 
-	#[inline]
-	fn ext_timestamp(&mut self, value: u64) -> StdResult<&mut Self> {
-		 self
-			  .ext_tag(cbor_data::IanaTag::Timestamp)?
-			  .u64(value)
-					.map_err(cbor_to_std_error)
-	}
+    #[inline]
+    fn ext_timestamp(&mut self, value: u64) -> StdResult<&mut Self> {
+        self.ext_tag(cbor_data::IanaTag::Timestamp)?
+            .u64(value)
+            .map_err(cbor_to_std_error)
+    }
 }

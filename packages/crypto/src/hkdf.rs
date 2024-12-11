@@ -16,9 +16,7 @@ pub fn hkdf_sha_256(
     let okm = zero_bytes.as_mut_slice();
     match hk.expand(info, okm) {
         Ok(_) => Ok(okm.to_vec()),
-        Err(e) => {
-            Err(StdError::generic_err(format!("{:?}", e)))
-        }
+        Err(e) => Err(StdError::generic_err(format!("{:?}", e))),
     }
 }
 
@@ -33,8 +31,6 @@ pub fn hkdf_sha_512(
     let okm = zero_bytes.as_mut_slice();
     match hk.expand(info, okm) {
         Ok(_) => Ok(okm.to_vec()),
-        Err(e) => {
-            Err(StdError::generic_err(format!("{:?}", e)))
-        }
+        Err(e) => Err(StdError::generic_err(format!("{:?}", e))),
     }
 }

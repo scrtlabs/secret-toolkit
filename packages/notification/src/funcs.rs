@@ -1,7 +1,7 @@
-use cosmwasm_std::{Binary, CanonicalAddr, StdResult};
-use secret_toolkit_crypto::{sha_256, hkdf_sha_256, HmacSha256};
-use hkdf::hmac::Mac;
 use crate::cipher_data;
+use cosmwasm_std::{Binary, CanonicalAddr, StdResult};
+use hkdf::hmac::Mac;
+use secret_toolkit_crypto::{hkdf_sha_256, sha_256, HmacSha256};
 
 pub const SEED_LEN: usize = 32; // 256 bits
 
@@ -10,9 +10,14 @@ pub const SEED_LEN: usize = 32; // 256 bits
 ///
 ///   Returns a notification id for the given address and channel id.
 ///
-pub fn notification_id(seed: &Binary, channel: &str, tx_hash: &String) -> StdResult<Binary> {
+pub fn notification_id(seed: &Binary, channel: &str, tx_hash: &str) -> StdResult<Binary> {
     // compute notification ID for this event
-    let material = [channel.as_bytes(), ":".as_bytes(), tx_hash.to_ascii_uppercase().as_bytes()].concat();
+    let material = [
+        channel.as_bytes(),
+        ":".as_bytes(),
+        tx_hash.to_ascii_uppercase().as_bytes(),
+    ]
+    .concat();
 
     // create HMAC from seed
     let mut mac: HmacSha256 = HmacSha256::new_from_slice(seed.0.as_slice()).unwrap();
@@ -27,7 +32,7 @@ pub fn notification_id(seed: &Binary, channel: &str, tx_hash: &String) -> StdRes
 ///
 /// fn encrypt_notification_data
 ///
-///   Returns encrypted bytes given plaintext bytes, address, and channel id. 
+///   Returns encrypted bytes given plaintext bytes, address, and channel id.
 ///   Optionally, can set block size (default 36).
 ///
 pub fn encrypt_notification_data(
@@ -73,12 +78,7 @@ pub fn encrypt_notification_data(
 
 /// get the seed for a secret and given address
 pub fn get_seed(addr: &CanonicalAddr, secret: &[u8]) -> StdResult<Binary> {
-    let seed = hkdf_sha_256(
-        &None,
-        secret,
-        addr.as_slice(),
-        SEED_LEN,
-    )?;
+    let seed = hkdf_sha_256(&None, secret, addr.as_slice(), SEED_LEN)?;
 
     Ok(Binary::from(seed))
 }
@@ -96,4 +96,3 @@ fn zero_pad_right(message: &mut Vec<u8>, block_size: usize) -> &mut Vec<u8> {
     message.extend(std::iter::repeat(0x00).take(missing));
     message
 }
-

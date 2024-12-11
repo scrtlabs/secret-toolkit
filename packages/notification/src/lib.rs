@@ -1,10 +1,10 @@
 #![doc = include_str!("../Readme.md")]
 
-pub mod structs;
-pub mod funcs;
-pub mod cipher;
 pub mod cbor;
-pub use structs::*;
-pub use funcs::*;
-pub use cipher::*;
+pub mod cipher;
+pub mod funcs;
+pub mod structs;
 pub use cbor::*;
+pub use cipher::*;
+pub use funcs::*;
+pub use structs::*;

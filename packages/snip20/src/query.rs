@@ -211,9 +211,7 @@ impl QueryMsg {
                 code_hash,
                 msg,
             }))
-            .map_err(|err| {
-                StdError::generic_err(format!("Error performing {self} query: {err}"))
-            })
+            .map_err(|err| StdError::generic_err(format!("Error performing {self} query: {err}")))
     }
 }
 

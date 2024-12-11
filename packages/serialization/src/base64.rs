@@ -87,7 +87,7 @@ impl<S: Serde, T> Base64TVisitor<S, T> {
     }
 }
 
-impl<'de, S: Serde, T: for<'des> de::Deserialize<'des>> de::Visitor<'de> for Base64TVisitor<S, T> {
+impl<S: Serde, T: for<'des> de::Deserialize<'des>> de::Visitor<'_> for Base64TVisitor<S, T> {
     type Value = Base64Of<S, T>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

@@ -1,9 +1,9 @@
 use cosmwasm_std::{Addr, Api, Binary, Env, StdError, StdResult, Uint64};
+use minicbor::Encoder;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use minicbor::{encode as cbor_encode, Encoder};
 
-use crate::{encrypt_notification_data, get_seed, notification_id, cbor_to_std_error};
+use crate::{cbor_to_std_error, encrypt_notification_data, get_seed, notification_id};
 
 #[derive(Serialize, Debug, Deserialize, Clone)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
@@ -49,7 +49,6 @@ pub trait DirectChannel {
     fn encode_cbor(&self, api: &dyn Api, encoder: &mut Encoder<&mut [u8]>) -> StdResult<()>;
 }
 
-
 impl<T: DirectChannel> Notification<T> {
     pub fn new(notification_for: Addr, data: T) -> Self {
         Notification {
@@ -66,9 +65,12 @@ impl<T: DirectChannel> Notification<T> {
         block_size: Option<usize>,
     ) -> StdResult<TxHashNotification> {
         // extract and normalize tx hash
-        let tx_hash = env.transaction.clone()
+        let tx_hash = env
+            .transaction
+            .clone()
             .ok_or(StdError::generic_err("no tx hash found"))?
-            .hash.to_ascii_uppercase();
+            .hash
+            .to_ascii_uppercase();
 
         // canonicalize notification recipient address
         let notification_for_raw = api.addr_canonicalize(self.notification_for.as_str())?;
@@ -93,13 +95,9 @@ impl<T: DirectChannel> Notification<T> {
         )?;
 
         // enstruct
-        Ok(TxHashNotification {
-            id,
-            encrypted_data,
-        })
+        Ok(TxHashNotification { id, encrypted_data })
     }
 }
-
 
 #[derive(Serialize, Debug, Deserialize, Clone)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
@@ -190,4 +188,3 @@ pub trait GroupChannel<D: DirectChannel> {
 
     fn notifications(&self) -> &Vec<Notification<D>>;
 }
-

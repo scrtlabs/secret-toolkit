@@ -4,6 +4,8 @@
 pub use secret_toolkit_crypto as crypto;
 #[cfg(feature = "incubator")]
 pub use secret_toolkit_incubator as incubator;
+#[cfg(feature = "notification")]
+pub use secret_toolkit_notification as notification;
 #[cfg(feature = "permit")]
 pub use secret_toolkit_permit as permit;
 #[cfg(feature = "serialization")]
@@ -18,5 +20,3 @@ pub use secret_toolkit_storage as storage;
 pub use secret_toolkit_utils as utils;
 #[cfg(feature = "viewing-key")]
 pub use secret_toolkit_viewing_key as viewing_key;
-#[cfg(feature = "notification")]
-pub use secret_toolkit_notification as notification;

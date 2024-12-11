@@ -10,7 +10,7 @@ Each notification channel will have a specified data format, which is defined by
 
 The following example illustrates how you might implement this for a channel called `my_channel` and notification data containing two fields: `sender` and `amount`.
 
-```rust
+```ignore
 use cosmwasm_std::{Api, StdError, StdResult};
 use secret_toolkit::notification::{EncoderExt, CBL_ARRAY_SHORT, CBL_BIGNUM_U64, CBL_U8, Notification, DirectChannel, GroupChannel};
 use serde::{Deserialize, Serialize};
@@ -48,7 +48,7 @@ To send a notification to a recipient you first create a new `Notification` stru
 
 The following code snippet creates a notification for the above `my_channel` and adds it to the contract `Response` as a plaintext attribute.
 
-```rust
+```ignore
 let notification = Notification::new(
     recipient,
     MyNotification {

@@ -61,14 +61,14 @@ mod test {
             height: 1000,
             time: Timestamp::from_seconds(1000000),
             chain_id: "test".to_string(),
-            random: None
+            random: None,
         };
 
         let block_h2000_t2000000 = BlockInfo {
             height: 2000,
             time: Timestamp::from_seconds(2000000),
             chain_id: "test".to_string(),
-            random: None
+            random: None,
         };
         let exp_h1000 = Expiration::AtHeight(1000);
         let exp_t1000000 = Expiration::AtTime(1000000);

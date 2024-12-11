@@ -9,7 +9,6 @@ pub struct ContractPrng {
 }
 
 impl ContractPrng {
-
     pub fn from_env(env: &Env) -> Self {
         let seed = env.block.random.as_ref().unwrap();
 
