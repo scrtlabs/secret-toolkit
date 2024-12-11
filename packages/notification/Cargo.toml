@@ -1,0 +1,35 @@
+[package]
+name = "secret-toolkit-notification"
+version = "0.10.1"
+edition = "2021"
+authors = ["darwinzer0","blake-regalia"]
+license-file = "../../LICENSE"
+repository = "https://github.com/scrtlabs/secret-toolkit"
+readme = "Readme.md"
+description = "Helper tools for SNIP-52 notifications in Secret Contracts"
+categories = ["cryptography::cryptocurrencies", "wasm"]
+keywords = ["secret-network", "secret-contracts", "secret-toolkit"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+cosmwasm-std = { workspace = true, version = "1.0.0" }
+serde = { workspace = true }
+
+ripemd = { version = "0.1.3", default-features = false }
+schemars = { workspace = true }
+
+# rand_core = { version = "0.6.4", default-features = false }
+# rand_chacha = { version = "0.3.1", default-features = false }
+sha2 = "0.10.6"
+chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["alloc", "rand_core"] }
+generic-array = "0.14.7"
+hkdf = "0.12.3"
+primitive-types = { version = "0.12.2", default-features = false }
+hex = "0.4.3"
+minicbor = "0.25.1"
+
+secret-toolkit-crypto = { version = "0.10.1", path = "../crypto", features = [
+    "hash", "hkdf"
+] }
