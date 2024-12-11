@@ -47,7 +47,7 @@ impl<'a, T: Serialize + DeserializeOwned, Ser: Serde> Item<'a, T, Ser> {
     }
 }
 
-impl<'a, T, Ser> Item<'a, T, Ser>
+impl<T, Ser> Item<'_, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,

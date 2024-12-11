@@ -190,8 +190,8 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 }
 
-impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
-    Keymap<'a, K, T, Ser, WithoutIter>
+impl<K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
+    Keymap<'_, K, T, Ser, WithoutIter>
 {
     /// Serialize key
     fn serialize_key(&self, key: &K) -> StdResult<Vec<u8>> {
@@ -504,8 +504,8 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 }
 
-impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
-    PrefixedTypedStorage<InternalItem<T, Ser>, Bincode2> for Keymap<'a, K, T, Ser, WithIter>
+impl<K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
+    PrefixedTypedStorage<InternalItem<T, Ser>, Bincode2> for Keymap<'_, K, T, Ser, WithIter>
 {
     fn as_slice(&self) -> &[u8] {
         if let Some(prefix) = &self.prefix {
@@ -516,8 +516,8 @@ impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: 
     }
 }
 
-impl<'a, K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
-    PrefixedTypedStorage<T, Ser> for Keymap<'a, K, T, Ser, WithoutIter>
+impl<K: Serialize + DeserializeOwned, T: Serialize + DeserializeOwned, Ser: Serde>
+    PrefixedTypedStorage<T, Ser> for Keymap<'_, K, T, Ser, WithoutIter>
 {
     fn as_slice(&self) -> &[u8] {
         if let Some(prefix) = &self.prefix {
@@ -565,7 +565,7 @@ where
     }
 }
 
-impl<'a, K, T, Ser> Iterator for KeyIter<'a, K, T, Ser>
+impl<K, T, Ser> Iterator for KeyIter<'_, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
@@ -618,7 +618,7 @@ where
     }
 }
 
-impl<'a, K, T, Ser> DoubleEndedIterator for KeyIter<'a, K, T, Ser>
+impl<K, T, Ser> DoubleEndedIterator for KeyIter<'_, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
@@ -664,7 +664,7 @@ where
 }
 
 // This enables writing `.iter().skip(n).rev()`
-impl<'a, K, T, Ser> ExactSizeIterator for KeyIter<'a, K, T, Ser>
+impl<K, T, Ser> ExactSizeIterator for KeyIter<'_, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
@@ -711,7 +711,7 @@ where
     }
 }
 
-impl<'a, K, T, Ser> Iterator for KeyItemIter<'a, K, T, Ser>
+impl<K, T, Ser> Iterator for KeyItemIter<'_, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
@@ -775,7 +775,7 @@ where
     }
 }
 
-impl<'a, K, T, Ser> DoubleEndedIterator for KeyItemIter<'a, K, T, Ser>
+impl<K, T, Ser> DoubleEndedIterator for KeyItemIter<'_, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,
@@ -832,7 +832,7 @@ where
 }
 
 // This enables writing `.iter().skip(n).rev()`
-impl<'a, K, T, Ser> ExactSizeIterator for KeyItemIter<'a, K, T, Ser>
+impl<K, T, Ser> ExactSizeIterator for KeyItemIter<'_, K, T, Ser>
 where
     K: Serialize + DeserializeOwned,
     T: Serialize + DeserializeOwned,

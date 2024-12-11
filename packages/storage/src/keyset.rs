@@ -152,7 +152,7 @@ impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser> {
     }
 }
 
-impl<'a, K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'a, K, Ser, WithoutIter> {
+impl<K: Serialize + DeserializeOwned, Ser: Serde> Keyset<'_, K, Ser, WithoutIter> {
     fn as_slice(&self) -> &[u8] {
         if let Some(prefix) = &self.prefix {
             prefix
@@ -476,7 +476,7 @@ where
     }
 }
 
-impl<'a, K, Ser> Iterator for ValueIter<'a, K, Ser>
+impl<K, Ser> Iterator for ValueIter<'_, K, Ser>
 where
     K: Serialize + DeserializeOwned,
     Ser: Serde,
@@ -528,7 +528,7 @@ where
     }
 }
 
-impl<'a, K, Ser> DoubleEndedIterator for ValueIter<'a, K, Ser>
+impl<K, Ser> DoubleEndedIterator for ValueIter<'_, K, Ser>
 where
     K: Serialize + DeserializeOwned,
     Ser: Serde,
@@ -573,7 +573,7 @@ where
 }
 
 // This enables writing `append_store.iter().skip(n).rev()`
-impl<'a, K, Ser> ExactSizeIterator for ValueIter<'a, K, Ser>
+impl<K, Ser> ExactSizeIterator for ValueIter<'_, K, Ser>
 where
     K: Serialize + DeserializeOwned,
     Ser: Serde,

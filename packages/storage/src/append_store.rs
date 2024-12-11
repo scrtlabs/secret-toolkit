@@ -331,7 +331,7 @@ where
     }
 }
 
-impl<'a, T, Ser> Iterator for AppendStoreIter<'a, T, Ser>
+impl<T, Ser> Iterator for AppendStoreIter<'_, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
@@ -384,7 +384,7 @@ where
     }
 }
 
-impl<'a, T, Ser> DoubleEndedIterator for AppendStoreIter<'a, T, Ser>
+impl<T, Ser> DoubleEndedIterator for AppendStoreIter<'_, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
@@ -429,7 +429,7 @@ where
 }
 
 // This enables writing `append_store.iter().skip(n).rev()`
-impl<'a, T, Ser> ExactSizeIterator for AppendStoreIter<'a, T, Ser>
+impl<T, Ser> ExactSizeIterator for AppendStoreIter<'_, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,

@@ -441,7 +441,7 @@ where
     }
 }
 
-impl<'a, T, Ser> Iterator for DequeStoreIter<'a, T, Ser>
+impl<T, Ser> Iterator for DequeStoreIter<'_, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
@@ -506,7 +506,7 @@ where
     }
 }
 
-impl<'a, T, Ser> DoubleEndedIterator for DequeStoreIter<'a, T, Ser>
+impl<T, Ser> DoubleEndedIterator for DequeStoreIter<'_, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
@@ -564,7 +564,7 @@ where
 }
 
 // This enables writing `deque_store.iter().skip(n).rev()`
-impl<'a, T, Ser> ExactSizeIterator for DequeStoreIter<'a, T, Ser>
+impl<T, Ser> ExactSizeIterator for DequeStoreIter<'_, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,

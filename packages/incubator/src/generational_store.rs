@@ -387,7 +387,6 @@ where
     ///
     /// # Errors
     /// Will return an error if the position is out of bounds
-
     fn set_at_unchecked(&mut self, pos: u32, item: &Entry<T>) -> StdResult<()> {
         match item {
             Entry::Free { next_free } => {
@@ -662,7 +661,7 @@ where
 }
 
 // Manual `Clone` implementation because the default one tries to clone the Storage??
-impl<'a, T, Ser> Clone for GenerationalStore<'a, T, Ser>
+impl<T, Ser> Clone for GenerationalStore<'_, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
@@ -693,7 +692,7 @@ where
     end: u32,
 }
 
-impl<'a, T, Ser> Iterator for Iter<'a, T, Ser>
+impl<T, Ser> Iterator for Iter<'_, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
@@ -781,7 +780,7 @@ where
     }
 }
 
-impl<'a, T, Ser> DoubleEndedIterator for Iter<'a, T, Ser>
+impl<T, Ser> DoubleEndedIterator for Iter<'_, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,
@@ -820,7 +819,7 @@ where
 }
 
 // This enables writing `append_store.iter().skip(n).rev()`
-impl<'a, T, Ser> ExactSizeIterator for Iter<'a, T, Ser>
+impl<T, Ser> ExactSizeIterator for Iter<'_, T, Ser>
 where
     T: Serialize + DeserializeOwned,
     Ser: Serde,

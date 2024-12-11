@@ -26,7 +26,7 @@ impl<'a, T: Serialize + DeserializeOwned + Copy, Ser: Serde> SecureItem<'a, T, S
     }
 }
 
-impl<'a, T, Ser> Drop for SecureItem<'a, T, Ser>
+impl<T, Ser> Drop for SecureItem<'_, T, Ser>
 where
     T: Serialize + DeserializeOwned + Copy,
     Ser: Serde,
@@ -36,7 +36,7 @@ where
     }
 }
 
-impl<'a, T, Ser> SecureItem<'a, T, Ser>
+impl<T, Ser> SecureItem<'_, T, Ser>
 where
     T: Serialize + DeserializeOwned + Copy,
     Ser: Serde,
