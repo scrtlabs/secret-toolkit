@@ -23,7 +23,7 @@ schemars = { workspace = true }
 # rand_core = { version = "0.6.4", default-features = false }
 # rand_chacha = { version = "0.3.1", default-features = false }
 sha2 = "0.10.6"
-chacha20poly1305 = { version = "0.10.2", default-features = false, features = ["alloc", "rand_core"] }
+chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["alloc", "rand_core"] }
 generic-array = "0.14.7"
 hkdf = "0.12.3"
 primitive-types = { version = "0.12.2", default-features = false }
