@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.10.2
+
+### Features
+
+- Added a new `notification` package with data structures and functions to help create SNIP-52 private push notifications compliant secret contracts ([#99](https://github.com/scrtlabs/secret-toolkit/pull/99)).
+
 ## v0.10.1
 
 ### Bug fixes

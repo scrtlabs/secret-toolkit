@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-notification"
-version = "0.10.1"
+version = "0.10.2"
 edition = "2021"
 authors = ["darwinzer0","blake-regalia"]
 license-file = "../../LICENSE"
@@ -23,13 +23,13 @@ schemars = { workspace = true }
 # rand_core = { version = "0.6.4", default-features = false }
 # rand_chacha = { version = "0.3.1", default-features = false }
 sha2 = "0.10.6"
-chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["alloc", "rand_core"] }
+chacha20poly1305 = { version = "0.10.2", default-features = false, features = ["alloc", "rand_core"] }
 generic-array = "0.14.7"
 hkdf = "0.12.3"
 primitive-types = { version = "0.12.2", default-features = false }
 hex = "0.4.3"
 minicbor = "0.25.1"
 
-secret-toolkit-crypto = { version = "0.10.1", path = "../crypto", features = [
+secret-toolkit-crypto = { version = "0.10.2", path = "../crypto", features = [
     "hash", "hkdf"
 ] }
