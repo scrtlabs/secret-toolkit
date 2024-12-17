@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use crate::pubkey_to_account;
 use cosmwasm_std::{Binary, CanonicalAddr, Uint128};
 
+pub const BLANKET_PERMIT_TOKEN: &str = "ANY_TOKEN";
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Permit<Permission: Permissions = TokenPermissions> {
@@ -16,7 +18,7 @@ pub struct Permit<Permission: Permissions = TokenPermissions> {
 
 impl<Permission: Permissions> Permit<Permission> {
     pub fn check_token(&self, token: &str) -> bool {
-        self.params.allowed_tokens.contains(&token.to_string())
+        self.params.allowed_tokens.contains(&token.to_string()) 
     }
 
     pub fn check_permission(&self, permission: &Permission) -> bool {
@@ -32,6 +34,8 @@ pub struct PermitParams<Permission: Permissions = TokenPermissions> {
     pub chain_id: String,
     #[serde(bound = "")]
     pub permissions: Vec<Permission>,
+    pub created: Option<String>,
+    pub expires: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
@@ -162,6 +166,8 @@ impl<Permission: Permissions> PermitMsg<Permission> {
 #[serde(rename_all = "snake_case")]
 pub struct PermitContent<Permission: Permissions = TokenPermissions> {
     pub allowed_tokens: Vec<String>,
+    pub created: Option<String>,
+    pub expires: Option<String>,
     #[serde(bound = "")]
     pub permissions: Vec<Permission>,
     pub permit_name: String,
@@ -171,6 +177,8 @@ impl<Permission: Permissions> PermitContent<Permission> {
     pub fn from_params(params: &PermitParams<Permission>) -> Self {
         Self {
             allowed_tokens: params.allowed_tokens.clone(),
+            created: params.created.clone(),
+            expires: params.expires.clone(),
             permit_name: params.permit_name.clone(),
             permissions: params.permissions.clone(),
         }
