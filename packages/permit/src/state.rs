@@ -7,14 +7,15 @@ use serde::{Deserialize, Serialize};
 /// storage prefix for named permits and "all_revoked_permits" for revoked blanket permits.
 /// It also sets the maximum number of all permit revocations to 10 by default.
 ///
-/// You can use another storage location by implementing `RevokedPermitsStore` for your own type.
+/// You can use different storage locations and parameters by implementing `RevokedPermitsStore` 
+/// for your own type.
 pub struct RevokedPermits;
 
 impl<'a> RevokedPermitsStore<'a> for RevokedPermits {
     const NAMED_REVOKED_PERMITS_PREFIX: &'static [u8] = b"revoked_permits";
     const ALL_REVOKED_PERMITS: Keymap<'a, u64, AllRevokedInterval> = Keymap::new(b"all_revoked_permits");
     const ALL_REVOKED_NEXT_ID: Item<'a, u64> = Item::new(b"all_revoked_permits_serial_id");
-    const MAX_ALL_REVOKED_INTERVALS: u8 = 10;
+    const MAX_ALL_REVOKED_INTERVALS: Option<u8> = Some(10);
 }
 
 /// A trait describing the interface of a RevokedPermits store/vault.
@@ -25,7 +26,7 @@ pub trait RevokedPermitsStore<'a> {
     const NAMED_REVOKED_PERMITS_PREFIX: &'static [u8];
     const ALL_REVOKED_PERMITS: Keymap<'a, u64, AllRevokedInterval>;
     const ALL_REVOKED_NEXT_ID: Item<'a, u64>;
-    const MAX_ALL_REVOKED_INTERVALS: u8;
+    const MAX_ALL_REVOKED_INTERVALS: Option<u8>;
 
     /// returns a bool indicating if a named permit is revoked
     fn is_permit_revoked(
@@ -70,10 +71,12 @@ pub trait RevokedPermitsStore<'a> {
         let all_revocations_store = Self::ALL_REVOKED_PERMITS.add_suffix(account.as_bytes());
 
         // check that maximum number of revocations has not been met
-        if all_revocations_store.get_len(storage)? >= Self::MAX_ALL_REVOKED_INTERVALS.into() {
-            return Err(StdError::generic_err(
-                format!("Maximum number of permit revocations ({}) has been met", Self::MAX_ALL_REVOKED_INTERVALS)
-            ));
+        if let Some(max_revocations) = Self::MAX_ALL_REVOKED_INTERVALS {
+            if all_revocations_store.get_len(storage)? >= max_revocations.into() {
+                return Err(StdError::generic_err(
+                    format!("Maximum number of permit revocations ({}) has been met", max_revocations)
+                ));
+            }
         }
 
         // get the next id store for this account
