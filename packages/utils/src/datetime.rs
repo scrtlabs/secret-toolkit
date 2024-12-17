@@ -21,3 +21,23 @@ pub fn iso8601_utc0_to_timestamp(iso8601_str: &str) -> StdResult<Timestamp> {
         Err(StdError::generic_err("ISO 8601 string not in Zulu (UTC+0)"))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::iso8601_utc0_to_timestamp;
+
+    #[test]
+    fn test_iso8601_utc0_to_timestamp() {
+        let dt_string = "2024-12-17T16:59:00.000Z";
+        let timestamp = iso8601_utc0_to_timestamp(dt_string).unwrap();
+        assert_eq!(timestamp.nanos(), 1734454740000000000);
+
+        let dt_string = "2024-12-17T16:59:00.000";
+        let timestamp = iso8601_utc0_to_timestamp(dt_string);
+        assert!(timestamp.is_err(), "datetime string without Z Ok: {:?}", timestamp);
+
+        let dt_string = "not a datetime";
+        let timestamp = iso8601_utc0_to_timestamp(dt_string);
+        assert!(timestamp.is_err(), "invalid datetime string Ok: {:?}", timestamp);
+    }
+}
