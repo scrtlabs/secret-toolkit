@@ -166,7 +166,9 @@ impl<Permission: Permissions> PermitMsg<Permission> {
 #[serde(rename_all = "snake_case")]
 pub struct PermitContent<Permission: Permissions = TokenPermissions> {
     pub allowed_tokens: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub created: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub expires: Option<String>,
     #[serde(bound = "")]
     pub permissions: Vec<Permission>,
