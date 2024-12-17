@@ -122,7 +122,7 @@ pub trait RevokedPermitsStore<'a> {
             .filter_map(|r| {
                 match r {
                     Ok(r) => Some(AllRevocation {
-                        id: Uint64::from(r.0),
+                        revocation_id: Uint64::from(r.0),
                         interval: r.1.clone()
                     }),
                     Err(_) => None
@@ -145,6 +145,6 @@ pub struct AllRevokedInterval {
 /// Revocation id and interval data struct
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct AllRevocation {
-    pub id: Uint64,
+    pub revocation_id: Uint64,
     pub interval: AllRevokedInterval,
 }
