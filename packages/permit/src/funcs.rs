@@ -10,7 +10,7 @@ use secret_toolkit_crypto::sha_256;
 
 pub fn validate<Permission: Permissions>(
     deps: Deps,
-    env: Env,
+    env: &Env,
     permit: &Permit<Permission>,
     current_token_address: String,
     hrp: Option<&str>,
@@ -181,7 +181,7 @@ mod tests {
 
         let address = validate::<_>(
             deps.as_ref(),
-            env,
+            &env,
             &permit,
             token.clone(),
             Some("secret"),
@@ -197,7 +197,7 @@ mod tests {
 
         let address = validate::<_>(
             deps.as_ref(), 
-            env, 
+            &env, 
             &permit, 
             token, 
             Some("cosmos")
@@ -249,7 +249,7 @@ mod tests {
         // secret16v498l7d335wlzxpzg0mwkucrszdlza008dhc9
         let address = validate::<_>(
             deps.as_ref(),
-            env,
+            &env,
             &permit,
             token.clone(),
             Some("secret"),
@@ -267,7 +267,7 @@ mod tests {
 
         let address = validate::<_>(
             deps.as_ref(),
-            env,
+            &env,
             &permit,
             token.clone(),
             Some("secret"),
@@ -282,7 +282,7 @@ mod tests {
 
         let address = validate::<_>(
             deps.as_ref(),
-            env,
+            &env,
             &permit,
             token.clone(),
             Some("secret"),
@@ -331,7 +331,7 @@ mod tests {
         // secret16v498l7d335wlzxpzg0mwkucrszdlza008dhc9
         let address = validate::<_>(
             deps.as_ref(),
-            env,
+            &env,
             &permit,
             token.clone(),
             Some("secret"),
@@ -349,7 +349,7 @@ mod tests {
 
         let address = validate::<_>(
             deps.as_ref(),
-            env,
+            &env,
             &permit,
             token.clone(),
             Some("secret"),
@@ -364,7 +364,7 @@ mod tests {
 
         let address = validate::<_>(
             deps.as_ref(),
-            env,
+            &env,
             &permit,
             token.clone(),
             Some("secret"),
@@ -404,7 +404,7 @@ mod tests {
         // secret16v498l7d335wlzxpzg0mwkucrszdlza008dhc9
         let address = validate::<_>(
             deps.as_ref(),
-            env,
+            &env,
             &permit,
             token.clone(),
             Some("secret"),
@@ -444,7 +444,7 @@ mod tests {
         // secret16v498l7d335wlzxpzg0mwkucrszdlza008dhc9
         let address = validate::<_>(
             deps.as_ref(),
-            env,
+            &env,
             &permit,
             token.clone(),
             Some("secret"),
