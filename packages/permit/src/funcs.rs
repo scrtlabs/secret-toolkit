@@ -1,6 +1,6 @@
 use std::u64;
 
-use cosmwasm_std::{to_binary, Binary, CanonicalAddr, Deps, Env, StdError, StdResult, Timestamp};
+use cosmwasm_std::{to_binary, Binary, CanonicalAddr, Deps, Env, StdError, StdResult, Timestamp, Uint64};
 use ripemd::{Digest, Ripemd160};
 use secret_toolkit_utils::iso8601_utc0_to_timestamp;
 
@@ -52,7 +52,7 @@ pub fn validate<Permission: Permissions>(
 
     if let Some(created) = created_timestamp {
         // Verify that the permit was not created after the current block time
-        if created > env.block.time {
+        if created.seconds() > env.block.time.seconds() {
             return Err(StdError::generic_err("Permit `created` after current block time"));
         }
     }
@@ -66,7 +66,7 @@ pub fn validate<Permission: Permissions>(
 
     if let Some(expires) = expires_timestamp {
         // Verify that the permit did not expire before the current block time
-        if expires <= env.block.time {
+        if expires.seconds() <= env.block.time.seconds() {
             return Err(StdError::generic_err("Permit has expired"))
         }
     }
@@ -94,13 +94,13 @@ pub fn validate<Permission: Permissions>(
         // If the permit has a `created` field
         if let Some(created) = created_timestamp {
             // Revocation created before field, default 0
-            let created_before = revocation.interval.created_before.unwrap_or(Timestamp::from_nanos(0));
+            let created_before = revocation.interval.created_before.unwrap_or(Uint64::from(0u64));
 
             // Revocation created after field, default max u64
-            let created_after = revocation.interval.created_after.unwrap_or(Timestamp::from_nanos(u64::MAX));
+            let created_after = revocation.interval.created_after.unwrap_or(Uint64::from(u64::MAX));
 
             // If the permit's `created` field falls in between created after and created before, then reject it
-            if created > created_after || created < created_before {
+            if created.seconds() > created_after.u64() || created.seconds() < created_before.u64() {
                 return Err(StdError::generic_err(
                     format!("Permits created at {:?} revoked by account {:?}", created, account.as_str())
                 ));                

@@ -138,15 +138,15 @@ pub trait RevokedPermitsStore<'a> {
 /// An interval over which all permits will be rejected
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct AllRevokedInterval {
-    pub created_before: Option<Timestamp>,
-    pub created_after: Option<Timestamp>,
+    pub created_before: Option<Uint64>,
+    pub created_after: Option<Uint64>,
 }
 
 impl AllRevokedInterval {
     fn into_stored(&self) -> StoredAllRevokedInterval {
         StoredAllRevokedInterval { 
-            created_before: self.created_before.and_then(|cb| Some(cb.seconds())), 
-            created_after: self.created_after.and_then(|ca| Some(ca.seconds())), 
+            created_before: self.created_before.and_then(|cb| Some(cb.u64())), 
+            created_after: self.created_after.and_then(|ca| Some(ca.u64())), 
         }
     }
 }
@@ -161,8 +161,8 @@ pub struct StoredAllRevokedInterval {
 impl StoredAllRevokedInterval {
     fn to_humanized(&self) -> AllRevokedInterval {
         AllRevokedInterval {
-            created_before: self.created_before.and_then(|cb| Some(Timestamp::from_seconds(cb))), 
-            created_after: self.created_after.and_then(|ca| Some(Timestamp::from_seconds(ca))),
+            created_before: self.created_before.and_then(|cb| Some(Uint64::from(cb))), 
+            created_after: self.created_after.and_then(|ca| Some(Uint64::from(ca))),
         }
     }
 }
