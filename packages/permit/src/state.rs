@@ -167,9 +167,9 @@ pub trait RevokedPermitsStore<'a> {
             })
             .collect();
 
-        // check if there is an all time revocation and add that as well
-        let all_time_revoked_store = Self::ALL_TIME_REVOKED_ALL.add_suffix(account.as_bytes());
-        if all_time_revoked_store.may_load(storage)?.unwrap_or_default() {
+        // check if there is an all time revocation 
+        if Self::is_all_time_revoked(storage, account)? {
+            // add that to the result
             result.push(AllRevocation {
                 revocation_id: REVOKED_ALL.to_string(),
                 interval: AllRevokedInterval { 
@@ -178,6 +178,16 @@ pub trait RevokedPermitsStore<'a> {
                 }
             });
         }
+
+        Ok(result)
+    }
+
+    /// returns bool if queries are all time revoked for this account
+    fn is_all_time_revoked(storage: &dyn Storage, account: &str) -> StdResult<bool> {
+        // get the all time revoked store for this account
+        let all_time_revoked_store = Self::ALL_TIME_REVOKED_ALL.add_suffix(account.as_bytes());
+
+        let result = all_time_revoked_store.may_load(storage)?.unwrap_or_default();
 
         Ok(result)
     }

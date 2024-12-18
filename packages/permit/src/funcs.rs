@@ -80,17 +80,17 @@ pub fn validate<Permission: Permissions>(
     // Get the list of all revocations for this address
     let revocations = RevokedPermits::list_revocations(deps.storage, &account)?;
 
+    // Check if account has an all time permit revocation
+    if RevokedPermits::is_all_time_revoked(deps.storage, account.as_str())? {
+        return Err(StdError::generic_err(
+            format!("Permits revoked by {:?}", account.as_str())
+        ));
+    }
+
     // Check if there are any revocation intervals blocking all permits
     //   TODO: An interval or segment tree might be preferable to make this more efficient for cases 
     //         when the number of revocations is allowed to grow to a large amount.
     for revocation in revocations {
-        // If this revocation has no `created_before` or `created_after`, then reject all permit queries
-        if revocation.interval.created_before.is_none() && revocation.interval.created_after.is_none() {
-            return Err(StdError::generic_err(
-                format!("Permits revoked by {:?}", account.as_str())
-            ));
-        }
-
         // If the permit has a `created` field
         if let Some(created) = created_timestamp {
             // Revocation created before field, default 0
