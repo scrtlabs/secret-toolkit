@@ -1,4 +1,4 @@
-use cosmwasm_std::{StdError, StdResult, Storage, Timestamp, Uint64};
+use cosmwasm_std::{StdError, StdResult, Storage, Uint64};
 use schemars::JsonSchema;
 use secret_toolkit_storage::{Item, Keymap};
 use serde::{Deserialize, Serialize};

@@ -1,6 +1,6 @@
 use std::u64;
 
-use cosmwasm_std::{to_binary, Binary, CanonicalAddr, Deps, Env, StdError, StdResult, Timestamp, Uint64};
+use cosmwasm_std::{to_binary, Binary, CanonicalAddr, Deps, Env, StdError, StdResult, Uint64};
 use ripemd::{Digest, Ripemd160};
 use secret_toolkit_utils::iso8601_utc0_to_timestamp;
 
@@ -148,7 +148,7 @@ pub fn pubkey_to_account(pubkey: &Binary) -> CanonicalAddr {
 mod tests {
     use super::*;
     use crate::{PermitParams, PermitSignature, PubKey, TokenPermissions};
-    use cosmwasm_std::testing::{mock_dependencies, mock_env};
+    use cosmwasm_std::{testing::{mock_dependencies, mock_env}, Timestamp};
 
     #[test]
     fn test_verify_permit() {
