@@ -7,6 +7,7 @@ use crate::pubkey_to_account;
 use cosmwasm_std::{Binary, CanonicalAddr, Uint128};
 
 pub const BLANKET_PERMIT_TOKEN: &str = "ANY_TOKEN";
+pub const REVOKED_ALL: &str = "REVOKED_ALL";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

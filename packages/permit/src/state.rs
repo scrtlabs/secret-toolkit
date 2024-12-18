@@ -3,6 +3,8 @@ use schemars::JsonSchema;
 use secret_toolkit_storage::{Item, Keymap};
 use serde::{Deserialize, Serialize};
 
+use crate::REVOKED_ALL;
+
 /// This is the default implementation of the revoked permits store, using the "revoked_permits"
 /// storage prefix for named permits and "all_revoked_permits" for revoked blanket permits.
 /// It also sets the maximum number of all permit revocations to 10 by default.
@@ -13,9 +15,10 @@ pub struct RevokedPermits;
 
 impl<'a> RevokedPermitsStore<'a> for RevokedPermits {
     const NAMED_REVOKED_PERMITS_PREFIX: &'static [u8] = b"revoked_permits";
-    const ALL_REVOKED_PERMITS: Keymap<'a, u64, StoredAllRevokedInterval> = Keymap::new(b"all_revoked_permits");
-    const ALL_REVOKED_NEXT_ID: Item<'a, u64> = Item::new(b"all_revoked_permits_serial_id");
+    const ALL_REVOKED_PERMITS: Keymap<'a, u64, StoredAllRevokedInterval> = Keymap::new(b"__all_revoked_permits__1");
+    const ALL_REVOKED_NEXT_ID: Item<'a, u64> = Item::new(b"__all_revoked_permits_serial_id__1");
     const MAX_ALL_REVOKED_INTERVALS: Option<u8> = Some(10);
+    const ALL_TIME_REVOKED_ALL:Item<'a, bool> = Item::new(b"__all_time_revoked_all__1");
 }
 
 /// A trait describing the interface of a RevokedPermits store/vault.
@@ -27,6 +30,7 @@ pub trait RevokedPermitsStore<'a> {
     const ALL_REVOKED_PERMITS: Keymap<'a, u64, StoredAllRevokedInterval>;
     const ALL_REVOKED_NEXT_ID: Item<'a, u64>;
     const MAX_ALL_REVOKED_INTERVALS: Option<u8>;
+    const ALL_TIME_REVOKED_ALL:Item<'a, bool>;
 
     /// returns a bool indicating if a named permit is revoked
     fn is_permit_revoked(
@@ -66,7 +70,23 @@ pub trait RevokedPermitsStore<'a> {
         storage: &mut dyn Storage,
         account: &str,
         interval: &AllRevokedInterval,
-    ) -> StdResult<Uint64> {
+    ) -> StdResult<String> {
+        // Check if *neither* `created_before` or `created_after` is supplied
+        // In this case, we are globally turning off all permits for this address, which
+        // makes it so ANY permit will be rejected. This special case does not count
+        // toward the maximum number of revoked intervals.
+        if interval.created_before.is_none() && interval.created_after.is_none() {
+            // get all time revocations store for this account
+            let all_time_revoked_store = Self::ALL_TIME_REVOKED_ALL.add_suffix(account.as_bytes());
+            
+            // set all time revocations to true, this is idempotent
+            all_time_revoked_store.save(storage, &true)?;
+
+            // return a revocation ID of "REVOKED_ALL"
+            return Ok(REVOKED_ALL.to_string());
+        }
+
+
         // get the revocations store for this account
         let all_revocations_store = Self::ALL_REVOKED_PERMITS.add_suffix(account.as_bytes());
 
@@ -91,20 +111,37 @@ pub trait RevokedPermitsStore<'a> {
         // increment next id
         next_id_store.save(storage, &(next_id.wrapping_add(1)))?;
 
-        Ok(Uint64::from(next_id))
+        Ok(format!("{}", next_id))
     }
 
     /// deletes the permit revocation with the given id for this account
     fn delete_revocation(
         storage: &mut dyn Storage,
         account: &str,
-        id: Uint64,
+        id: &str,
     ) -> StdResult<()> {
+        // check if this is the all time special case
+        if id == REVOKED_ALL {
+            // get all time revocations store for this account
+            let all_time_revoked_store = Self::ALL_TIME_REVOKED_ALL.add_suffix(account.as_bytes());
+            
+            // set all time revocations to false
+            all_time_revoked_store.save(storage, &false)?;
+
+            // return
+            return Ok(())
+        }
+
         // get the revocations store for this account
         let all_revocations_store = Self::ALL_REVOKED_PERMITS.add_suffix(account.as_bytes());
 
+        // try to convert id to a u64
+        let Ok(id_str) = u64::from_str_radix(id, 10) else {
+            return Err(StdError::generic_err("Deleted revocation id not Uint64"));
+        };
+
         // remove the permit revocation with the given id
-        all_revocations_store.remove(storage, &id.u64())
+        all_revocations_store.remove(storage, &id_str)
     }
 
     /// lists all the revocations for the account
@@ -117,18 +154,30 @@ pub trait RevokedPermitsStore<'a> {
         let all_revocations_store = Self::ALL_REVOKED_PERMITS.add_suffix(account.as_bytes());
 
         // select elements and convert to AllRevocation structs
-        let result = all_revocations_store
+        let mut result: Vec<AllRevocation> = all_revocations_store
             .iter(storage)?
             .filter_map(|r| {
                 match r {
                     Ok(r) => Some(AllRevocation {
-                        revocation_id: Uint64::from(r.0),
+                        revocation_id: format!("{}", r.0),
                         interval: r.1.to_humanized()
                     }),
                     Err(_) => None
                 }
             })
             .collect();
+
+        // check if there is an all time revocation and add that as well
+        let all_time_revoked_store = Self::ALL_TIME_REVOKED_ALL.add_suffix(account.as_bytes());
+        if all_time_revoked_store.may_load(storage)?.unwrap_or_default() {
+            result.push(AllRevocation {
+                revocation_id: REVOKED_ALL.to_string(),
+                interval: AllRevokedInterval { 
+                    created_before: None, 
+                    created_after: None 
+                }
+            });
+        }
 
         Ok(result)
     }
@@ -170,6 +219,6 @@ impl StoredAllRevokedInterval {
 /// Revocation id and interval data struct
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct AllRevocation {
-    pub revocation_id: Uint64,
+    pub revocation_id: String,
     pub interval: AllRevokedInterval,
 }
