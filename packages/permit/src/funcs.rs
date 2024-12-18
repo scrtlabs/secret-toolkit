@@ -171,8 +171,9 @@ mod tests {
                 pub_key: PubKey {
                     r#type: "tendermint/PubKeySecp256k1".to_string(),
                     value: Binary::from_base64("A5M49l32ZrV+SDsPnoRv8fH7ivNC4gEX9prvd4RwvRaL").unwrap(),
+
                 },
-                signature: Binary::from_base64("hw/Mo3ZZYu1pEiDdymElFkuCuJzg9soDHw+4DxK7cL9rafiyykh7VynS+guotRAKXhfYMwCiyWmiznc6R+UlsQ==").unwrap()
+                signature: Binary::from_base64("hw/Mo3ZZYu1pEiDdymElFkuCuJzg9soDHw+4DxK7cL9rafiyykh7VynS+guotRAKXhfYMwCiyWmiznc6R+UlsQ==").unwrap()                
             }
         };
 
@@ -206,5 +207,249 @@ mod tests {
             address,
             "cosmos1399pyvvk3hvwgxwt3udkslsc5jl3rqv4x4rq7r".to_string()
         );
+    }
+
+    #[test]
+    fn test_verify_permit_created_expires() {
+        let deps = mock_dependencies();
+
+        // test both created and expired set
+
+        //{"permit": {"params":{"chain_id":"secret-4","permit_name":"test","allowed_tokens":["secret18vd8fpwxzck93qlwghaj6arh4p7c5n8978vsyg"],"permissions":["balance"],"created":"2024-12-17T16:59:00.000Z","expires":"2024-12-20T06:59:30.333Z"},"signature":{"pub_key":{"type":"tendermint/PubKeySecp256k1","value":"AwSFyMndr25JX03rGSlXQ5oSO6F+9GoqQILZu/DytRrr"},"signature":"mFDn5w59gaDTHZ5UzEA6l+sUOtlWDx/HcSi1NpZM13YuamMehIi3mseqXcQy4loE63N0hYhyXiVZdzrPM28A+g=="}}}
+
+        let token = "secret18vd8fpwxzck93qlwghaj6arh4p7c5n8978vsyg".to_string();
+
+        let permit: Permit = Permit{
+            params: PermitParams {
+                allowed_tokens: vec![token.clone()],
+                permit_name: "test".to_string(),
+                chain_id: "secret-4".to_string(),
+                permissions: vec![TokenPermissions::Balance],
+                created: Some("2024-12-17T16:59:00.000Z".to_string()),
+                expires: Some("2024-12-20T06:59:30.333Z".to_string()),
+            },
+            // {"pub_key":{"type":"tendermint/PubKeySecp256k1","value":"AwSFyMndr25JX03rGSlXQ5oSO6F+9GoqQILZu/DytRrr"},"signature":"mFDn5w59gaDTHZ5UzEA6l+sUOtlWDx/HcSi1NpZM13YuamMehIi3mseqXcQy4loE63N0hYhyXiVZdzrPM28A+g=="}
+            signature: PermitSignature {
+                pub_key: PubKey {
+                    r#type: "tendermint/PubKeySecp256k1".to_string(),
+                    value: Binary::from_base64("AwSFyMndr25JX03rGSlXQ5oSO6F+9GoqQILZu/DytRrr").unwrap(),
+                },
+                signature: Binary::from_base64("mFDn5w59gaDTHZ5UzEA6l+sUOtlWDx/HcSi1NpZM13YuamMehIi3mseqXcQy4loE63N0hYhyXiVZdzrPM28A+g==").unwrap()
+            }
+        };
+
+        let created_seconds: u64 = 1734454740;
+        let expires_seconds: u64 = 1734677970;
+
+        // validate after created, before expires
+
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(created_seconds + 100);
+
+        // secret16v498l7d335wlzxpzg0mwkucrszdlza008dhc9
+        let address = validate::<_>(
+            deps.as_ref(),
+            env,
+            &permit,
+            token.clone(),
+            Some("secret"),
+        ).unwrap();
+
+        assert_eq!(
+            address,
+            "secret16v498l7d335wlzxpzg0mwkucrszdlza008dhc9".to_string()
+        );
+
+        // validate before created
+
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(created_seconds - 100);
+
+        let address = validate::<_>(
+            deps.as_ref(),
+            env,
+            &permit,
+            token.clone(),
+            Some("secret"),
+        );
+
+        assert!(address.is_err(), "validated before created");
+
+        // validate after expires
+
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(expires_seconds + 100);
+
+        let address = validate::<_>(
+            deps.as_ref(),
+            env,
+            &permit,
+            token.clone(),
+            Some("secret"),
+        );
+
+        assert!(address.is_err(), "validated after expires");
+
+    }
+
+    #[test]
+    fn test_verify_blanket_permit() {
+        let deps = mock_dependencies();
+
+        // blanket permit
+
+        //{"permit": {"params":{"chain_id":"secret-4","permit_name":"test","allowed_tokens":["ANY_TOKEN"],"permissions":["balance"],"created":"2024-12-17T16:59:00.000Z","expires":"2024-12-20T06:59:30.333Z"},"signature":{"pub_key":{"type":"tendermint/PubKeySecp256k1","value":"AwSFyMndr25JX03rGSlXQ5oSO6F+9GoqQILZu/DytRrr"},"signature":"Qte1iS54RsyRCN3rmOjA96yXQTn+eg4YaEUAU/Q5mLVGU9mOCEw6LMZjU2owLB4ogcziWrMkLOL3dtOrj3dL4Q=="}}}
+
+        let token = BLANKET_PERMIT_TOKEN.to_string();
+
+        let permit: Permit = Permit{
+            params: PermitParams {
+                allowed_tokens: vec![token.clone()],
+                permit_name: "test".to_string(),
+                chain_id: "secret-4".to_string(),
+                permissions: vec![TokenPermissions::Balance],
+                created: Some("2024-12-17T16:59:00.000Z".to_string()),
+                expires: Some("2024-12-20T06:59:30.333Z".to_string()),
+            },
+            signature: PermitSignature {
+                pub_key: PubKey {
+                    r#type: "tendermint/PubKeySecp256k1".to_string(),
+                    value: Binary::from_base64("AwSFyMndr25JX03rGSlXQ5oSO6F+9GoqQILZu/DytRrr").unwrap(),
+                },
+                signature: Binary::from_base64("Qte1iS54RsyRCN3rmOjA96yXQTn+eg4YaEUAU/Q5mLVGU9mOCEw6LMZjU2owLB4ogcziWrMkLOL3dtOrj3dL4Q==").unwrap()
+            }
+        };
+
+        let created_seconds: u64 = 1734454740;
+        let expires_seconds: u64 = 1734677970;
+
+        // validate after created, before expires
+
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(created_seconds + 100);
+
+        // secret16v498l7d335wlzxpzg0mwkucrszdlza008dhc9
+        let address = validate::<_>(
+            deps.as_ref(),
+            env,
+            &permit,
+            token.clone(),
+            Some("secret"),
+        ).unwrap();
+
+        assert_eq!(
+            address,
+            "secret16v498l7d335wlzxpzg0mwkucrszdlza008dhc9".to_string()
+        );
+
+        // validate before created
+
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(created_seconds - 100);
+
+        let address = validate::<_>(
+            deps.as_ref(),
+            env,
+            &permit,
+            token.clone(),
+            Some("secret"),
+        );
+
+        assert!(address.is_err(), "validated before created");
+
+        // validate after expires
+
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(expires_seconds + 100);
+
+        let address = validate::<_>(
+            deps.as_ref(),
+            env,
+            &permit,
+            token.clone(),
+            Some("secret"),
+        );
+
+        assert!(address.is_err(), "validated after expires");
+
+        // blanket permit invalid with another token in addition to ANY_TOKEN
+
+        //{"permit": {"params":{"chain_id":"secret-4","permit_name":"test","allowed_tokens":["secret18vd8fpwxzck93qlwghaj6arh4p7c5n8978vsyg","ANY_TOKEN"],"permissions":["balance"],"created":"2024-12-17T16:59:00.000Z","expires":"2024-12-20T06:59:30.333Z"},"signature":{"pub_key":{"type":"tendermint/PubKeySecp256k1","value":"AwSFyMndr25JX03rGSlXQ5oSO6F+9GoqQILZu/DytRrr"},"signature":"vc36PM85beBIOmimreAD428O3ldyyUqNHxmzUYlsHaJ+560Ce8G5ibJR7KCvHJitRuds/3TvGX4dPp6l6xfrUg=="}}}
+
+        let token = BLANKET_PERMIT_TOKEN.to_string();
+
+        let permit: Permit = Permit{
+            params: PermitParams {
+                allowed_tokens: vec!["secret18vd8fpwxzck93qlwghaj6arh4p7c5n8978vsyg".to_string(), token.clone()],
+                permit_name: "test".to_string(),
+                chain_id: "secret-4".to_string(),
+                permissions: vec![TokenPermissions::Balance],
+                created: Some("2024-12-17T16:59:00.000Z".to_string()),
+                expires: Some("2024-12-20T06:59:30.333Z".to_string()),
+            },
+            signature: PermitSignature {
+                pub_key: PubKey {
+                    r#type: "tendermint/PubKeySecp256k1".to_string(),
+                    value: Binary::from_base64("AwSFyMndr25JX03rGSlXQ5oSO6F+9GoqQILZu/DytRrr").unwrap(),
+                },
+                signature: Binary::from_base64("vc36PM85beBIOmimreAD428O3ldyyUqNHxmzUYlsHaJ+560Ce8G5ibJR7KCvHJitRuds/3TvGX4dPp6l6xfrUg==").unwrap()
+            }
+        };
+
+        let created_seconds: u64 = 1734454740;
+
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(created_seconds + 100);
+
+        // secret16v498l7d335wlzxpzg0mwkucrszdlza008dhc9
+        let address = validate::<_>(
+            deps.as_ref(),
+            env,
+            &permit,
+            token.clone(),
+            Some("secret"),
+        );
+
+        assert!(address.is_err(), "passed with second token in addition to ANY_TOKEN");
+
+        // blanket permit invalid with no created
+
+        //{"permit": {"params":{"chain_id":"secret-4","permit_name":"test","allowed_tokens":["ANY_TOKEN"],"permissions":["balance"],"expires":"2024-12-20T06:59:30.333Z"},"signature":{"pub_key":{"type":"tendermint/PubKeySecp256k1","value":"AwSFyMndr25JX03rGSlXQ5oSO6F+9GoqQILZu/DytRrr"},"signature":"k2tdjChWUeIfs63qcHwzUdt1C92gQ5lwvEPS4fv7GpM2geaWGpUsy6Ne+m0pda0AJEpdbiZ38KjiKNlU3CmkOw=="}}}
+
+        let token = BLANKET_PERMIT_TOKEN.to_string();
+
+        let permit: Permit = Permit{
+            params: PermitParams {
+                allowed_tokens: vec![token.clone()],
+                permit_name: "test".to_string(),
+                chain_id: "secret-4".to_string(),
+                permissions: vec![TokenPermissions::Balance],
+                created: None,
+                expires: Some("2024-12-20T06:59:30.333Z".to_string()),
+            },
+            signature: PermitSignature {
+                pub_key: PubKey {
+                    r#type: "tendermint/PubKeySecp256k1".to_string(),
+                    value: Binary::from_base64("AwSFyMndr25JX03rGSlXQ5oSO6F+9GoqQILZu/DytRrr").unwrap(),
+                },
+                signature: Binary::from_base64("k2tdjChWUeIfs63qcHwzUdt1C92gQ5lwvEPS4fv7GpM2geaWGpUsy6Ne+m0pda0AJEpdbiZ38KjiKNlU3CmkOw==").unwrap()
+            }
+        };
+
+        let created_seconds: u64 = 1734454740;
+
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(created_seconds + 100);
+
+        // secret16v498l7d335wlzxpzg0mwkucrszdlza008dhc9
+        let address = validate::<_>(
+            deps.as_ref(),
+            env,
+            &permit,
+            token.clone(),
+            Some("secret"),
+        );
+
+        assert!(address.is_err(), "blanket permit passed with no created field");
     }
 }
