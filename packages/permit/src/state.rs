@@ -13,7 +13,7 @@ pub struct RevokedPermits;
 
 impl<'a> RevokedPermitsStore<'a> for RevokedPermits {
     const NAMED_REVOKED_PERMITS_PREFIX: &'static [u8] = b"revoked_permits";
-    const ALL_REVOKED_PERMITS: Keymap<'a, u64, AllRevokedInterval> = Keymap::new(b"all_revoked_permits");
+    const ALL_REVOKED_PERMITS: Keymap<'a, u64, StoredAllRevokedInterval> = Keymap::new(b"all_revoked_permits");
     const ALL_REVOKED_NEXT_ID: Item<'a, u64> = Item::new(b"all_revoked_permits_serial_id");
     const MAX_ALL_REVOKED_INTERVALS: Option<u8> = Some(10);
 }
@@ -24,7 +24,7 @@ impl<'a> RevokedPermitsStore<'a> for RevokedPermits {
 /// the keys should be held.
 pub trait RevokedPermitsStore<'a> {
     const NAMED_REVOKED_PERMITS_PREFIX: &'static [u8];
-    const ALL_REVOKED_PERMITS: Keymap<'a, u64, AllRevokedInterval>;
+    const ALL_REVOKED_PERMITS: Keymap<'a, u64, StoredAllRevokedInterval>;
     const ALL_REVOKED_NEXT_ID: Item<'a, u64>;
     const MAX_ALL_REVOKED_INTERVALS: Option<u8>;
 
@@ -86,7 +86,7 @@ pub trait RevokedPermitsStore<'a> {
         let next_id = next_id_store.may_load(storage)?.unwrap_or_default();
 
         // store the revocation
-        all_revocations_store.insert(storage, &next_id, interval)?;
+        all_revocations_store.insert(storage, &next_id, &interval.into_stored())?;
 
         // increment next id
         next_id_store.save(storage, &(next_id.wrapping_add(1)))?;
@@ -123,7 +123,7 @@ pub trait RevokedPermitsStore<'a> {
                 match r {
                     Ok(r) => Some(AllRevocation {
                         revocation_id: Uint64::from(r.0),
-                        interval: r.1.clone()
+                        interval: r.1.to_humanized()
                     }),
                     Err(_) => None
                 }
@@ -140,6 +140,31 @@ pub trait RevokedPermitsStore<'a> {
 pub struct AllRevokedInterval {
     pub created_before: Option<Timestamp>,
     pub created_after: Option<Timestamp>,
+}
+
+impl AllRevokedInterval {
+    fn into_stored(&self) -> StoredAllRevokedInterval {
+        StoredAllRevokedInterval { 
+            created_before: self.created_before.and_then(|cb| Some(cb.seconds())), 
+            created_after: self.created_after.and_then(|ca| Some(ca.seconds())), 
+        }
+    }
+}
+
+/// An interval over which all permits will be rejected
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct StoredAllRevokedInterval {
+    pub created_before: Option<u64>,
+    pub created_after: Option<u64>,
+}
+
+impl StoredAllRevokedInterval {
+    fn to_humanized(&self) -> AllRevokedInterval {
+        AllRevokedInterval {
+            created_before: self.created_before.and_then(|cb| Some(Timestamp::from_seconds(cb))), 
+            created_after: self.created_after.and_then(|ca| Some(Timestamp::from_seconds(ca))),
+        }
+    }
 }
 
 /// Revocation id and interval data struct
