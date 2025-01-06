@@ -9,16 +9,17 @@ use crate::REVOKED_ALL;
 /// storage prefix for named permits and "all_revoked_permits" for revoked blanket permits.
 /// It also sets the maximum number of all permit revocations to 10 by default.
 ///
-/// You can use different storage locations and parameters by implementing `RevokedPermitsStore` 
+/// You can use different storage locations and parameters by implementing `RevokedPermitsStore`
 /// for your own type.
 pub struct RevokedPermits;
 
 impl<'a> RevokedPermitsStore<'a> for RevokedPermits {
     const NAMED_REVOKED_PERMITS_PREFIX: &'static [u8] = b"revoked_permits";
-    const ALL_REVOKED_PERMITS: Keymap<'a, u64, StoredAllRevokedInterval> = Keymap::new(b"__all_revoked_permits__1");
+    const ALL_REVOKED_PERMITS: Keymap<'a, u64, StoredAllRevokedInterval> =
+        Keymap::new(b"__all_revoked_permits__1");
     const ALL_REVOKED_NEXT_ID: Item<'a, u64> = Item::new(b"__all_revoked_permits_serial_id__1");
     const MAX_ALL_REVOKED_INTERVALS: Option<u8> = Some(10);
-    const ALL_TIME_REVOKED_ALL:Item<'a, bool> = Item::new(b"__all_time_revoked_all__1");
+    const ALL_TIME_REVOKED_ALL: Item<'a, bool> = Item::new(b"__all_time_revoked_all__1");
 }
 
 /// A trait describing the interface of a RevokedPermits store/vault.
@@ -30,14 +31,10 @@ pub trait RevokedPermitsStore<'a> {
     const ALL_REVOKED_PERMITS: Keymap<'a, u64, StoredAllRevokedInterval>;
     const ALL_REVOKED_NEXT_ID: Item<'a, u64>;
     const MAX_ALL_REVOKED_INTERVALS: Option<u8>;
-    const ALL_TIME_REVOKED_ALL:Item<'a, bool>;
+    const ALL_TIME_REVOKED_ALL: Item<'a, bool>;
 
     /// returns a bool indicating if a named permit is revoked
-    fn is_permit_revoked(
-        storage: &dyn Storage,
-        account: &str,
-        permit_name: &str,
-    ) -> bool {
+    fn is_permit_revoked(storage: &dyn Storage, account: &str, permit_name: &str) -> bool {
         let mut storage_key = Vec::new();
         storage_key.extend_from_slice(Self::NAMED_REVOKED_PERMITS_PREFIX);
         storage_key.extend_from_slice(account.as_bytes());
@@ -47,11 +44,7 @@ pub trait RevokedPermitsStore<'a> {
     }
 
     /// revokes a named permit permanently
-    fn revoke_permit(
-        storage: &mut dyn Storage,
-        account: &str,
-        permit_name: &str,
-    ) {
+    fn revoke_permit(storage: &mut dyn Storage, account: &str, permit_name: &str) {
         let mut storage_key = Vec::new();
         storage_key.extend_from_slice(Self::NAMED_REVOKED_PERMITS_PREFIX);
         storage_key.extend_from_slice(account.as_bytes());
@@ -78,7 +71,7 @@ pub trait RevokedPermitsStore<'a> {
         if interval.created_before.is_none() && interval.created_after.is_none() {
             // get all time revocations store for this account
             let all_time_revoked_store = Self::ALL_TIME_REVOKED_ALL.add_suffix(account.as_bytes());
-            
+
             // set all time revocations to true, this is idempotent
             all_time_revoked_store.save(storage, &true)?;
 
@@ -86,16 +79,16 @@ pub trait RevokedPermitsStore<'a> {
             return Ok(REVOKED_ALL.to_string());
         }
 
-
         // get the revocations store for this account
         let all_revocations_store = Self::ALL_REVOKED_PERMITS.add_suffix(account.as_bytes());
 
         // check that maximum number of revocations has not been met
         if let Some(max_revocations) = Self::MAX_ALL_REVOKED_INTERVALS {
             if all_revocations_store.get_len(storage)? >= max_revocations.into() {
-                return Err(StdError::generic_err(
-                    format!("Maximum number of permit revocations ({}) has been met", max_revocations)
-                ));
+                return Err(StdError::generic_err(format!(
+                    "Maximum number of permit revocations ({}) has been met",
+                    max_revocations
+                )));
             }
         }
 
@@ -115,21 +108,17 @@ pub trait RevokedPermitsStore<'a> {
     }
 
     /// deletes the permit revocation with the given id for this account
-    fn delete_revocation(
-        storage: &mut dyn Storage,
-        account: &str,
-        id: &str,
-    ) -> StdResult<()> {
+    fn delete_revocation(storage: &mut dyn Storage, account: &str, id: &str) -> StdResult<()> {
         // check if this is the all time special case
         if id == REVOKED_ALL {
             // get all time revocations store for this account
             let all_time_revoked_store = Self::ALL_TIME_REVOKED_ALL.add_suffix(account.as_bytes());
-            
+
             // set all time revocations to false
             all_time_revoked_store.save(storage, &false)?;
 
             // return
-            return Ok(())
+            return Ok(());
         }
 
         // get the revocations store for this account
@@ -146,36 +135,31 @@ pub trait RevokedPermitsStore<'a> {
 
     /// lists all the revocations for the account
     /// returns a vec of revocations
-    fn list_revocations(
-        storage: &dyn Storage,
-        account: &str,
-    ) -> StdResult<Vec<AllRevocation>> {
+    fn list_revocations(storage: &dyn Storage, account: &str) -> StdResult<Vec<AllRevocation>> {
         // get the revocations store for this account
         let all_revocations_store = Self::ALL_REVOKED_PERMITS.add_suffix(account.as_bytes());
 
         // select elements and convert to AllRevocation structs
         let mut result: Vec<AllRevocation> = all_revocations_store
             .iter(storage)?
-            .filter_map(|r| {
-                match r {
-                    Ok(r) => Some(AllRevocation {
-                        revocation_id: format!("{}", r.0),
-                        interval: r.1.to_humanized()
-                    }),
-                    Err(_) => None
-                }
+            .filter_map(|r| match r {
+                Ok(r) => Some(AllRevocation {
+                    revocation_id: format!("{}", r.0),
+                    interval: r.1.to_humanized(),
+                }),
+                Err(_) => None,
             })
             .collect();
 
-        // check if there is an all time revocation 
+        // check if there is an all time revocation
         if Self::is_all_time_revoked(storage, account)? {
             // add that to the result
             result.push(AllRevocation {
                 revocation_id: REVOKED_ALL.to_string(),
-                interval: AllRevokedInterval { 
-                    created_before: None, 
-                    created_after: None 
-                }
+                interval: AllRevokedInterval {
+                    created_before: None,
+                    created_after: None,
+                },
             });
         }
 
@@ -187,11 +171,12 @@ pub trait RevokedPermitsStore<'a> {
         // get the all time revoked store for this account
         let all_time_revoked_store = Self::ALL_TIME_REVOKED_ALL.add_suffix(account.as_bytes());
 
-        let result = all_time_revoked_store.may_load(storage)?.unwrap_or_default();
+        let result = all_time_revoked_store
+            .may_load(storage)?
+            .unwrap_or_default();
 
         Ok(result)
     }
-
 }
 
 /// An interval over which all permits will be rejected
@@ -203,9 +188,9 @@ pub struct AllRevokedInterval {
 
 impl AllRevokedInterval {
     fn into_stored(&self) -> StoredAllRevokedInterval {
-        StoredAllRevokedInterval { 
-            created_before: self.created_before.and_then(|cb| Some(cb.u64())), 
-            created_after: self.created_after.and_then(|ca| Some(ca.u64())), 
+        StoredAllRevokedInterval {
+            created_before: self.created_before.and_then(|cb| Some(cb.u64())),
+            created_after: self.created_after.and_then(|ca| Some(ca.u64())),
         }
     }
 }
@@ -220,7 +205,7 @@ pub struct StoredAllRevokedInterval {
 impl StoredAllRevokedInterval {
     fn to_humanized(&self) -> AllRevokedInterval {
         AllRevokedInterval {
-            created_before: self.created_before.and_then(|cb| Some(Uint64::from(cb))), 
+            created_before: self.created_before.and_then(|cb| Some(Uint64::from(cb))),
             created_after: self.created_after.and_then(|ca| Some(Uint64::from(ca))),
         }
     }

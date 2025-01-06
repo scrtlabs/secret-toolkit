@@ -4,7 +4,9 @@ use cosmwasm_std::{to_binary, Binary, CanonicalAddr, Deps, Env, StdError, StdRes
 use ripemd::{Digest, Ripemd160};
 use secret_toolkit_utils::iso8601_utc0_to_timestamp;
 
-use crate::{Permissions, Permit, RevokedPermits, RevokedPermitsStore, SignedPermit, BLANKET_PERMIT_TOKEN};
+use crate::{
+    Permissions, Permit, RevokedPermits, RevokedPermitsStore, SignedPermit, BLANKET_PERMIT_TOKEN,
+};
 use bech32::{ToBase32, Variant};
 use secret_toolkit_crypto::sha_256;
 
@@ -17,17 +19,25 @@ pub fn validate<Permission: Permissions>(
 ) -> StdResult<String> {
     let account_hrp = hrp.unwrap_or("secret");
 
-    if permit.params.allowed_tokens.contains(&BLANKET_PERMIT_TOKEN.to_string()) {
+    if permit
+        .params
+        .allowed_tokens
+        .contains(&BLANKET_PERMIT_TOKEN.to_string())
+    {
         // using blanket permit
-        
+
         // assert allowed_tokens list has an exact length of 1
         if permit.params.allowed_tokens.len() != 1 {
-            return Err(StdError::generic_err("Blanket permits cannot contain other allowed tokens"));
+            return Err(StdError::generic_err(
+                "Blanket permits cannot contain other allowed tokens",
+            ));
         }
 
         // assert created field is specified
         if permit.params.created.is_none() {
-            return Err(StdError::generic_err("Blanket permits must have a `created` time"));
+            return Err(StdError::generic_err(
+                "Blanket permits must have a `created` time",
+            ));
         }
     } else if !permit.check_token(&current_token_address) {
         // check that current token address is in allowed tokens
@@ -44,30 +54,34 @@ pub fn validate<Permission: Permissions>(
     }
 
     // Convert the permit created field to a Timestamp
-    let created_timestamp = permit.params.created.clone()
-        .map(|created| 
-            iso8601_utc0_to_timestamp(&created)
-        )
+    let created_timestamp = permit
+        .params
+        .created
+        .clone()
+        .map(|created| iso8601_utc0_to_timestamp(&created))
         .transpose()?;
 
     if let Some(created) = created_timestamp {
         // Verify that the permit was not created after the current block time
         if created.seconds() > env.block.time.seconds() {
-            return Err(StdError::generic_err("Permit `created` after current block time"));
+            return Err(StdError::generic_err(
+                "Permit `created` after current block time",
+            ));
         }
     }
 
     // Convert the permit expires field to a Timestamp
-    let expires_timestamp = permit.params.expires.clone()
-        .map(|created| 
-            iso8601_utc0_to_timestamp(&created)
-        )
+    let expires_timestamp = permit
+        .params
+        .expires
+        .clone()
+        .map(|created| iso8601_utc0_to_timestamp(&created))
         .transpose()?;
 
     if let Some(expires) = expires_timestamp {
         // Verify that the permit did not expire before the current block time
         if expires.seconds() <= env.block.time.seconds() {
-            return Err(StdError::generic_err("Permit has expired"))
+            return Err(StdError::generic_err("Permit has expired"));
         }
     }
 
@@ -82,36 +96,44 @@ pub fn validate<Permission: Permissions>(
 
     // Check if account has an all time permit revocation
     if RevokedPermits::is_all_time_revoked(deps.storage, account.as_str())? {
-        return Err(StdError::generic_err(
-            format!("Permits revoked by {:?}", account.as_str())
-        ));
+        return Err(StdError::generic_err(format!(
+            "Permits revoked by {:?}",
+            account.as_str()
+        )));
     }
 
     // Check if there are any revocation intervals blocking all permits
-    //   TODO: An interval or segment tree might be preferable to make this more efficient for cases 
+    //   TODO: An interval or segment tree might be preferable to make this more efficient for cases
     //         when the number of revocations is allowed to grow to a large amount.
     for revocation in revocations {
         // If the permit has a `created` field
         if let Some(created) = created_timestamp {
             // Revocation created before field, default 0
-            let created_before = revocation.interval.created_before.unwrap_or(Uint64::from(0u64));
+            let created_before = revocation
+                .interval
+                .created_before
+                .unwrap_or(Uint64::from(0u64));
 
             // Revocation created after field, default max u64
-            let created_after = revocation.interval.created_after.unwrap_or(Uint64::from(u64::MAX));
+            let created_after = revocation
+                .interval
+                .created_after
+                .unwrap_or(Uint64::from(u64::MAX));
 
             // If the permit's `created` field falls in between created after and created before, then reject it
             if created.seconds() > created_after.u64() || created.seconds() < created_before.u64() {
-                return Err(StdError::generic_err(
-                    format!("Permits created at {:?} revoked by account {:?}", created, account.as_str())
-                ));                
-            }         
+                return Err(StdError::generic_err(format!(
+                    "Permits created at {:?} revoked by account {:?}",
+                    created,
+                    account.as_str()
+                )));
+            }
         }
     }
 
     // Validate permit_name
     let permit_name = &permit.params.permit_name;
-    let is_permit_revoked =
-        RevokedPermits::is_permit_revoked(deps.storage, &account, permit_name);
+    let is_permit_revoked = RevokedPermits::is_permit_revoked(deps.storage, &account, permit_name);
     if is_permit_revoked {
         return Err(StdError::generic_err(format!(
             "Permit {:?} was revoked by account {:?}",
@@ -148,7 +170,10 @@ pub fn pubkey_to_account(pubkey: &Binary) -> CanonicalAddr {
 mod tests {
     use super::*;
     use crate::{PermitParams, PermitSignature, PubKey, TokenPermissions};
-    use cosmwasm_std::{testing::{mock_dependencies, mock_env}, Timestamp};
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env},
+        Timestamp,
+    };
 
     #[test]
     fn test_verify_permit() {
@@ -179,14 +204,8 @@ mod tests {
 
         let env = mock_env();
 
-        let address = validate::<_>(
-            deps.as_ref(),
-            &env,
-            &permit,
-            token.clone(),
-            Some("secret"),
-        )
-        .unwrap();
+        let address =
+            validate::<_>(deps.as_ref(), &env, &permit, token.clone(), Some("secret")).unwrap();
 
         assert_eq!(
             address,
@@ -195,13 +214,7 @@ mod tests {
 
         let env = mock_env();
 
-        let address = validate::<_>(
-            deps.as_ref(), 
-            &env, 
-            &permit, 
-            token, 
-            Some("cosmos")
-        ).unwrap();
+        let address = validate::<_>(deps.as_ref(), &env, &permit, token, Some("cosmos")).unwrap();
 
         assert_eq!(
             address,
@@ -247,13 +260,8 @@ mod tests {
         env.block.time = Timestamp::from_seconds(created_seconds + 100);
 
         // secret16v498l7d335wlzxpzg0mwkucrszdlza008dhc9
-        let address = validate::<_>(
-            deps.as_ref(),
-            &env,
-            &permit,
-            token.clone(),
-            Some("secret"),
-        ).unwrap();
+        let address =
+            validate::<_>(deps.as_ref(), &env, &permit, token.clone(), Some("secret")).unwrap();
 
         assert_eq!(
             address,
@@ -265,13 +273,7 @@ mod tests {
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(created_seconds - 100);
 
-        let address = validate::<_>(
-            deps.as_ref(),
-            &env,
-            &permit,
-            token.clone(),
-            Some("secret"),
-        );
+        let address = validate::<_>(deps.as_ref(), &env, &permit, token.clone(), Some("secret"));
 
         assert!(address.is_err(), "validated before created");
 
@@ -280,16 +282,9 @@ mod tests {
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(expires_seconds + 100);
 
-        let address = validate::<_>(
-            deps.as_ref(),
-            &env,
-            &permit,
-            token.clone(),
-            Some("secret"),
-        );
+        let address = validate::<_>(deps.as_ref(), &env, &permit, token.clone(), Some("secret"));
 
         assert!(address.is_err(), "validated after expires");
-
     }
 
     #[test]
@@ -329,13 +324,8 @@ mod tests {
         env.block.time = Timestamp::from_seconds(created_seconds + 100);
 
         // secret16v498l7d335wlzxpzg0mwkucrszdlza008dhc9
-        let address = validate::<_>(
-            deps.as_ref(),
-            &env,
-            &permit,
-            token.clone(),
-            Some("secret"),
-        ).unwrap();
+        let address =
+            validate::<_>(deps.as_ref(), &env, &permit, token.clone(), Some("secret")).unwrap();
 
         assert_eq!(
             address,
@@ -347,13 +337,7 @@ mod tests {
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(created_seconds - 100);
 
-        let address = validate::<_>(
-            deps.as_ref(),
-            &env,
-            &permit,
-            token.clone(),
-            Some("secret"),
-        );
+        let address = validate::<_>(deps.as_ref(), &env, &permit, token.clone(), Some("secret"));
 
         assert!(address.is_err(), "validated before created");
 
@@ -362,13 +346,7 @@ mod tests {
         let mut env = mock_env();
         env.block.time = Timestamp::from_seconds(expires_seconds + 100);
 
-        let address = validate::<_>(
-            deps.as_ref(),
-            &env,
-            &permit,
-            token.clone(),
-            Some("secret"),
-        );
+        let address = validate::<_>(deps.as_ref(), &env, &permit, token.clone(), Some("secret"));
 
         assert!(address.is_err(), "validated after expires");
 
@@ -402,15 +380,12 @@ mod tests {
         env.block.time = Timestamp::from_seconds(created_seconds + 100);
 
         // secret16v498l7d335wlzxpzg0mwkucrszdlza008dhc9
-        let address = validate::<_>(
-            deps.as_ref(),
-            &env,
-            &permit,
-            token.clone(),
-            Some("secret"),
-        );
+        let address = validate::<_>(deps.as_ref(), &env, &permit, token.clone(), Some("secret"));
 
-        assert!(address.is_err(), "passed with second token in addition to ANY_TOKEN");
+        assert!(
+            address.is_err(),
+            "passed with second token in addition to ANY_TOKEN"
+        );
 
         // blanket permit invalid with no created
 
@@ -442,14 +417,11 @@ mod tests {
         env.block.time = Timestamp::from_seconds(created_seconds + 100);
 
         // secret16v498l7d335wlzxpzg0mwkucrszdlza008dhc9
-        let address = validate::<_>(
-            deps.as_ref(),
-            &env,
-            &permit,
-            token.clone(),
-            Some("secret"),
-        );
+        let address = validate::<_>(deps.as_ref(), &env, &permit, token.clone(), Some("secret"));
 
-        assert!(address.is_err(), "blanket permit passed with no created field");
+        assert!(
+            address.is_err(),
+            "blanket permit passed with no created field"
+        );
     }
 }
