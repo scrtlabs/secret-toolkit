@@ -99,7 +99,7 @@ pub trait RevokedPermitsStore<'a> {
         let next_id = next_id_store.may_load(storage)?.unwrap_or_default();
 
         // store the revocation
-        all_revocations_store.insert(storage, &next_id, &interval.into_stored())?;
+        all_revocations_store.insert(storage, &next_id, &interval.as_stored())?;
 
         // increment next id
         next_id_store.save(storage, &(next_id.wrapping_add(1)))?;
@@ -125,7 +125,7 @@ pub trait RevokedPermitsStore<'a> {
         let all_revocations_store = Self::ALL_REVOKED_PERMITS.add_suffix(account.as_bytes());
 
         // try to convert id to a u64
-        let Ok(id_str) = u64::from_str_radix(id, 10) else {
+        let Ok(id_str) = id.parse::<u64>() else {
             return Err(StdError::generic_err("Deleted revocation id not Uint64"));
         };
 
@@ -187,10 +187,10 @@ pub struct AllRevokedInterval {
 }
 
 impl AllRevokedInterval {
-    fn into_stored(&self) -> StoredAllRevokedInterval {
+    fn as_stored(&self) -> StoredAllRevokedInterval {
         StoredAllRevokedInterval {
-            created_before: self.created_before.and_then(|cb| Some(cb.u64())),
-            created_after: self.created_after.and_then(|ca| Some(ca.u64())),
+            created_before: self.created_before.map(|cb| cb.u64()),
+            created_after: self.created_after.map(|ca| ca.u64()),
         }
     }
 }
@@ -205,8 +205,8 @@ pub struct StoredAllRevokedInterval {
 impl StoredAllRevokedInterval {
     fn to_humanized(&self) -> AllRevokedInterval {
         AllRevokedInterval {
-            created_before: self.created_before.and_then(|cb| Some(Uint64::from(cb))),
-            created_after: self.created_after.and_then(|ca| Some(Uint64::from(ca))),
+            created_before: self.created_before.map(|cb| Uint64::from(cb)),
+            created_after: self.created_after.map(|ca| Uint64::from(ca)),
         }
     }
 }

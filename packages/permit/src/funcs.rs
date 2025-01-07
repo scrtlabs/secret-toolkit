@@ -1,5 +1,3 @@
-use std::u64;
-
 use cosmwasm_std::{to_binary, Binary, CanonicalAddr, Deps, Env, StdError, StdResult, Uint64};
 use ripemd::{Digest, Ripemd160};
 use secret_toolkit_utils::iso8601_utc0_to_timestamp;
