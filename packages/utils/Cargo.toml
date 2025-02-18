@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-utils"
-version = "0.10.2"
+version = "0.10.3"
 edition = "2021"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -18,3 +18,5 @@ serde = { workspace = true }
 schemars = { workspace = true }
 cosmwasm-std = { workspace = true }
 cosmwasm-storage = { workspace = true }
+
+chrono = { version = "0.4", default-features = false }
