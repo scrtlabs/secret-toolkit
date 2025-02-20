@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.10.3
+
+### Bug fixes
+
+- fix out of bounds bug at get_at function in append_store
+
 ## v0.10.2
 
 ### Features
