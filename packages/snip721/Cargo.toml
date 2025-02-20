@@ -1,6 +1,6 @@
 [package]
 name = "secret-toolkit-snip721"
-version = "0.10.2"
+version = "0.10.3"
 edition = "2021"
 authors = ["SCRT Labs <info@scrtlabs.com>"]
 license-file = "../../LICENSE"
@@ -17,4 +17,4 @@ all-features = true
 serde = { workspace = true }
 schemars = { workspace = true }
 cosmwasm-std = { workspace = true }
-secret-toolkit-utils = { version = "0.10.2", path = "../utils" }
+secret-toolkit-utils = { version = "0.10.3", path = "../utils" }
